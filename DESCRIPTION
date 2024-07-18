@@ -1,13 +1,37 @@
 Package: WoodlandCarbonCode
-Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
-Encoding: UTF-8
-LazyData: true
+Title: Calculate Carbon Estimates Using Allometry from the Woodland Carbon Code 2021
+Version: 0.0.0.9002
+Authors@R: 
+    c(
+      person(
+        given = "Isabel",
+        family = "Openshaw", 
+        role = c("aut", "cre"),
+        email = "i.openshaw@kew.org",
+        comment = c(ORCID = "0009-0009-4712-5883")
+      ),
+      person(
+        given = "Justin",
+        family = "Moat", 
+        role = "aut",
+        email = "j.moat@kew.org",
+        comment = c(ORCID = "0000-0002-5513-3615")
+      )
+    )
+Description: This package inputs diameter at breast height (DBH) and species name,
+    and estimates the total carbon stored by the tree using methodology from the Woodland Carbon Code (2021).
+License: GPL-3
 URL: https://github.com/izaopenshaw/WoodlandCarbonCode
-BugReports: https://github.com/izaopenshaw/WoodlandCarbonCode/issues
+BugReports: https://github.com/iopenshaw/WoodlandCarbonCode/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Depends: 
+    R (>= 3.5.0)
+LazyData: true
