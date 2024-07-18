@@ -515,9 +515,7 @@ pro_error_carbon <- function(vol,volsd,den,densd,biom,biomsd,nruns=10000,
 #==================== Bunce Eq ====================
 # log(biomass) = a + b log (pi * DBH)
 
-#bunce <- read.csv("bunce.csv")
-
-df$Bunce <-
+bunce <- read.csv("bunce.csv")
 
   Bunce <- function(spcode,height,dbh){
     rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode,]
