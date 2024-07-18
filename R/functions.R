@@ -240,8 +240,7 @@ c2co2e <- function(carbon){
 #'  fraction from chosen method/citation.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param biomass (usually kg or metric tonnes)
-#' @param method
-#' \describe{
+#' @param method \describe{
   #'   \item{Matthews1}{Simplest with the carbon volatile fraction,
   #'   CVF = 50% (Matthews 1993)}
   #'   \item{Matthews2}{CVF based on type (broadleaf or conifer)}
@@ -250,6 +249,7 @@ c2co2e <- function(carbon){
   #'   \item{Thomas1}{Simple with biomass 0.483 and 95% CI of 0.003, can be
   #'   used for error progression}
   #'   \item{Thomas2}{Lookup by type and biome}
+  #'   }
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
@@ -484,7 +484,7 @@ fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"
 #' @param returnv if null then mean and sd is returned else vector of
 #' quantiles ie c(5,50,95)/100 will return 5%, mean and 95% quantiles.
 #' @returns  either vector of mean and sd or vector of quantiles
-#' @references
+#' @references todo**
 #'
 #vol <- 100
 #volsd <- 10
@@ -523,8 +523,10 @@ pro_error_carbon <- function(vol,volsd,den,densd,biom,biomsd,nruns=10000,
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
 #'
-
+#' @importFrom utils data
+#'
 Bunce <- function(spcode,dbh){
+
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
   data(bunce)
