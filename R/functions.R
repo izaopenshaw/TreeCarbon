@@ -1,3 +1,5 @@
+############ Functions file for Woodland Carbon Code #########################
+
 #========== Tariff number from volume and tree basal area (Eq 1) ===============
 #' @title Tariff number from volume and basal area
 #' @description Using the sample tree’s basal area and volume to calculate the
@@ -8,6 +10,8 @@
 #' @returns  Tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
+#' @importFrom utils data
+#' @export
 #'
 tariff_vol_area <- function(vol, dbh){
   if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
@@ -30,6 +34,8 @@ tariff_vol_area <- function(vol, dbh){
 #' @returns  tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @importFrom utils data
+#' @export
 #'
 conifer_tariff <- function(spcode, height, dbh) {
   if (!is.numeric(height) || !is.numeric(dbh) || height < 0 || dbh < 0) {
@@ -56,6 +62,8 @@ conifer_tariff <- function(spcode, height, dbh) {
 #' @returns  tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
+#' @importFrom utils data
+#' @export
 #'
 broadleaf_tariff <- function(spcode, height, dbh) {
   if(!is.numeric(dbh) || any(dbh<0))stop("dbh must be numeric and positive")
@@ -240,8 +248,7 @@ c2co2e <- function(carbon){
 #'  fraction from chosen method/citation.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param biomass (usually kg or metric tonnes)
-#' @param method \describe{
-  #'   \item{Matthews1}{Simplest with the carbon volatile fraction,
+#' @param method \item{Matthews1}{Simplest with the carbon volatile fraction,
   #'   CVF = 50% (Matthews 1993)}
   #'   \item{Matthews2}{CVF based on type (broadleaf or conifer)}
   #'   \item{IPCC1}{Simple with CVF = 47.7% (IPCC 2006)}
@@ -249,7 +256,7 @@ c2co2e <- function(carbon){
   #'   \item{Thomas1}{Simple with biomass 0.483 and 95% CI of 0.003, can be
   #'   used for error progression}
   #'   \item{Thomas2}{Lookup by type and biome}
-  #'   }
+  #'
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
