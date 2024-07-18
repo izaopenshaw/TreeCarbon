@@ -513,11 +513,32 @@ pro_error_carbon <- function(vol,volsd,den,densd,biom,biomsd,nruns=10000,
 
 
 #==================== Bunce Eq ====================
-# log(biomass) = a + b log (pi * DBH)
+#' @title Bunce biomass equation
+#' @description Calculates dry weight based on species and DBH
+#' @author Isabel Openshaw. I.Openshaw@kew.org
+#' @param spcode species code
+#' @param dbh diameter at breast height
+#' @returns  biomass in kg
+#' @references Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
+#' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
+#' Tree Dry Weight" (1968)
+#'
 
-bunce <- read.csv("bunce.csv")
+Bunce <- function(spcode,dbh){
+  if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-  Bunce <- function(spcode,height,dbh){
-    rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode,]
-    floor(rec$a1 + (rec$a2 * height) + (rec$a3 * dbh))
-  }
+  data(bunce)
+
+  coeffs <- bunce[bunce$spcode == spcode,]
+
+  if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in
+                        data(bunce), therefore, the combined coefficients
+                           will be used")}
+
+  biomass <- coeffs$a + coeffs$b*log(pi*dbh)
+
+  return(exp(biomass))
+}
+
+
+
