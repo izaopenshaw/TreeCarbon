@@ -10,4 +10,4 @@ vol <- 50    # m^3
 
 #==Method B: broadleaf
 # Lookup species code in
-data(sp_lookupdf)
+

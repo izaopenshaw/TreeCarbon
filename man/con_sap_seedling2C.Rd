@@ -17,7 +17,6 @@ todo*
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-Carbon Assessment Protocol (v2. 0)." (2018)
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
