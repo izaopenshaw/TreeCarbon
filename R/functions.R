@@ -347,9 +347,9 @@ biomass2c <- function(biomass, method, type, biome, return="carbon") {
 #' @param heightincm tree height in metres
 #' @returns  carbon in tonnes
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#' @importFrom utils data head tail
 #' Carbon Assessment Protocol (v2. 0)." (2018)
 #'
-
 con_sap_seedling2C <- function(heightincm){
   data(seedlings_conifer)
   b <- tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
@@ -397,10 +397,9 @@ broad_sap_seedling2C <- function(heightincm){
 #' for converting biomass to carbon, and returns the carbon estimate
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
 #' @param spcode species code
-#' @param dbh in centimetres
+#' @param dbh diameter at breast height in centimetres
 #' @param height in metres
-#' @param biomass2c_method method of converting biomass to carbon.
-#' See biomass2c function
+#' @param method method of converting biomass to carbon. See biomass2c function
 #' @param biome tropical, Subtropical, Mediterranean,Temperate, Boreal or all
 #' @param returnv To return either 'AGC' [default] or 'All'
 #' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
@@ -410,7 +409,8 @@ broad_sap_seedling2C <- function(heightincm){
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #'
-fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"){
+fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
+                   returnv = "AGC"){
 
   # Check arguments
   if(!is.character(spcode))stop("spcode must be a character")
@@ -423,8 +423,9 @@ fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"
          'IPCC2', 'Thomas'. See R helpfile.")
   }
   if ((method %in% c("IPCC2", "Thomas")) && !missing(biome) &&
-      !(biome %in% c("tropical", "subtropical", "mediterranean", "temperate", "boreal"))) {
-    stop("Invalid biome. Choose from: 'tropical', 'subtropical', 'mediterranean',
+      !(biome %in% c("tropical", "subtropical", "mediterranean",
+                     "temperate", "boreal"))) {
+    stop("Invalid biome. Choose from: 'tropical', 'subtropical','mediterranean',
          'temperate', 'boreal'")
   }
   n = length(spcode)
@@ -439,7 +440,7 @@ fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"
   # Loop over all species
   for (i in 1:n) {
     # Lookup species data from code
-    data(sp_lookupdf)
+    data(sp_lookupdf, envir = environment())
     rec <- sp_lookupdf[sp_lookupdf$short == spcode[i], ]
 
     tarifflokupcode <- rec$single
@@ -455,7 +456,7 @@ fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"
     if (type == "broadleaf") {
       r$tariff[i] <- broadleaf_tariff(tarifflokupcode, height[i], DBH[i])
     } else if (type == "conifer") {
-      r$tariff[i] <- fc_con_tariff(tarifflokupcode, height[i], DBH[i])
+      r$tariff[i] <- conifer_tariff(tarifflokupcode, height[i], DBH[i])
     }
 
     # Calculate volumes and biomass
@@ -492,6 +493,8 @@ fc_agc <- function(spcode, DBH, height, method="Matthews1", biome, returnv="AGC"
 #' quantiles ie c(5,50,95)/100 will return 5%, mean and 95% quantiles.
 #' @returns  either vector of mean and sd or vector of quantiles
 #' @references todo**
+#' @importFrom stats quantile rnorm sd
+
 #'
 #vol <- 100
 #volsd <- 10
@@ -536,7 +539,7 @@ Bunce <- function(spcode,dbh){
 
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-  data(bunce)
+#  data(bunce)
 
   coeffs <- bunce[bunce$spcode == spcode,]
 
