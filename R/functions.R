@@ -262,10 +262,9 @@ c2co2e <- function(carbon){
 #' @param method \item{Matthews1}{Simplest with the carbon volatile fraction,
   #'   CVF = 50% (Matthews 1993)}
   #'   \item{Matthews2}{CVF based on type (broadleaf or conifer)}
-  #'   \item{IPCC1}{Simple with CVF = 47.7% (IPCC 2006)}
+  #'   \item{IPCC1}{CVF = 47.7% (IPCC 2006)}
   #'   \item{IPCC2}{Lookup CVF by type and biome}
-  #'   \item{Thomas1}{Simple with biomass 0.483 and 95% CI of 0.003, can be
-  #'   used for error progression}
+  #'   \item{Thomas1}{CVF = 48.3% and 95% CI of 0.3% (Thomas and Martin 2012)}
   #'   \item{Thomas2}{Lookup by type and biome}
   #'
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
