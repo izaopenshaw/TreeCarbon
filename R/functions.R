@@ -43,7 +43,7 @@ conifer_tariff <- function(spcode, height, dbh) {
   if (!is.numeric(height) || !is.numeric(dbh) || height < 0 || dbh < 0) {
     stop("height and dbh must be non-negative numeric values")
   }
-  # data(tariff_coniferdf)
+  data(tariff_coniferdf, envir = environment())
   rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode, ]
   if(nrow(rec) == 0)stop("The specified 'spcode' is not found in tariff_coniferdf.rda")
 
@@ -72,7 +72,7 @@ broadleaf_tariff <- function(spcode, height, dbh) {
   if(!is.numeric(dbh) || any(dbh<0))stop("dbh must be numeric and positive")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
-  # data(tariff_broaddf)
+  data(tariff_broaddf, envir = environment())
   rec <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
   tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * dbh) + (rec$a4 * dbh * height)
   return(tariff)
@@ -94,7 +94,7 @@ stand_tariff <- function(spcode, height) {
   if(!is.character(spcode))stop("spcode must be a character")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
-  # data(tarif2heightdf)
+  data(tarif2heightdf, envir = environment())
   rec <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
 
   if(nrow(rec)==0){stop("The species code, 'spcode' is not found in data(tarif2heightdf)")}
@@ -150,7 +150,7 @@ treevol <- function(mtreevol, dbh) {
 
   dbh <- round(dbh)
   if (dbh < 582 & dbh > 6.5) {
-    # data(stemvol)
+    data(stemvol, envir = environment())
     cf <- stemvol[stemvol$dbh..cm. == dbh, ]$X
     return(cf * mtreevol)
   } else if (dbh < 6.5){
@@ -199,7 +199,7 @@ crownbiomass <- function(spcode, dbh) {
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
   if(dbh < 7){warning("equation is only specifed for dbh equal to or greater than 7")}
 
-  # data(crown_biomasdf)
+  data(crown_biomasdf, envir = environment())
   rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
   if(nrow(rec)==0){
     stop("The species code, 'spcode' is not found in data(crown_biomasdf),

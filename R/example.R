@@ -11,3 +11,6 @@ vol <- 50    # m^3
 #==Method B: broadleaf
 # Lookup species code in
 
+# Test with my data & add to methodology.R
+#setwd("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/Methodology")
+#df <- read.csv("df_7_24.csv")
