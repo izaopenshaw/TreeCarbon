@@ -35,8 +35,8 @@ VignetteBuilder: knitr
 Depends: 
     R (>= 3.5.0)
 Imports:
-    stringr
-    utils
-    stringr
+    stringr,
+    utils,
+    stringr,
     stats
 LazyData: true
