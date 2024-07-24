@@ -21,6 +21,11 @@ Use DBH and tree height to derive the tariff number of each
 sample tree. Species-specific estimates of a1 – a4 are found in the
 R data file, 'tariff_broaddf'.
 }
+\examples{
+broadleaf_tariff(spcode = 'OK', height = 25, dbh = 1.5)
+55.96704
+
+}
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.

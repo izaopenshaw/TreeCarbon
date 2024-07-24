@@ -7,7 +7,7 @@
 con_sap_seedling2C(heightincm)
 }
 \arguments{
-\item{heightincm}{tree height in metres}
+\item{heightincm}{tree height in centimetres}
 }
 \value{
 carbon in tonnes
@@ -17,6 +17,7 @@ todo*
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+Carbon Assessment Protocol (v2. 0)." (2018)
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

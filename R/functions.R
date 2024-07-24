@@ -11,8 +11,6 @@
 #' @returns  Tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
-#' @importFrom utils data
-#' @export
 #'
 tariff_vol_area <- function(vol, dbh){
   if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
@@ -43,7 +41,7 @@ conifer_tariff <- function(spcode, height, dbh) {
   if (!is.numeric(height) || !is.numeric(dbh) || height < 0 || dbh < 0) {
     stop("height and dbh must be non-negative numeric values")
   }
-  data(tariff_coniferdf, envir = environment())
+  utils::data(tariff_coniferdf, envir = environment())
   rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode, ]
   if(nrow(rec) == 0)stop("The specified 'spcode' is not found in tariff_coniferdf.rda")
 
@@ -67,12 +65,14 @@ conifer_tariff <- function(spcode, height, dbh) {
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
 #' @importFrom utils data
 #' @export
+#' @examples broadleaf_tariff(spcode = 'OK', height = 25, dbh = 1.5)
+#' 55.96704
 #'
 broadleaf_tariff <- function(spcode, height, dbh) {
   if(!is.numeric(dbh) || any(dbh<0))stop("dbh must be numeric and positive")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
-  data(tariff_broaddf, envir = environment())
+  utils::data(tariff_broaddf, envir = environment())
   rec <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
   tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * dbh) + (rec$a4 * dbh * height)
   return(tariff)
@@ -94,7 +94,7 @@ stand_tariff <- function(spcode, height) {
   if(!is.character(spcode))stop("spcode must be a character")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
-  data(tarif2heightdf, envir = environment())
+  utils::data(tarif2heightdf, envir = environment())
   rec <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
 
   if(nrow(rec)==0){stop("The species code, 'spcode' is not found in data(tarif2heightdf)")}
@@ -150,7 +150,7 @@ treevol <- function(mtreevol, dbh) {
 
   dbh <- round(dbh)
   if (dbh < 582 & dbh > 6.5) {
-    data(stemvol, envir = environment())
+    utils::data(stemvol, envir = environment())
     cf <- stemvol[stemvol$dbh..cm. == dbh, ]$X
     return(cf * mtreevol)
   } else if (dbh < 6.5){
@@ -194,12 +194,13 @@ woodbiomass <- function(treevol, nsg) {
 #' @returns  biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
+#' @importFrom utils data
 #'
 crownbiomass <- function(spcode, dbh) {
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
   if(dbh < 7){warning("equation is only specifed for dbh equal to or greater than 7")}
 
-  data(crown_biomasdf, envir = environment())
+  utils::data(crown_biomasdf, envir = environment())
   rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
   if(nrow(rec)==0){
     stop("The species code, 'spcode' is not found in data(crown_biomasdf),
@@ -259,14 +260,13 @@ c2co2e <- function(carbon){
 #'  fraction from chosen method/citation.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param biomass (usually kg or metric tonnes)
-#' @param method \item{Matthews1}{Simplest with the carbon volatile fraction,
-  #'   CVF = 50% (Matthews 1993)}
-  #'   \item{Matthews2}{CVF based on type (broadleaf or conifer)}
-  #'   \item{IPCC1}{CVF = 47.7% (IPCC 2006)}
-  #'   \item{IPCC2}{Lookup CVF by type and biome}
-  #'   \item{Thomas1}{CVF = 48.3% and 95% CI of 0.3% (Thomas and Martin 2012)}
-  #'   \item{Thomas2}{Lookup by type and biome}
-  #'
+#' @param method Method of calculating the carbon volatile fraction.
+#' Matthews1 - Simplest with the carbon volatile fraction, CVF = 50% (Matthews 1993)
+#' Matthews2 - CVF based on type (broadleaf or conifer)
+#' IPCC1 - CVF = 47.7% (IPCC 2006)
+#' IPCC2 - Lookup CVF by type and biome
+#' Thomas1 - CVF = 48.3% and 95% CI of 0.3% (Thomas and Martin 2012)
+#' Thomas2 - Lookup by type and biome
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
@@ -354,16 +354,16 @@ biomass2c <- function(biomass, method, type, biome, return="carbon") {
 #' @title Conifer seedlings and saplings to carbon
 #' @description todo*
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param heightincm tree height in metres
+#' @param heightincm tree height in centimetres
 #' @returns  carbon in tonnes
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' @importFrom utils data head tail
 #' Carbon Assessment Protocol (v2. 0)." (2018)
+#' @importFrom utils data head tail
 #'
 con_sap_seedling2C <- function(heightincm){
   # data(seedlings_conifer)
-  b <- tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
-  t <- head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
+  b <- utils::tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
+  t <- utils::head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
   rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
   if ((nrow(b) == 0) |  (nrow (t) == 0)){
     NULL
@@ -389,8 +389,8 @@ broad_sap_seedling2C <- function(heightincm){
   #note max is 1000
   #min is 1 cm
   # data(seedlings_broad)
-  b <- tail(seedlings_broad[seedlings_broad$height.cm <= heightincm,],1)
-  t <- head(seedlings_broad[seedlings_broad$height.cm >= heightincm,],1)
+  b <- utils::tail(seedlings_broad[seedlings_broad$height.cm <= heightincm,],1)
+  t <- utils::head(seedlings_broad[seedlings_broad$height.cm >= heightincm,],1)
   rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
   if ((nrow(b) == 0) |  (nrow (t) == 0)){
     NULL
@@ -399,6 +399,53 @@ broad_sap_seedling2C <- function(heightincm){
   } else {
     b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
   }
+}
+
+
+############# Above Ground Carbon ################
+#'
+#' @title Lookup species code
+#' @description  Function that looks up species codes for Woodland Carbon Code
+#' @author Isabel Openshaw I.Openshaw@kew.org
+#' @param name name of species
+#' @param name_type either 'botanical' or 'common'
+#' @param classification either 'broadleaf' or 'conifer'
+#' @param returnv either 'short', 'single', 'stand', 'root' from sp_lookupdf.Rda
+#' @returns Species code
+#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @importFrom stringr word
+#'
+lookspcode <- function(name, name_type="botanical", classification, returnv="short"){
+  # ** to check inputs
+
+  if(name_type == "common"){
+    rec <- sp_lookupdf[sp_lookupdf$common_name == name,]
+    if(nrow(rec) == 0){    # if species is not found, search genus
+      rec <- sp_lookupdf[sp_lookupdf$General.for.genus == word(name, 1),]
+      if(nrow(rec) == 0){   # if genus not found, get general code for broadleaf/conifer
+        rec <- sp_lookupdf[sp_lookupdf$General.for.classification == classification,]
+      }
+    }
+  } else {
+    # Search genus and species
+    rec <- sp_lookupdf[sp_lookupdf$latin_name == name,]
+    # if species is not found, search genus
+    if(nrow(rec) == 0){
+      rec <- sp_lookupdf[sp_lookupdf$General.for.genus == stringr::word(name, 1),]
+      # if genus not found, get general code for broadleaf/conifer
+      if(nrow(rec) == 0){
+        rec <- sp_lookupdf[sp_lookupdf$General.for.classification == classification,]
+      }
+    }
+  }
+
+  if(returnv == "short"){spcode <- rec$short}
+  else if (returnv == "single"){spcode <- rec$single}
+  else if(returnv == "stand"){spcode <- rec$stand}
+  else if(returnv == "root"){spcode <- rec$Root}
+
+  return(spcode)
 }
 
 ############# Above Ground Carbon ################
@@ -446,8 +493,8 @@ fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
   #  stop("spcode, DBH, and height must be of the same length")}
 
   # Create results table
-  r <- data.frame(spcode=NA,DBH=NA,height=NA,tariff=NA,mercvol=NA,stemvol=NA,
-                  stembiomass=NA,crownbiomass=NA,rootbiomass=NA,AGC=NA,stringsAsFactors=FALSE)
+  r <- data.frame(spcode=NA, DBH=NA, height=NA, tariff=NA, mercvol=NA, stemvol=NA,
+                  stembiomass=NA, crownbiomass=NA, rootbiomass=NA, AGC=NA, stringsAsFactors=FALSE)
   r <- r[1:n,]
 
   # Loop over all species
@@ -522,14 +569,14 @@ fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
 # pro_error_carbon(vol,volsd,den,densd,biom,biomsd,nruns=100000)
 pro_error_carbon <- function(vol,volsd,den,densd,biom,biomsd,nruns=10000,
                              returnsv=NULL) {
-  vol <- rnorm(nruns,mean=vol,sd=volsd)
-  den <- rnorm(nruns,mean=den,sd=densd) # middle of the road
-  biomass <- rnorm(nruns,mean=biom,sd=biomsd) # conifer or angiosperm
+  vol <- stats::rnorm(nruns,mean=vol,sd=volsd)
+  den <- stats::rnorm(nruns,mean=den,sd=densd) # middle of the road
+  biomass <- stats::rnorm(nruns,mean=biom,sd=biomsd) # conifer or angiosperm
   carbt <- vol * den * biomass
   if (!is.null(returnsv)){
-    quantile(carbt,probs=returnsv)
+    stats::quantile(carbt,probs=returnsv)
   } else {
-    c(mean = mean(carbt),sd= sd(carbt))
+    c(mean = mean(carbt),sd= stats::sd(carbt))
   }
 }
 #AGB = 0.0673 * (WD * H * D^2)^0.976
@@ -554,7 +601,7 @@ bunce <- function(spcode,dbh){
 
 #  # data(bunce)
 
-  coeffs <- bunce[bunce$spcode == spcode,]
+  coeffs <- buncedf[buncedf$spcode == spcode,]
 
   if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in
                         data(bunce), therefore, the combined coefficients
