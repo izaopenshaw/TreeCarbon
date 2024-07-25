@@ -31,6 +31,7 @@ tariff_vol_area <- function(vol, dbh){
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in metres
 #' @param dbh diameter at breast height in centimetres
+#' @param spcode species code
 #' @returns  tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -68,14 +69,27 @@ conifer_tariff <- function(spcode, height, dbh) {
 #' @examples broadleaf_tariff(spcode = 'OK', height = 25, dbh = 1.5)
 #' 55.96704
 #'
-broadleaf_tariff <- function(spcode, height, dbh) {
+broadleaf_tariff <- function(spcode, height, dbh, dbh_sd = NA, height_sd = NA) {
   if(!is.numeric(dbh) || any(dbh<0))stop("dbh must be numeric and positive")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
   utils::data(tariff_broaddf, envir = environment())
-  rec <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
-  tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * dbh) + (rec$a4 * dbh * height)
-  return(tariff)
+  tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
+  tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
+
+  if(!is.na(dbh_sd) | !is.na(height_sd)){
+    if(!is.numeric(dbh_sd) || any(dbh_sd<0))stop("dbh_sd must be numeric and positive")
+    if(!is.numeric(height_sd) || any(height_sd<0))stop("height_sd must be numeric and positive")
+
+    error <- sqrt(2.085826^2 +
+                error_product(tb$a3, 0.05184218, dbh, dbh_sd) +
+                error_product(tb$a2, 0.3908223, height, height_sd) +
+                error_product(tb$a4, 0.01108647, dbh, dbh_sd, height, height_sd)
+                )
+    return(c(tariff, error))
+  } else {
+    return(tariff)
+  }
 }
 
 ############# FC tariff number by stand height (Eq 4) ################
@@ -115,7 +129,7 @@ stand_tariff <- function(spcode, height) {
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #'
-merchtreevol <- function(tariff, dbh) {
+merchtreevol <- function(dbh, tariff, dbh_sd = NA, tariff_sd = NA) {
   if(is.na(tariff)||!is.numeric(tariff)||any(tariff<0))
     stop("tariff must be numeric and positive")
   if(is.na(dbh)   ||!is.numeric(dbh)   ||any(dbh<0))
@@ -128,10 +142,27 @@ merchtreevol <- function(tariff, dbh) {
   if (vol < 0) {
     vol <- 0
   }
-  return(vol)
+  if(is.na(dbh_sd)) {
+    return(vol)
+  } else {
+    ba_sd <- (pi * dbh / 20000) * dbh_sd
+    a2_sd <- 0.315049301 * tariff_sd
+    a1_sd <- sqrt(
+      (0.0360541 - 0.315049301 * 0.118288)^2 * tariff_sd^2 +
+        (0.118288 * a2_sd)^2
+    )
+    error <- sqrt(
+      a1_sd^2 +
+        (ba * a2_sd)^2 +
+        (a2 * ba_sd)^2
+    )
+
+    return(c(vol, error))
+  }
+
 }
 
-############# FC tree volume ################
+############# FC stem tree volume ################
 #'
 #' @title Forestry commission tree wood volume
 #' @description Calculate the stem volume by multiplying the merchantable
@@ -139,27 +170,68 @@ merchtreevol <- function(tariff, dbh) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
-#' @returns  volume metres cubed
+#' @param mtreevol_sd sigma for mtreevol (optional)
+#' @returns  volume metres cubed or if mtreevol_sd is provided then additionally returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #'
-treevol <- function(mtreevol, dbh) {
+treevol <- function(mtreevol, dbh, mtreevol_sd = NA) {
 
   if(!is.numeric(dbh) || any(dbh<0))stop("dbh must be numeric and positive")
   if(!is.numeric(mtreevol) || any(mtreevol<0))stop("mtreevol must be numeric and positive")
 
   dbh <- round(dbh)
-  if (dbh < 582 & dbh > 6.5) {
+  if (dbh < 500 & dbh > 6.5) {
     utils::data(stemvol, envir = environment())
     cf <- stemvol[stemvol$dbh..cm. == dbh, ]$X
-    return(cf * mtreevol)
+
   } else if (dbh < 6.5){
-    warning("dbh is less than 6.5 and multiplication factor is not specified")
-    return(mtreevol)
-  } else if (dbh > 582){
-    warning("dbh is above 5.82 m")
-    return(mtreevol)
+    warning("dbh is less than 6.5 cm, multiplication factor is not specified")
+    cf <- 1
+  } else if (dbh > 500){
+    warning("dbh is above 5 m")
+    cf <- 1
+  }
+  stemvol <- cf * mtreevol
+
+  if(is.na(mtreevol_sd)){
+    return(stemvol)
+  } else {
+    if(!is.numeric(mtreevol_sd) || any(mtreevol_sd<0))stop("mtreevol_sd must be numeric and positive")
+    error <- error_product(1, 0.01794557, mtreevol, mtreevol_sd)
+    return(c(stemvol, error))
+  }
+}
+
+############# Error for product ################
+#' @title Analytical error progression for product
+#' @description Calculates the error for x when x = a * b or x = a * b * c
+#' @author Isabel Openshaw. I.Openshaw@kew.org
+#' @param a first variable in product
+#' @param a_sd sigma for a
+#' @param b second variable in product
+#' @param b_sd sigma for b
+#' @param c (optional) third variable in product
+#' @param c_sd (optional) sigma for c
+#' @returns error for x = (abs(a * b) * sqrt((a_sd / a)^2 + (b_sd / b)^2))^2
+#' or (abs(a * b * c) * sqrt((a_sd / a)^2 + (b_sd / b)^2 + (c_sd / c)^2))^2
+#' @references *todo
+#'
+error_product <- function(a, a_sd, b, b_sd, c=NA, c_sd=NA) {
+  if (!is.numeric(a) || !is.numeric(b) || !is.numeric(a_sd) || !is.numeric(b_sd)) {
+    stop("inputs must be numeric")}
+
+  if (is.na(c)) {
+    sigmasquared <- (a * b * sqrt((a_sd / a)^2 + (b_sd / b)^2))^2
+  } else {
+    if (!is.numeric(c) || !is.numeric(c_sd)) {
+      stop("c and c_sd must be numeric")
     }
+
+    sigmasquared <- (a * b * c * sqrt((a_sd / a)^2 + (b_sd / b)^2 + (c_sd / c)^2))^2
+  }
+
+  return(sigmasquared)
 }
 
 ############# FC wood biomass ################
@@ -172,14 +244,24 @@ treevol <- function(mtreevol, dbh) {
 #' @param nsg Nominal Specific Gravity
 #' @returns  biomass in oven dry tonnes
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' Carbon Assessment Protocol (v2. 0)." (2018).
+#' Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
+#' (1983) The strength properties of timber. Building Research Establishment
+#' Report CI/Sfb i(J3). Building Research Establishment, Garston.
 #'
-woodbiomass <- function(treevol, nsg) {
+woodbiomass <- function(treevol, nsg, treevol_sd = NA) {
 
   if(!is.numeric(treevol) || any(treevol<0))stop("treevol must be numeric and positive")
   if(!is.numeric(nsg) || any(nsg<0))stop("nsg must be numeric and positive")
 
-  return(treevol * nsg)
+  woodbio <- treevol * nsg
+
+  if(is.na(treevol_sd)){
+    return(woodbio)
+  } else {
+    error <- error_product(treevol, treevol_sd, nsg, 0.08222824)
+    return(c(woodbio, error))
+  }
+
 }
 
 ############# FC crown biomass (Eq 6 & 7) ################
@@ -455,7 +537,7 @@ lookspcode <- function(name, name_type="botanical", classification, returnv="sho
 #' for converting biomass to carbon, and returns the carbon estimate
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
 #' @param spcode species code
-#' @param dbh diameter at breast height in centimetres
+#' @param DBH diameter at breast height in centimetres
 #' @param height in metres
 #' @param method method of converting biomass to carbon. See biomass2c function
 #' @param biome tropical, Subtropical, Mediterranean,Temperate, Boreal or all

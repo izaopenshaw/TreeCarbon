@@ -9,6 +9,8 @@ fc_agc(spcode, DBH, height, method = "Matthews1", biome, returnv = "AGC")
 \arguments{
 \item{spcode}{species code}
 
+\item{DBH}{diameter at breast height in centimetres}
+
 \item{height}{in metres}
 
 \item{method}{method of converting biomass to carbon. See biomass2c function}
@@ -16,8 +18,6 @@ fc_agc(spcode, DBH, height, method = "Matthews1", biome, returnv = "AGC")
 \item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}
 
 \item{returnv}{To return either 'AGC' \link{default} or 'All'}
-
-\item{dbh}{diameter at breast height in centimetres}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff

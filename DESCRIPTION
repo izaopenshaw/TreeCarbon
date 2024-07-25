@@ -37,6 +37,5 @@ Depends:
 Imports:
     stringr,
     utils,
-    stringr,
     stats
 LazyData: true

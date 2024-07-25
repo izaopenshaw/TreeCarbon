@@ -7,6 +7,8 @@
 conifer_tariff(spcode, height, dbh)
 }
 \arguments{
+\item{spcode}{species code}
+
 \item{height}{tree height in metres}
 
 \item{dbh}{diameter at breast height in centimetres}
