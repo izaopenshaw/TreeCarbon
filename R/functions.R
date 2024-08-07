@@ -11,6 +11,7 @@
 #' @returns  Tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
+#' @export
 #'
 tariff_vol_area <- function(vol, dbh){
   if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
@@ -105,6 +106,7 @@ broadleaf_tariff <- function(spcode, height, dbh, dbh_sd = NA, height_sd = NA) {
 #' @returns  tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @export
 #'
 stand_tariff <- function(spcode, height) {
   if(!is.character(spcode))stop("spcode must be a character")
@@ -132,6 +134,7 @@ stand_tariff <- function(spcode, height) {
 #' @returns  volume metres cubed and error if sigma of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @export
 #'
 merchtreevol <- function(dbh, tariff, dbh_sd = NA, tariff_sd = NA) {
   if(is.na(tariff)||!is.numeric(tariff)||any(tariff<0))
@@ -179,6 +182,7 @@ merchtreevol <- function(dbh, tariff, dbh_sd = NA, tariff_sd = NA) {
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @export
 #'
 treevol <- function(mtreevol, dbh, mtreevol_sd = NA) {
 
@@ -221,6 +225,7 @@ treevol <- function(mtreevol, dbh, mtreevol_sd = NA) {
 #' @returns error for x = (abs(a * b) * sqrt((a_sd / a)^2 + (b_sd / b)^2))^2
 #' or (abs(a * b * c) * sqrt((a_sd / a)^2 + (b_sd / b)^2 + (c_sd / c)^2))^2
 #' @references *todo
+#' @export
 #'
 error_product <- function(a, a_sd, b, b_sd, c=NA, c_sd=NA) {
   if (!is.numeric(a) || !is.numeric(b) || !is.numeric(a_sd) || !is.numeric(b_sd)) {
@@ -254,6 +259,7 @@ error_product <- function(a, a_sd, b, b_sd, c=NA, c_sd=NA) {
 #' Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
 #' (1983) The strength properties of timber. Building Research Establishment
 #' Report CI/Sfb i(J3). Building Research Establishment, Garston.
+#' @export
 #'
 woodbiomass <- function(treevol, nsg, treevol_sd = NA) {
 
@@ -284,6 +290,7 @@ woodbiomass <- function(treevol, nsg, treevol_sd = NA) {
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
 #' @importFrom utils data
+#' @export
 #'
 crownbiomass <- function(spcode, dbh) {
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
@@ -313,7 +320,8 @@ crownbiomass <- function(spcode, dbh) {
 #' @returns biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.3.
-
+#' @export
+#'
 rootbiomass <- function(spcode,dbh){
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
@@ -335,6 +343,7 @@ rootbiomass <- function(spcode,dbh){
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param carbon carbon
 #' @returns carbon dioxide equivalent
+#' @export
 #'
 c2co2e <- function(carbon){
   if(!is.numeric(carbon) || carbon<0)stop("carbon must be numeric and positive")
@@ -371,6 +380,7 @@ c2co2e <- function(carbon){
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 #' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
+#'  @export
 #'
 biomass2c <- function(biomass, method, type, biome, return="carbon") {
   # Check arguments
@@ -448,6 +458,7 @@ biomass2c <- function(biomass, method, type, biome, return="carbon") {
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
 #' @importFrom utils data head tail
+#' @export
 #'
 con_sap_seedling2C <- function(heightincm){
   # data(seedlings_conifer)
@@ -462,6 +473,7 @@ con_sap_seedling2C <- function(heightincm){
     b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
   }
 }
+
 ############# FC Broadleaf seedlings and saplings to carbon ################
 #'
 #' @title Broadleaf seedlings and saplings to carbon
@@ -472,6 +484,7 @@ con_sap_seedling2C <- function(heightincm){
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
+#' @export
 #'
 broad_sap_seedling2C <- function(heightincm){
   #get first and last
@@ -490,7 +503,6 @@ broad_sap_seedling2C <- function(heightincm){
   }
 }
 
-
 ############# Above Ground Carbon ################
 #'
 #' @title Lookup species code
@@ -504,9 +516,11 @@ broad_sap_seedling2C <- function(heightincm){
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom stringr word
+#' @export
 #'
 lookspcode <- function(name, name_type="botanical", classification, returnv="short"){
   # ** to check inputs
+  data(sp_lookupdf, package = "Woodland Carbon Code")
 
   if(name_type == "common"){
     rec <- sp_lookupdf[sp_lookupdf$common_name == name,]
@@ -555,6 +569,7 @@ lookspcode <- function(name, name_type="botanical", classification, returnv="sho
 #' root carbon (tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @export
 #'
 fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
                    returnv = "AGC"){
@@ -590,6 +605,7 @@ fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
   for (i in 1:n) {
     # Lookup species data from code
 #    data(sp_lookupdf, envir = environment())
+    data("sp_lookupdf", package = "WoodlandCarbonCode")
     rec <- sp_lookupdf[sp_lookupdf$short == spcode[i], ]
 
     tarifflokupcode <- rec$single
@@ -642,9 +658,8 @@ fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
 #' @param returnv if null then mean and sd is returned else vector of
 #' quantiles ie c(5,50,95)/100 will return 5%, mean and 95% quantiles.
 #' @returns  either vector of mean and sd or vector of quantiles
-#' @references todo**
+#' @references todo** and to write at export
 #' @importFrom stats quantile rnorm sd
-
 #'
 #vol <- 100
 #volsd <- 10

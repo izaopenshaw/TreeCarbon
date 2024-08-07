@@ -34,7 +34,7 @@ either vector of mean and sd or vector of quantiles
 Progression of errors through monte carlo simulation
 }
 \references{
-todo**
+todo** and to write at export
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
