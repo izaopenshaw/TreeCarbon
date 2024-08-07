@@ -61,7 +61,9 @@ conifer_tariff <- function(spcode, height, dbh) {
 #' @param height tree height in meters
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode species code
-#' @returns  tariff number
+#' @param height_sd tree height sigma (optional)
+#' @param dbh_sd diameter at breast height sigma (optional)
+#' @returns  tariff number and error if sigma of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
 #' @importFrom utils data
@@ -125,7 +127,9 @@ stand_tariff <- function(spcode, height) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param tariff tree or stand tariff number
 #' @param dbh diameter at breast height in centimetres
-#' @returns  volume metres cubed
+#' @param tariff_sd tariff sigma (optional)
+#' @param dbh_sd diameter at breast height sigma (optional)
+#' @returns  volume metres cubed and error if sigma of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #'
@@ -171,7 +175,8 @@ merchtreevol <- function(dbh, tariff, dbh_sd = NA, tariff_sd = NA) {
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param mtreevol_sd sigma for mtreevol (optional)
-#' @returns  volume metres cubed or if mtreevol_sd is provided then additionally returns the error as a list
+#' @returns  volume metres cubed or if mtreevol_sd is provided then additionally
+#'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #'
@@ -242,7 +247,9 @@ error_product <- function(a, a_sd, b, b_sd, c=NA, c_sd=NA) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param treevol tree volume in metres cubed
 #' @param nsg Nominal Specific Gravity
-#' @returns  biomass in oven dry tonnes
+#' @param treevol_sd tree volume in metres sigma (optional)
+#' @returns  biomass in oven dry tonnes or if treevol_sd is provided then
+#' additionally returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
 #' (1983) The strength properties of timber. Building Research Establishment
