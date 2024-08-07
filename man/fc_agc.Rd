@@ -17,7 +17,7 @@ fc_agc(spcode, DBH, height, method = "Matthews1", biome, returnv = "AGC")
 
 \item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}
 
-\item{returnv}{To return either 'AGC' \link{default} or 'All'}
+\item{returnv}{To return either 'AGC' (default) or 'All'}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff

@@ -325,7 +325,7 @@ crownbiomass <- function(spcode, dbh) {
 rootbiomass <- function(spcode,dbh){
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-  # data(root_biomassdf)
+  utils::data(root_biomassdf, envir = environment())
   rec <- root_biomassdf[root_biomassdf$Code == spcode,]
   if(nrow(rec)==0){stop("The species code, 'spcode' is not found in
                         data(root_biomassdf), see data(sp_lookupdf) column 'Root'")}
@@ -461,7 +461,7 @@ biomass2c <- function(biomass, method, type, biome, return="carbon") {
 #' @export
 #'
 con_sap_seedling2C <- function(heightincm){
-  # data(seedlings_conifer)
+  utils::data(seedlings_conifer, envir = environment())
   b <- utils::tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
   t <- utils::head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
   rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
@@ -484,13 +484,17 @@ con_sap_seedling2C <- function(heightincm){
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
+#' @importFrom utils data head tail
 #' @export
 #'
 broad_sap_seedling2C <- function(heightincm){
+  if(!is.numeric(heightincm) || heightincm < 0)stop("
+  Argument 'heightincm' must be numeric and non-negative")
+  if(heightincm > 1000)warning("Maximum for 'heightincm' is 1000cm")
+  if(heightincm < 1)   warning("Minimum for 'heightincm' is 1cm")
+
+  utils::data(seedlings_broad, envir = environment())
   #get first and last
-  #note max is 1000
-  #min is 1 cm
-  # data(seedlings_broad)
   b <- utils::tail(seedlings_broad[seedlings_broad$height.cm <= heightincm,],1)
   t <- utils::head(seedlings_broad[seedlings_broad$height.cm >= heightincm,],1)
   rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
@@ -516,11 +520,12 @@ broad_sap_seedling2C <- function(heightincm){
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom stringr word
+#' @importFrom utils data
 #' @export
 #'
 lookspcode <- function(name, name_type="botanical", classification, returnv="short"){
   # ** to check inputs
-  data(sp_lookupdf, package = "Woodland Carbon Code")
+  utils::data(sp_lookupdf, envir = environment)
 
   if(name_type == "common"){
     rec <- sp_lookupdf[sp_lookupdf$common_name == name,]
@@ -562,13 +567,14 @@ lookspcode <- function(name, name_type="botanical", classification, returnv="sho
 #' @param height in metres
 #' @param method method of converting biomass to carbon. See biomass2c function
 #' @param biome tropical, Subtropical, Mediterranean,Temperate, Boreal or all
-#' @param returnv To return either 'AGC' [default] or 'All'
+#' @param returnv To return either 'AGC' (default) or 'All'
 #' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
 #' number, merchantable volume (metres cubed), stem volume (metres cubed),
 #' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
 #' root carbon (tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @importFrom utils data
 #' @export
 #'
 fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
@@ -604,8 +610,8 @@ fc_agc <- function(spcode, DBH, height, method = "Matthews1", biome,
   # Loop over all species
   for (i in 1:n) {
     # Lookup species data from code
-#    data(sp_lookupdf, envir = environment())
-    data("sp_lookupdf", package = "WoodlandCarbonCode")
+    utils::data(sp_lookupdf, envir = environment())
+#    data("sp_lookupdf", package = "WoodlandCarbonCode")
     rec <- sp_lookupdf[sp_lookupdf$short == spcode[i], ]
 
     tarifflokupcode <- rec$single
@@ -703,7 +709,7 @@ bunce <- function(spcode,dbh){
 
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-  data("buncedf", package = "WoodlandCarbonCode")
+  data("buncedf", envir = environment())
   coeffs <- buncedf[buncedf$spcode == spcode,]
 
   if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in
