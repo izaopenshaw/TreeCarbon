@@ -467,7 +467,7 @@ con_sap_seedling2C <- function(heightincm){
 #' @title Broadleaf seedlings and saplings to carbon
 #' @description todo*
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param height = tree height in metres
+#' @param heightincm tree height in centimetres
 #' @returns  carbon in tonnes
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -688,8 +688,7 @@ bunce <- function(spcode,dbh){
 
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-#  # data(bunce)
-
+  data("bunce", package = "WoodlandCarbonCode")
   coeffs <- buncedf[buncedf$spcode == spcode,]
 
   if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in

@@ -4,15 +4,19 @@
 \alias{merchtreevol}
 \title{Forestry merchantable volume}
 \usage{
-merchtreevol(tariff, dbh)
+merchtreevol(dbh, tariff, dbh_sd = NA, tariff_sd = NA)
 }
 \arguments{
+\item{dbh}{diameter at breast height in centimetres}
+
 \item{tariff}{tree or stand tariff number}
 
-\item{dbh}{diameter at breast height in centimetres}
+\item{dbh_sd}{diameter at breast height sigma (optional)}
+
+\item{tariff_sd}{tariff sigma (optional)}
 }
 \value{
-volume metres cubed
+volume metres cubed and error if sigma of variables inputted
 }
 \description{
 Use the tree tariff number and DBH to estimate the mean

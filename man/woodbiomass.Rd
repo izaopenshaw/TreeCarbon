@@ -4,15 +4,18 @@
 \alias{woodbiomass}
 \title{Forestry commission wood biomass}
 \usage{
-woodbiomass(treevol, nsg)
+woodbiomass(treevol, nsg, treevol_sd = NA)
 }
 \arguments{
 \item{treevol}{tree volume in metres cubed}
 
 \item{nsg}{Nominal Specific Gravity}
+
+\item{treevol_sd}{tree volume in metres sigma (optional)}
 }
 \value{
-biomass in oven dry tonnes
+biomass in oven dry tonnes or if treevol_sd is provided then
+additionally returns the error as a list
 }
 \description{
 Multiply the mean total tree volume by the nominal specific
@@ -20,7 +23,9 @@ gravity to give the biomass, in oven dry tonnes.
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-Carbon Assessment Protocol (v2. 0)." (2018).
+Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
+(1983) The strength properties of timber. Building Research Establishment
+Report CI/Sfb i(J3). Building Research Establishment, Garston.
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

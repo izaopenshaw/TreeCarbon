@@ -7,7 +7,7 @@
 broad_sap_seedling2C(heightincm)
 }
 \arguments{
-\item{height}{= tree height in metres}
+\item{heightincm}{tree height in centimetres}
 }
 \value{
 carbon in tonnes

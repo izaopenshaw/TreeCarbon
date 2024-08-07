@@ -4,15 +4,18 @@
 \alias{treevol}
 \title{Forestry commission tree wood volume}
 \usage{
-treevol(mtreevol, dbh)
+treevol(mtreevol, dbh, mtreevol_sd = NA)
 }
 \arguments{
 \item{mtreevol}{merchantable tree volume}
 
 \item{dbh}{diameter at breast height in centimeters (greater than 6.5 cm)}
+
+\item{mtreevol_sd}{sigma for mtreevol (optional)}
 }
 \value{
-volume metres cubed
+volume metres cubed or if mtreevol_sd is provided then additionally
+returns the error as a list
 }
 \description{
 Calculate the stem volume by multiplying the merchantable
