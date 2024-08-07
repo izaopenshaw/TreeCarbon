@@ -688,7 +688,7 @@ bunce <- function(spcode,dbh){
 
   if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
 
-  data("bunce", package = "WoodlandCarbonCode")
+  data("buncedf", package = "WoodlandCarbonCode")
   coeffs <- buncedf[buncedf$spcode == spcode,]
 
   if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in

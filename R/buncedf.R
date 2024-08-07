@@ -11,4 +11,4 @@
 #' @source Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
-"bunce"
+"buncedf"
