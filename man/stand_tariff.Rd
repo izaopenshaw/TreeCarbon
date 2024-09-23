@@ -4,15 +4,18 @@
 \alias{stand_tariff}
 \title{Tariff number by stand height}
 \usage{
-stand_tariff(spcode, height)
+stand_tariff(spcode, height, sigma_h = NA)
 }
 \arguments{
 \item{spcode}{species code}
 
 \item{height}{tree height in metres}
+
+\item{sigma_h}{sigma for height (optional)}
 }
 \value{
-tariff number
+either tariff number or if sigma_h is provided, then returns a list
+of the tariff number and uncertainty
 }
 \description{
 Use the estimated stand top height to calculate the stand
