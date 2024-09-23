@@ -1,6 +1,6 @@
 ############## Functions file for Woodland Carbon Code ########################
 
-############ Tariff number from volume and tree basal area (Eq 1) ############
+############ Tariff number from volume and tree basal area (FC Eq 1) ############
 #'
 #' @title Tariff number from volume and basal area
 #' @description Using the sample tree’s basal area and volume to calculate the
@@ -40,7 +40,7 @@ tariff_vol_area <- function(vol, dbh, sigma_vol = NA, sigma_dbh = NA){
   }
 }
 
-############# FC conifer tree tariff number (Eq 3) ############################
+############# FC conifer tree tariff number (FC Eq 3) ############################
 #'
 #' @title Conifer tree tariff number
 #' @description Use DBH and tree height to calculate the tariff number of each
@@ -82,7 +82,7 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
 }
 
 
-############# FC broadleaf tree tariff number (Eq 2) ##########################
+############# FC broadleaf tree tariff number (FC Eq 2) ##########################
 #'
 #' @title Carbon tariff number for broadleaf tree
 #' @description Use DBH and tree height to derive the tariff number of each
@@ -126,7 +126,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_height =
   }
 }
 
-############# FC tariff number by stand height (Eq 4) ################
+############# FC tariff number by stand height (FC Eq 4) ################
 #'
 #' @title Tariff number by stand height
 #' @description Use the estimated stand top height to calculate the stand
@@ -164,7 +164,7 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
   }
 }
 
-############# FC tree merchantable volume (Eq 5) ################
+############# FC tree merchantable volume (FC Eq 5) ################
 #'
 #' @title Forestry merchantable volume
 #' @description Use the tree tariff number and DBH to estimate the mean
@@ -326,7 +326,7 @@ woodbiomass <- function(treevol, nsg, sigma_treevol = NA) {
 
 }
 
-############# FC crown biomass (Eq 6 & 7) ################
+############# FC crown biomass (FC Eq 6 & 7) ################
 #'
 #' @title Forestry commission crown biomass estimates
 #' @description  Function to find crown biomass (composed of branches,
@@ -380,7 +380,7 @@ crownbiomass <- function(spcode, dbh, sigma_dbh = NA) {
     }
 }
 
-############# FC Root Biomass (Eq 8 & 9) ################
+############# FC Root Biomass (FC Eq 8 & 9) ################
 #'
 #' @title Forestry commission root biomass estimates
 #' @description Function to calculate the root biomass depending on species and DBH
