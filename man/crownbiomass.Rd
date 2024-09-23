@@ -4,13 +4,15 @@
 \alias{crownbiomass}
 \title{Forestry commission crown biomass estimates}
 \usage{
-crownbiomass(spcode, dbh)
+crownbiomass(spcode, dbh, sigma_dbh = NA)
 }
 \arguments{
 \item{spcode}{Crown biomass species code, crown_biomasdf$Code which
 relates to sp_lookupdf$Crown}
 
 \item{dbh}{diameter at breast height in centimetres}
+
+\item{sigma_dbh}{dbh sigma}
 }
 \value{
 biomass (oven dry tonnes)

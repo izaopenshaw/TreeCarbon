@@ -6,9 +6,9 @@
 \usage{
 pro_error_carbon(
   vol,
-  volsd,
+  sigma_vol,
   den,
-  densd,
+  sigma_den,
   biom,
   biomsd,
   nruns = 10000,
@@ -16,9 +16,9 @@ pro_error_carbon(
 )
 }
 \arguments{
-\item{volsd}{volume sd}
+\item{sigma_vol}{sigma for volume}
 
-\item{densd}{wood density sd}
+\item{sigma_den}{sigma for wood density}
 
 \item{biomsd}{biomass sd}
 

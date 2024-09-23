@@ -4,18 +4,18 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, dbh_sd = NA, height_sd = NA)
+broadleaf_tariff(spcode, height, dbh, sigma_dbh = NA, sigma_height = NA)
 }
 \arguments{
-\item{spcode}{species code}
+\item{spcode}{species code (single)}
 
 \item{height}{tree height in meters}
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{dbh_sd}{diameter at breast height sigma (optional)}
+\item{sigma_dbh}{sigma for diameter at breast height (optional)}
 
-\item{height_sd}{tree height sigma (optional)}
+\item{sigma_height}{sigma for tree height (optional)}
 }
 \value{
 tariff number and error if sigma of variables inputted

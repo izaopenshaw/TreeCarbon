@@ -4,15 +4,20 @@
 \alias{tariff_vol_area}
 \title{Tariff number from volume and basal area}
 \usage{
-tariff_vol_area(vol, dbh)
+tariff_vol_area(vol, dbh, sigma_vol = NA, sigma_dbh = NA)
 }
 \arguments{
 \item{vol}{tree volume in metres cubed}
 
 \item{dbh}{diameter at breast height in centimetres}
+
+\item{simga_vol}{sigma for tree volume (optional)}
+
+\item{simga_dbh}{sigma for diameter at breast height (optional)}
 }
 \value{
-Tariff number
+Tariff number or if sigma for inputs are provided, then will return
+a list of tariff number and sigma for tariff
 }
 \description{
 Using the sample tree’s basal area and volume to calculate the

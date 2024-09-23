@@ -4,14 +4,18 @@
 \alias{conifer_tariff}
 \title{Conifer tree tariff number}
 \usage{
-conifer_tariff(spcode, height, dbh)
+conifer_tariff(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA)
 }
 \arguments{
-\item{spcode}{species code}
+\item{spcode}{species code (single)}
 
 \item{height}{tree height in metres}
 
 \item{dbh}{diameter at breast height in centimetres}
+
+\item{sigma_h}{uncertainty in height}
+
+\item{sigma_dbh}{uncertainty in dbh}
 }
 \value{
 tariff number

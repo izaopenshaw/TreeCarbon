@@ -4,7 +4,7 @@
 \alias{rootbiomass}
 \title{Forestry commission root biomass estimates}
 \usage{
-rootbiomass(spcode, dbh)
+rootbiomass(spcode, dbh, sigma_dbh = NA)
 }
 \arguments{
 \item{spcode}{species code}
@@ -16,6 +16,14 @@ biomass (oven dry tonnes)
 }
 \description{
 Function to calculate the root biomass depending on species and DBH
+}
+\examples{
+# without error
+rootbiomass(spcode = 'RBRAR', dbh = 50)
+# with error
+rootbiomass(spcode = 'RBRAR', dbh = 50, sigma_dbh = 10)
+
+
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
