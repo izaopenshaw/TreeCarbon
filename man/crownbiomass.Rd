@@ -21,6 +21,12 @@ biomass (oven dry tonnes)
 Function to find crown biomass (composed of branches,
 stem tips and foliage) depending on species and DBH
 }
+\examples{
+crownbiomass("CBOK", 70)
+crownbiomass("CBOK", 70, sigma_dbh = 10)
+crownbiomass(c("CBOK","CBOK"), dbh = c(70,70), sigma_dbh = c(10,50))
+
+}
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.

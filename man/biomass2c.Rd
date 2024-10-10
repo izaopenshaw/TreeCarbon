@@ -43,6 +43,9 @@ Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 @export
+@examples
+biomass2c(50, "IPCC2", "conifer", "temperate")
+biomass2c(50, "IPCC2", "conifer", "temperate", "all")
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

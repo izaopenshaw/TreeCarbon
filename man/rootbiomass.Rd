@@ -18,11 +18,9 @@ biomass (oven dry tonnes)
 Function to calculate the root biomass depending on species and DBH
 }
 \examples{
-# without error
 rootbiomass(spcode = 'RBRAR', dbh = 50)
-# with error
 rootbiomass(spcode = 'RBRAR', dbh = 50, sigma_dbh = 10)
-
+rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 
 }
 \references{
