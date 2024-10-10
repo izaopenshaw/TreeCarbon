@@ -23,7 +23,7 @@ Function that looks up species codes for Woodland Carbon Code
 }
 \examples{
 lookspcode('Quercus robur', classification = 'broadleaf', returnv='short')
-lookspcode(c('Quercus robur', 'Picea abies') , classification = c('broadleaf', 'conifer'), returnv='short')
+lookspcode(c('Quercus robur', 'Quercus') , classification = c('broadleaf', 'conifer'), returnv='short')
 
 }
 \references{
