@@ -4,15 +4,15 @@
 \alias{crownbiomass}
 \title{Forestry commission crown biomass estimates}
 \usage{
-crownbiomass(spcode, dbh, sigma_dbh = NA)
+crownbiomass(spcode, DBH, sigma_DBH = NA)
 }
 \arguments{
 \item{spcode}{Crown biomass species code, crown_biomasdf$Code which
 relates to sp_lookupdf$Crown}
 
-\item{dbh}{diameter at breast height in centimetres}
+\item{DBH}{diameter at breast height in centimetres}
 
-\item{sigma_dbh}{dbh sigma}
+\item{sigma_DBH}{DBH sigma}
 }
 \value{
 biomass (oven dry tonnes)
@@ -23,8 +23,8 @@ stem tips and foliage) depending on species and DBH
 }
 \examples{
 crownbiomass("CBOK", 70)
-crownbiomass("CBOK", 70, sigma_dbh = 10)
-crownbiomass(c("CBOK","CBOK"), dbh = c(70,70), sigma_dbh = c(10,50))
+crownbiomass("CBOK", 70, sigma_DBH = 10)
+crownbiomass(c("CBOK","CBOK"), DBH = c(70,70), sigma_DBH = c(10,50))
 
 }
 \references{

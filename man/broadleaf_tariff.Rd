@@ -4,18 +4,18 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, sigma_dbh = NA, sigma_height = NA)
+broadleaf_tariff(spcode, height, DBH, sigma_DBH = NA, sigma_H = NA)
 }
 \arguments{
 \item{spcode}{species code (single)}
 
 \item{height}{tree height in meters}
 
-\item{dbh}{diameter at breast height in centimetres}
+\item{DBH}{diameter at breast height in centimetres}
 
-\item{sigma_dbh}{sigma for diameter at breast height (optional)}
+\item{sigma_DBH}{sigma for diameter at breast height (optional)}
 
-\item{sigma_height}{sigma for tree height (optional)}
+\item{sigma_H}{sigma for tree height (optional)}
 }
 \value{
 tariff number and error if sigma of variables inputted
@@ -26,7 +26,7 @@ sample tree. Species-specific estimates of a1 – a4 are found in the
 R data file, 'tariff_broaddf'.
 }
 \examples{
-broadleaf_tariff(spcode = 'OK', height = 25, dbh = 1.5)
+broadleaf_tariff(spcode = 'OK', height = 25, DBH = 1.5)
 55.96704
 
 }

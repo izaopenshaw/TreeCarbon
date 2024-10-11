@@ -4,12 +4,12 @@
 \alias{bunce}
 \title{Bunce biomass equation}
 \usage{
-bunce(spcode, dbh)
+bunce(spcode, DBH)
 }
 \arguments{
 \item{spcode}{species code}
 
-\item{dbh}{diameter at breast height}
+\item{DBH}{diameter at breast height}
 }
 \value{
 biomass in kg

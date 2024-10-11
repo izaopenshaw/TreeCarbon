@@ -4,12 +4,12 @@
 \alias{rootbiomass}
 \title{Forestry commission root biomass estimates}
 \usage{
-rootbiomass(spcode, dbh, sigma_dbh = NA)
+rootbiomass(spcode, DBH, sigma_DBH = NA)
 }
 \arguments{
 \item{spcode}{species code}
 
-\item{dbh}{diameter at breast height (1.3 m) in centimetres}
+\item{DBH}{diameter at breast height (1.3 m) in centimetres}
 }
 \value{
 biomass (oven dry tonnes)
@@ -18,9 +18,9 @@ biomass (oven dry tonnes)
 Function to calculate the root biomass depending on species and DBH
 }
 \examples{
-rootbiomass(spcode = 'RBRAR', dbh = 50)
-rootbiomass(spcode = 'RBRAR', dbh = 50, sigma_dbh = 10)
-rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
+rootbiomass(spcode = 'RBRAR', DBH = 50)
+rootbiomass(spcode = 'RBRAR', DBH = 50, sigma_DBH = 10)
+rootbiomass(spcode = c('RBRAR','RBRAR'), DBH = c(50, 70))
 
 }
 \references{

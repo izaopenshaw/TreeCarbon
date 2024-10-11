@@ -15,3 +15,10 @@ sigma_H <- 2
 
 spcode <- 'OK'
 
+DBH=74
+method="IPCC2"
+biome="temperate"
+returnv ="AGC"
+sigma_DBH=10
+sigma_H=1
+
