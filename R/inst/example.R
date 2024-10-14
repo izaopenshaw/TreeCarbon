@@ -22,3 +22,6 @@ returnv ="AGC"
 sigma_DBH=10
 sigma_H=1
 
+# To access example files
+example_path <- system.file("example.R", "WCC_eg.R", package = "WoodlandCarbonCode")
+file.edit(example_file)  # Opens the file in a text editor
