@@ -93,10 +93,16 @@
 #'   \item{Crown}{Crown type code}
 #'   \item{Root}{Root type code}
 #'   \item{notes}{Additional notes}
+#'   \item{General.genus}{General genus of the species}
+#'   \item{General.type}{General type of the species}
+#'   \item{Genus}{Genus of the species}
+#'   \item{Species1}{First species classification (e.g., spp. or specific epithet)}
+#'   \item{Species2}{Second species classification (if applicable)}
+#'   \item{Species3}{Third species classification (if applicable)}
 #' }
-#' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: #' Carbon
-#' Assessment Protocol (v2. 0)." (2018). (Equation 1)
+#' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
 "sp_lookupdf"
+
 
 #' Stem Volume Data
 #'

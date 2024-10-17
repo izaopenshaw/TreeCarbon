@@ -4,14 +4,14 @@
 \alias{merchtreevol}
 \title{Forestry merchantable volume}
 \usage{
-merchtreevol(DBH, tariff, sigma_DBH = NA, sigma_tariff = NA)
+merchtreevol(dbh, tariff, sigma_dbh = NA, sigma_tariff = NA)
 }
 \arguments{
-\item{DBH}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres}
 
 \item{tariff}{tree or stand tariff number}
 
-\item{sigma_DBH}{diameter at breast height sigma (optional)}
+\item{sigma_dbh}{diameter at breast height sigma (optional)}
 
 \item{sigma_tariff}{tariff sigma (optional)}
 }
@@ -19,8 +19,12 @@ merchtreevol(DBH, tariff, sigma_DBH = NA, sigma_tariff = NA)
 volume metres cubed and error if sigma of variables inputted
 }
 \description{
-Use the tree tariff number and DBH to estimate the mean
+Use the tree tariff number and dbh to estimate the mean
 merchantable tree volume.
+}
+\examples{
+merchtreevol(dbh = 24, tariff = 24)
+merchtreevol(dbh = 24, tariff = 24, sigma_dbh = 1, sigma_tariff = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

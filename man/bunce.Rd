@@ -4,18 +4,18 @@
 \alias{bunce}
 \title{Bunce biomass equation}
 \usage{
-bunce(spcode, DBH)
+bunce(spcode, dbh)
 }
 \arguments{
 \item{spcode}{species code}
 
-\item{DBH}{diameter at breast height}
+\item{dbh}{diameter at breast height}
 }
 \value{
 biomass in kg
 }
 \description{
-Calculates dry weight based on species and DBH
+Calculates dry weight based on species and dbh
 }
 \references{
 Bunce, R. G. H. "Biomass and Production of Trees in a Mixed

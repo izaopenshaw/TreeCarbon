@@ -4,12 +4,12 @@
 \alias{fc_agc}
 \title{Calculate above ground carbon}
 \usage{
-fc_agc(spcode, DBH, height, type, method = "Matthews1", biome, returnv = "AGC")
+fc_agc(spcode, dbh, height, type, method = "Matthews1", biome, returnv = "AGC")
 }
 \arguments{
 \item{spcode}{species code (single)}
 
-\item{DBH}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{in metres}
 
@@ -26,7 +26,7 @@ stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
 root carbon (tonnes)
 }
 \description{
-Function that inputs tree species code, DBH, height and method
+Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \references{

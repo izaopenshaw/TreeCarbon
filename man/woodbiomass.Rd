@@ -21,6 +21,10 @@ additionally returns the error as a list
 Multiply the mean total tree volume by the nominal specific
 gravity to give the biomass, in oven dry tonnes.
 }
+\examples{
+woodbiomass(10, 0.56, 5)
+
+}
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.

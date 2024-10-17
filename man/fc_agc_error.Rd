@@ -6,19 +6,19 @@
 \usage{
 fc_agc_error(
   spcode,
-  DBH,
+  dbh,
   height,
   method = "Matthews1",
   biome,
   returnv = "All",
-  sigma_DBH,
-  sigma_H
+  sigma_dbh,
+  sigma_h
 )
 }
 \arguments{
 \item{spcode}{species code (single)}
 
-\item{DBH}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{in metres}
 
@@ -27,6 +27,10 @@ fc_agc_error(
 \item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}
 
 \item{returnv}{To return either 'AGC' (default) or 'All'}
+
+\item{sigma_dbh}{description}
+
+\item{sigma_h}{description}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff
@@ -35,14 +39,12 @@ stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
 root carbon (tonnes)
 }
 \description{
-Function that inputs tree species code, DBH, height and method
+Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', DBH=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sigma_DBH=10, sigma_H=1)
-fc_agc_error(spcode='OK', DBH=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sigma_DBH=10, sigma_H=1)
-
-
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sigma_dbh=10, sigma_h=1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

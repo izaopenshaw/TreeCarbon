@@ -12,13 +12,19 @@ pro_error_carbon(
   biom,
   biomsd,
   nruns = 10000,
-  returnsv = NULL
+  returnv = NULL
 )
 }
 \arguments{
+\item{vol}{volume}
+
 \item{sigma_vol}{sigma for volume}
 
+\item{den}{density}
+
 \item{sigma_den}{sigma for wood density}
+
+\item{biom}{biomass}
 
 \item{biomsd}{biomass sd}
 

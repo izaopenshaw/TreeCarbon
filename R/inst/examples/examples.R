@@ -94,7 +94,7 @@ AGB <- computeAGB(d, wd$meanWD, h)
 
 # For testing
 spcode=r$code
-dbh=r$DBH
+dbh=r$dbh
 height=r$Height
 
 tariff <- fc_broad_tariff(tarifflokupcode,h,d)

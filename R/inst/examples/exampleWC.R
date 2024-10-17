@@ -11,8 +11,8 @@
 dbh    <- 74 # cm
 height <- 24 # m
 vol <- 50    # m^3
-sigma_DBH <- 10
-sigma_H <- 2
+sigma_dbh <- 10
+sigma_h <- 2
 
 spcode <- 'OK'
 
@@ -28,11 +28,11 @@ conifer_tariff('SP', height, dbh, sigma_h = 1, sigma_dbh = 10)
 
 # Broadleaf tariff
 tariff <- broadleaf_tariff(spcode, height, dbh)
-broadleaf_tariff(spcode, height, dbh, sigma_h = sigma_H, sigma_dbh = sigma_DBH)
+broadleaf_tariff(spcode, height, dbh, sigma_h = sigma_h, sigma_dbh = sigma_dbh)
 
 # Merchantable tree volume
 mercvol <- merchtreevol(tariff, dbh)
-merchtreevol(tariff, dbh, sigma_dbh = sigma_DBH, sigma_tariff = NA)
+merchtreevol(tariff, dbh, sigma_dbh = sigma_dbh, sigma_tariff = NA)
 
 
 

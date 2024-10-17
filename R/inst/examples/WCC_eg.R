@@ -23,7 +23,7 @@ dbh = 25.1
 Mean_basal_area = (pi *25.12^2)/40000
 
 library(WoodlandCarbonCode)
-tariff_vol_area(vol, DBH, sigma_vol = NA, sigma_DBH = NA)
+tariff_vol_area(vol, dbh, sigma_vol = NA, sigma_dbh = NA)
 
 # Stand/stratum tariff number:
 #  The stand tariff number is the rounded down mean of the single tree tariff numbers of
@@ -37,7 +37,7 @@ tariff_vol_area(vol, DBH, sigma_vol = NA, sigma_DBH = NA)
 # gave a total of 582
 # 582 ÷ 24 = 24.2 rounded down to a stand tariff number of 24
 
-eg$Tariffno <- conifer_tariff(spcode = eg$Spcode, height = eg$Height..m., DBH = eg$DBH..cm.)
+eg$Tariffno <- conifer_tariff(spcode = eg$Spcode, height = eg$Height..m., dbh = eg$dbh..cm.)
 eg$Tariffno_0dp <- round(eg$Tariffno, 0)
 sum(eg$Tariffno_0dp)
 floor(mean(eg$Tariffno_0dp))
@@ -56,7 +56,7 @@ a2 <- 0.315049301 * (tariff - 0.138763302)
 a1 = (0.0360541 * 24) - (a2 * 0.118288)
 a2 = 0.315049301 * (24 - 0.138763302)
 
-merchtreevol(DBH = 24, tariff = 24)
+merchtreevol(dbh = 24, tariff = 24)
 
 # Mean total stem volume:
 #   To calculate the mean total stem volume, including volume above 7 cm top diameter,

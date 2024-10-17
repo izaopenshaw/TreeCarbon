@@ -4,31 +4,33 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, DBH, sigma_DBH = NA, sigma_H = NA)
+broadleaf_tariff(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA)
 }
 \arguments{
 \item{spcode}{species code (single)}
 
 \item{height}{tree height in meters}
 
-\item{DBH}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres}
 
-\item{sigma_DBH}{sigma for diameter at breast height (optional)}
+\item{sigma_dbh}{sigma for diameter at breast height (optional)}
 
-\item{sigma_H}{sigma for tree height (optional)}
+\item{sigma_h}{sigma for tree height (optional)}
 }
 \value{
 tariff number and error if sigma of variables inputted
 }
 \description{
-Use DBH and tree height to derive the tariff number of each
+Use dbh and tree height to derive the tariff number of each
 sample tree. Species-specific estimates of a1 – a4 are found in the
 R data file, 'tariff_broaddf'.
 }
 \examples{
-broadleaf_tariff(spcode = 'OK', height = 25, DBH = 1.5)
+broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
 55.96704
-
+broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
+broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
+plot(seq(1,20,1), broadleaf_tariff(spcode = 'OK', height = 25, dbh = seq(1,20,1)), ylab= "broadleaf_tariff", xlab = "dbh")
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

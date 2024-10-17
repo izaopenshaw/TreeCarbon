@@ -10,17 +10,17 @@
 dbh    <- 74 # cm
 height <- 24 # m
 vol <- 50    # m^3
-sigma_DBH <- 10
-sigma_H <- 2
+sigma_dbh <- 10
+sigma_h <- 2
 
 spcode <- 'OK'
 
-DBH=74
+dbh=74
 method="IPCC2"
 biome="temperate"
 returnv ="AGC"
-sigma_DBH=10
-sigma_H=1
+sigma_dbh=10
+sigma_h=1
 
 # To access example files
 example_path <- system.file("example.R", "WCC_eg.R", package = "WoodlandCarbonCode")

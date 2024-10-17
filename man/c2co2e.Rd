@@ -18,7 +18,6 @@ Function to convert from carbon to carbon dioxide equivalent
 \examples{
 c2co2e(448)
 c2co2e(c(448, 450))
-
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

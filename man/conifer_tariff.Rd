@@ -4,26 +4,30 @@
 \alias{conifer_tariff}
 \title{Conifer tree tariff number}
 \usage{
-conifer_tariff(spcode, height, DBH, sigma_h = NA, sigma_DBH = NA)
+conifer_tariff(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA)
 }
 \arguments{
 \item{spcode}{species code (single)}
 
 \item{height}{tree height in metres}
 
-\item{DBH}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres}
 
 \item{sigma_h}{uncertainty in height}
 
-\item{sigma_DBH}{uncertainty in DBH}
+\item{sigma_dbh}{uncertainty in dbh}
 }
 \value{
 tariff number
 }
 \description{
-Use DBH and tree height to calculate the tariff number of each
+Use dbh and tree height to calculate the tariff number of each
 sample tree. Species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.
+}
+\examples{
+conifer_tariff("SP", 74, 24)
+conifer_tariff("SP", 74, 24, 5, 5)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

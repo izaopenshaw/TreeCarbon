@@ -4,17 +4,17 @@
 \alias{biomass2c}
 \title{Calculates biomass conversion to carbon}
 \usage{
-biomass2c(biomass, method, type, biome, return = "carbon")
+biomass2c(biomass, method, type, biome, sigma_biomass = NA)
 }
 \arguments{
 \item{biomass}{(usually kg or metric tonnes)}
 
 \item{method}{Method of calculating the carbon volatile fraction.
-Matthews1 - Simplest with the carbon volatile fraction, CVF = 50\% (Matthews 1993)
+Matthews1 - Simplest with the carbon volatile fraction, CVF = 50\% (Matthews, 1993)
 Matthews2 - CVF based on type (broadleaf or conifer)
-IPCC1 - CVF = 47.7\% (IPCC 2006)
+IPCC1 - CVF = 47.7\% (IPCC, 2006)
 IPCC2 - Lookup CVF by type and biome
-Thomas1 - CVF = 48.3\% and 95\% CI of 0.3\% (Thomas and Martin 2012)
+Thomas1 - CVF = 48.3\% and 95\% CI of 0.3\% (Thomas and Martin, 2012)
 Thomas2 - Lookup by type and biome}
 
 \item{type}{broadleaf or conifer. Only required for method = 'Matthews2',
@@ -23,11 +23,10 @@ Thomas2 - Lookup by type and biome}
 \item{biome}{tropical, subtropical, mediterranean, temperate or boreal.
 Only needed for 'IPCC2' and 'Thomas' methods.}
 
-\item{return}{either 'carbon' = just carbon value or 'error' = list of carbon
-value with error. Only associated errors with method = 'IPCC2' and 'Thomas'}
+\item{sigma_biomass}{biomass uncertainty (optional)}
 }
 \value{
-either carbon value or list of carbon value with error
+either carbon or if 'sigma_biomass' is provided, returns a list of carbon value and error. Only associated errors with method = 'IPCC2' and 'Thomas'
 }
 \description{
 Converts biomass to carbon values using the carbon volatile
@@ -42,10 +41,10 @@ for National Greenhouse Gas Inventories; Institute for Global Environmental
 Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
-@export
 @examples
-biomass2c(50, "IPCC2", "conifer", "temperate")
-biomass2c(50, "IPCC2", "conifer", "temperate", "all")
+biomass2c(4, method="IPCC2", c("conifer"), "temperate")
+biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
+@export
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
