@@ -1,3 +1,4 @@
+
 # WCC example
 # Compartment 1:
 #  Number of trees in stratum:
@@ -37,32 +38,64 @@ tariff_vol_area(vol, dbh, sigma_vol = NA, sigma_dbh = NA)
 # gave a total of 582
 # 582 ÷ 24 = 24.2 rounded down to a stand tariff number of 24
 
-eg$Tariffno <- conifer_tariff(spcode = eg$Spcode, height = eg$Height..m., dbh = eg$dbh..cm.)
+setwd("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/RFiles/WCC")
+eg <- read.csv("WCC_eg.csv")
+setwd("C:/Users/ipr10kg/Documents/WoodlandCarbonCode")
+
+eg$Tariffno <- conifer_tariff(spcode = eg$Spcode, height = eg$Height..m., dbh = eg$DBH..cm.)
 eg$Tariffno_0dp <- round(eg$Tariffno, 0)
 sum(eg$Tariffno_0dp)
-floor(mean(eg$Tariffno_0dp))
-
-tariff <- 24
-
-a2 <- 0.315049301 * (tariff - 0.138763302)
-  a1 <- (0.0360541 * tariff) - (a2 * 0.118288)
-
+tariff <- floor(mean(eg$Tariffno_0dp))
+tariff
 
 # Mean merchantable tree volume:
 #   The mean tree volume is calculated using Equation 5 in Section 4.1.5 using the stand
 # tariff number and the mean basal area (from mean quadratic dbh).
 # Mean merchantable tree volume = a1 + (a2 * 0.049) = 0.344 m3
-# where:
-a1 = (0.0360541 * 24) - (a2 * 0.118288)
-a2 = 0.315049301 * (24 - 0.138763302)
 
-merchtreevol(dbh = 24, tariff = 24)
+# Mean quadratic dbh
+dbh = 25.57097964
+sqrt(sum(eg$DBH..cm.^2)/nrow(eg))
+
+merchtreevol(dbh, tariff)
+
+ba <- (pi * dbh^2) / 40000
+ba <- (pi * 25.1^2) / 40000
+a2 <- 0.315049301 * (tariff - 0.138763302)
+a1 <- (0.0360541 * tariff) - (a2 * 0.118288)
+vol <- a1 + (a2 * ba)
+
+dbh = 25.1
+ba <- (pi * dbh^2) / 40000
+vol <- a1 + (a2 * ba)
+vol
+merchtreevol(25.1, tariff)
 
 # Mean total stem volume:
 #   To calculate the mean total stem volume, including volume above 7 cm top diameter,
 # the mean merchantable volume is multiplied by the factor given in Table 4.1.9 (page 40)
 # for the appropriate mean (quadratic) dbh:
 #   Mean total stem volume = 0.344 * 1.01 = 0.34744 m3 (unrounded).
+
+treevol(0.344, dbh)
+
+crownbiomass("CBSP", dbh)
+rootbiomass("RBGF", dbh)
+
+# Example 2
+# Number of trees in stratum:
+#  Total number of trees in all (8) plots = 107
+#  Area of all plots = 8 × 0.01 ha = 0.08 ha
+#  Average number of trees per hectare = 107/0.08 = 1337.5
+#  Number of trees in compartment = 1337.5 × 3.6 ha (net area) = 4815
+
+# Mean (quadratic) dbh:
+dbh <- sqrt(338.11)
+
+merchtreevol(dbh, tariff)
+
+
+# For the SSSI
 
 
 
