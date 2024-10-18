@@ -96,6 +96,27 @@ merchtreevol(dbh, tariff)
 
 
 # For the SSSI
+# Number of trees in stratum
+broadlf <- df[df$Habitat == 'broadleaf',]
+# Total trees in all 7 plots
+nrow(broadlf)
+# Area of all plots
+7*0.09
+# Average number of trees per hectare
+594/0.63
+# Number of trees in compartment
+942.8571
+
+sqrt(mean(broadlf$DBH^2))
+mean(broadlf$DBH)
+
+# Stand/stratum tariff number
+broadlf$Name <- as.character(broadlf$Name)
+
+lookspcode(broadlf$Name[1], 'broadleaf', returnv = single)
+
+broadlf$spcode <- lookspcode(broadlf$Name, rep('broadleaf', nrow(broadlf)), returnv = single)
+broadlf$tariff <- broadleaf_tariff(spcode = broadlf$spcode, height = eg$Height..m., dbh = eg$DBH..cm.)
 
 
 

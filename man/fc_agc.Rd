@@ -13,6 +13,8 @@ fc_agc(spcode, dbh, height, type, method = "Matthews1", biome, returnv = "AGC")
 
 \item{height}{in metres}
 
+\item{type}{conifer or broadleaf tree}
+
 \item{method}{method of converting biomass to carbon. See biomass2c function}
 
 \item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}

@@ -770,8 +770,8 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
   if (!is.character(name_type)) stop("'name_type' must be either 'botanical' or 'common'.")
   if (length(type) != length(name)) stop("'type' and 'name' must have the same length.")
   if (!all(type %in% c("broadleaf", "conifer", NA, ""))) stop("'type' must be either 'broadleaf', 'conifer'")
-  if (!returnv %in% c("short", "single", "stand", "root", "all")) {
-    stop("'returnv' must be one of 'short', 'single', 'stand', 'root', or 'all'.")
+  if (!is.character(returnv) || !returnv %in% c("short", "single", "stand", "root", "all")) {
+    stop("'returnv' must be a character, either 'short', 'single', 'stand', 'root', or 'all'.")
   }
 
   # Load or define sp_lookupdf (ensure it's available)
@@ -799,11 +799,11 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
       if (nrow(rec) > 0) {
         match_type <- "Common name"
       } else {
-        rec <- sp_lookupdf[tolower(sp_lookupdf$General.genus) == stringr::word(search_name, 1), ]
+        rec <- sp_lookupdf[tolower(sp_lookupdf$General.for.genus) == stringr::word(search_name, 1), ]
         if (nrow(rec) > 0) {
           match_type <- "Genus"
         } else {
-          rec <- sp_lookupdf[sp_lookupdf$General.type == type[i], ]
+          rec <- sp_lookupdf[sp_lookupdf$General.for.classification == type[i], ]
           if (nrow(rec) > 0) {
             match_type <- type[i]
           } else {
@@ -816,11 +816,11 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
       if (nrow(rec) > 0) {
         match_type <- "Botanical name"
       } else {
-        rec <- sp_lookupdf[tolower(sp_lookupdf$General.genus) == stringr::word(search_name, 1), ]
+        rec <- sp_lookupdf[tolower(sp_lookupdf$General.for.genus) == stringr::word(search_name, 1), ]
         if (nrow(rec) > 0) {
           match_type <- "Genus"
         } else {
-          rec <- sp_lookupdf[sp_lookupdf$General.type == type[i], ]
+          rec <- sp_lookupdf[sp_lookupdf$General.for.classification == type[i], ]
           if (nrow(rec) > 0) {
             match_type <- type[i]
           } else {

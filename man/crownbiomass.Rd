@@ -22,9 +22,9 @@ Function to find crown biomass (composed of branches,
 stem tips and foliage) depending on species and dbh
 }
 \examples{
-crownbiomass("CBOK", 70)
-crownbiomass("CBOK", 70, sigma_dbh = 10)
-crownbiomass(c("CBOK","CBOK"), dbh = c(70,70), sigma_dbh = c(10,50))
+crownbiomass("CBSP", 25)
+crownbiomass("CBOK", 25, sigma_dbh = 10)
+crownbiomass(c("CBOK","CBOK"), dbh = c(30,30), sigma_dbh = c(10,50))
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

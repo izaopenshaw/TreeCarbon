@@ -11,7 +11,7 @@ rootbiomass(spcode, dbh, sigma_dbh = NA)
 
 \item{dbh}{diameter at breast height (1.3 m) in centimetres}
 
-\item{sigma_DBH}{sigma for DBH (optional)}
+\item{sigma_dbh}{sigma for DBH (optional)}
 }
 \value{
 biomass (oven dry tonnes)
