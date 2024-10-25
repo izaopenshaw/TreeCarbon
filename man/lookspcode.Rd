@@ -22,10 +22,10 @@ Species code
 Function that looks up species codes for Woodland Carbon Code
 }
 \examples{
-lookspcode('Quercus robur', type = 'broadleaf', returnv='short')
+lookspcode('Quercus robur', type = "broadleaf", returnv='short')
 lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"),name_type= "common", "short")
 lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"))
-lookspcode(c('Quercus robur', 'Quercus') , type = c('broadleaf', 'conifer'), returnv='short')
+lookspcode(c('Quercus robur', 'Quercus') , type = c("broadleaf", "broadleaf"), returnv='short')
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

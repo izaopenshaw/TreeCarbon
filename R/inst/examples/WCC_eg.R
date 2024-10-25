@@ -113,10 +113,9 @@ mean(broadlf$DBH)
 # Stand/stratum tariff number
 broadlf$Name <- as.character(broadlf$Name)
 
-lookspcode(broadlf$Name[1], 'broadleaf', returnv = single)
+broadlf$spcode <- lookspcode(broadlf$Name, rep("broadleaf", nrow(broadlf)), returnv = "single")
+broadlf$tariff <- broadleaf_tariff(spcode = broadlf$spcode, height = broadlf$Height, dbh = broadlf$DBH)
 
-broadlf$spcode <- lookspcode(broadlf$Name, rep('broadleaf', nrow(broadlf)), returnv = single)
-broadlf$tariff <- broadleaf_tariff(spcode = broadlf$spcode, height = eg$Height..m., dbh = eg$DBH..cm.)
 
 
 

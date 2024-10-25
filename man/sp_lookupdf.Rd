@@ -19,10 +19,10 @@ A data frame with 18 columns:
 \item{Crown}{Crown type code}
 \item{Root}{Root type code}
 \item{notes}{Additional notes}
-\item{General.genus}{General genus of the species}
-\item{General.type}{General type of the species}
+\item{General.for.genus}{If the entry is for a genus and not species level}
+\item{General.for.classification}{If the entry is for broafleaf or confier}
 \item{Genus}{Genus of the species}
-\item{Species1}{First species classification (e.g., spp. or specific epithet)}
+\item{Species1}{First species classification}
 \item{Species2}{Second species classification (if applicable)}
 \item{Species3}{Third species classification (if applicable)}
 }
