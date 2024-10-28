@@ -101,12 +101,10 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
   }
 
   if(return_error){
-      return(data.frame(tariff = tariffs, sigma_t = sigmas))
+      return(data.frame(tariff = tariffs, error = sigmas))
     } else {
       return(tariffs)
     }
-
-
 }
 
 
@@ -1037,6 +1035,7 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #test <- fc_agc_error(spcode=rep('OK',21), dbh=seq(5,105,5), height=rep(10,21), method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
 #test <- fc_agc_error(spcode=c(rep('OK',21)), dbh=c(seq(10,110,5)), height=c(rep(10,21)), method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
 
+
 fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "temperate",
                    returnv = "All", sigma_dbh = 20, sigma_h = 8){
 
@@ -1101,11 +1100,11 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     }
 
     # Calculate volumes and biomass
-    mercvol <- merchtreevol(dbh[i],tariff$tariff, sigma_dbh,tariff$error) # Merchantable tree volume
+    mercvol <- merchtreevol(dbh[i], tariff$tariff, sigma_dbh, as.numeric(tariff[2]))  # Merchantable tree volume
     stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$error)          # Stem volume
     woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$error)       # Stem Biomass
-    crownbio <- crownbiomass(rec$Crown, dbh[i], sigma_dbh)   # Crown Biomass
-    AGB <- woodbio$woodbiomass + crownbio$biomass               # Above ground Biomass
+    crownbio <- crownbiomass(rec$Crown, dbh[i], sigma_dbh)    # Crown Biomass
+    AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
     sigma_AGB <- sqrt(woodbio$error^2 + crownbio$error^2)
     AGC <- biomass2c(AGB, method=method, type, biome=biome, sigma_biomass = sigma_AGB) # Above ground Carbon
     r$AGC[i] <- AGC$AGC
@@ -1132,6 +1131,8 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
       rootbio <- rootbiomass(rec$Root, dbh[i], sigma_dbh)
       r$rootbiomass[i] <- rootbio$rootbiomass
       r$sig_rootbiomass[i] <- rootbio$error
+    } else {
+      # TODO
     }
   }
   return(r)
