@@ -709,10 +709,10 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sigma_biomass 
 
   # Retrieve CVF and confidence values using the lookup table
   for (i in seq_len(n)) {
-    filter_conditions <- !is.na(CVF_data$method) & CVF_data$method == method &
-      (is.na(CVF_data$type) | CVF_data$type == type[i]) &
-      (is.na(CVF_data$biome) | CVF_data$biome == biome)
-    matching_row <- subset(CVF_data, filter_conditions)
+    filter_conditions <- !is.na(CVF_df$method) & CVF_df$method == method &
+      (is.na(CVF_df$type) | CVF_df$type == type[i]) &
+      (is.na(CVF_df$biome) | CVF_df$biome == biome)
+    matching_row <- subset(CVF_df, filter_conditions)
 
     if (nrow(matching_row) == 1) {
       CVF[i] <- matching_row$CVF
