@@ -369,7 +369,7 @@ woodbiomass <- function(treevol, nsg, sigma_treevol = NA) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode Crown biomass species code, crown_biomasdf$Code which
-#' relates to lookupdf$Crown
+#' relates to lookup_df$Crown
 #' @param sigma_dbh dbh sigma
 #' @returns  biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -418,7 +418,7 @@ crownbiomass <- function(spcode, dbh, sigma_dbh = NA) {
     # Find the record in the data for the species code
     rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
     if (nrow(rec) == 0) {
-      stop(paste("The species code", spcode[i], "is not found in data(crown_biomasdf), see data(lookupdf) column 'Crown'"))
+      stop(paste("The species code", spcode[i], "is not found in data(crown_biomasdf), see data(lookup_df) column 'Crown'"))
     }
 
     # Calculate biomass and error if sigma_dbh is provided
@@ -804,7 +804,7 @@ broad_sap_seedling2C <- function(heightincm){
 #' @param name name of species
 #' @param name_type either 'botanical' or 'common'
 #' @param type either 'broadleaf' or 'conifer'
-#' @param returnv either 'all', short', 'single', 'stand', 'root' from lookupdf.Rda
+#' @param returnv either 'all', short', 'single', 'stand', 'root' from lookup_df.Rda
 #' @returns Species code
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -828,14 +828,14 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
     stop("'returnv' must be a character, either 'short', 'single', 'stand', 'root', or 'all'.")
   }
 
-  # Load or define lookupdf (ensure it's available)
-  utils::data(lookupdf, envir = environment())
+  # Load or define lookup_df (ensure it's available)
+  utils::data(lookup_df, envir = environment())
 
   # Initialize result dataframe based on returnv
   n <- length(name)
 
   if (returnv == 'all') {
-    r <- lookupdf[0,]  # Create an empty dataframe with the same structure as lookupdf
+    r <- lookup_df[0,]  # Create an empty dataframe with the same structure as lookup_df
   } else {
     r <- data.frame(spname = rep(NA, n), spcode = rep(NA, n), matchtype = rep(NA, n), stringsAsFactors = FALSE)
   }
@@ -849,21 +849,21 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
 
     # Lookup based on name_type
     if (name_type == "common") {
-      rec <- lookupdf[tolower(lookupdf$common_name) == search_name, ]
+      rec <- lookup_df[tolower(lookup_df$common_name) == search_name, ]
       if (nrow(rec) == 1) {
         match_type <- "Common name"
       } else {
-        rec <- lookupdf[tolower(lookupdf$General.genus) == stringr::word(search_name, 1), ]
+        rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
         if (nrow(rec) == 1) {
           match_type <- "Genus"
         }
       }
     } else {  # Botanical name lookup
-      rec <- lookupdf[tolower(lookupdf$latin_name) == search_name, ]
+      rec <- lookup_df[tolower(lookup_df$latin_name) == search_name, ]
       if (nrow(rec) == 1) {
         match_type <- "Botanical name"
       } else {
-        rec <- lookupdf[tolower(lookupdf$General.genus) == stringr::word(search_name, 1), ]
+        rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
         if (nrow(rec) == 1) {
           match_type <- "Genus"
         }
@@ -872,7 +872,7 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
 
     # If neither name nor genus matched, fall back to type classification
     if (anyNA(match_type) || nrow(rec) == 0) {
-      rec <- lookupdf[lookupdf$General.type == type[i], ]
+      rec <- lookup_df[lookup_df$General.type == type[i], ]
       if (nrow(rec) == 1) {
         match_type <- type[i]  # e.g., broadleaf or conifer
       } else {
@@ -951,15 +951,15 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
   r <- data.frame(spcode=NA, dbh=NA, height=NA, tariff=NA, mercvol=NA, stemvol=NA,
                   stembiomass=NA, crownbiomass=NA, rootbiomass=NA, AGC=NA, stringsAsFactors=FALSE)
   r <- r[1:n,]
-  utils::data(lookupdf, envir = environment())
-  #    data("lookupdf", package = "WoodlandCarbonCode")
+  utils::data(lookup_df, envir = environment())
+  #    data("lookup_df", package = "WoodlandCarbonCode")
 
   # Loop over all trees
   for (i in 1:n) {
     if(dbh[i]<=0)warning("dbh must be numeric & positive for index:", i)
 
 #    # Lookup species data from code
-#    rec <- lookupdf[lookupdf$short == spcode[i], ]
+#    rec <- lookup_df[lookup_df$short == spcode[i], ]
 #    tarifflokupcode <- rec$single
 #    type <- rec$type
 
@@ -1067,7 +1067,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     r <- data.frame(AGC=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   }
   r <- r[1:n,]
-  utils::data(lookupdf, envir = environment())
+  utils::data(lookup_df, envir = environment())
 
   # Loop over all trees
   for (i in 1:n) {
@@ -1077,7 +1077,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     }
 
     # Lookup species data from code
-    rec <- lookupdf[lookupdf$short == spcode[i], ]
+    rec <- lookup_df[lookup_df$short == spcode[i], ]
     tarifflokupcode <- rec$single
     type <- rec$type
 
