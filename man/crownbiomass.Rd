@@ -8,7 +8,7 @@ crownbiomass(spcode, dbh, sigma_dbh = NA)
 }
 \arguments{
 \item{spcode}{Crown biomass species code, crown_biomasdf$Code which
-relates to lookupdf$Crown}
+relates to lookup_df$Crown}
 
 \item{dbh}{diameter at breast height in centimetres}
 

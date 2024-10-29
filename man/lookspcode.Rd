@@ -13,7 +13,7 @@ lookspcode(name, type, name_type = "botanical", returnv = "all")
 
 \item{name_type}{either 'botanical' or 'common'}
 
-\item{returnv}{either 'all', short', 'single', 'stand', 'root' from lookupdf.Rda}
+\item{returnv}{either 'all', short', 'single', 'stand', 'root' from lookup_df.Rda}
 }
 \value{
 Species code
