@@ -1229,9 +1229,9 @@ bunce <- function(spcode, dbh){
 #' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
+#' @importFrom BIOMASS correctTaxo getWoodDensity retrieveH computeAGB
+#' @export
 #'
-# WD (in g/cm3) to add optionally or lookup from global tables?
-
 biomass <- function(df, coords, region = "World", output.all = TRUE){
 
   # TODO check inputs
@@ -1289,6 +1289,22 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 # ==== Optional Inputs:
 # output.all: if TRUE outputs the coefficients of the model, a*DBH^b+e {e ~ N(0,sigma^2}
 # new.eqtable: a subset or extension of the allometric equation table. Create with new_equations
+#' @title Estimate Tree Carbon using Biomass package functions
+#' @description Using the Biomass package to calculate carbon
+#' @param df dataframe containing columns; Genus, Species, DBH (in cm),
+#' Height (in m). Height is optional, but df must include this column.
+#' @param coords either a vector of coordinates of the site or a matrix of
+#' coordinates for each tree of longitude and latitude
+#' @param output.all if TRUE outputs all data from processing, else just outputs carbon figures
+#' @returns  your dataframe back with added columns of carbon estimates. If
+#' output.all = FALSE, then returns columns 'Genus_corrected','Species_corrected',
+#' 'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
+#' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
+#' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
+#' is inputed height filled in with Height estimate where missing)
+#' @importFrom allodb get_biomass est_params
+#' @export
+#'
 allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
 
   # Call allodb package
