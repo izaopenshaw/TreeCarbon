@@ -13,9 +13,11 @@ height <- 24 # m
 vol <- 50    # m^3
 sigma_dbh <- 10
 sigma_h <- 2
+dbhs <- seq(6,100,1)
+n <- length(dbhs)
+df <- data.frame(dbh = dbhs, height = rep(20,n), name = rep("Quercus robur", n))
 
 spcode <- 'OK'
-
 stand_tariff('OK',height)
 stand_tariff('OK',height, 1.5)
 

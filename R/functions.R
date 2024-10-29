@@ -1234,6 +1234,8 @@ bunce <- function(spcode, dbh){
 
 biomass <- function(df, coords, region = "World", output.all = TRUE){
 
+  # TODO check inputs
+
   # Call BIOMASS package
   if(nchar(system.file(package='BIOMASS')) == 0 ){
     install.packages("BIOMASS",dependencies = TRUE)}

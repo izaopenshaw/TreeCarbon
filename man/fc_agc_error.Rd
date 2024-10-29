@@ -8,11 +8,11 @@ fc_agc_error(
   spcode,
   dbh,
   height,
-  method = "Matthews1",
-  biome,
+  method = "IPCC2",
+  biome = "temperate",
   returnv = "All",
-  sigma_dbh,
-  sigma_h
+  sigma_dbh = 20,
+  sigma_h = 8
 )
 }
 \arguments{
@@ -24,13 +24,13 @@ fc_agc_error(
 
 \item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
 
-\item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}
+\item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
 \item{returnv}{To return either 'AGC' (default) or 'All'}
 
-\item{sigma_dbh}{description}
+\item{sigma_dbh}{error in sampling of dbh, single value}
 
-\item{sigma_h}{description}
+\item{sigma_h}{error in sampling of height, single value}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff

@@ -4,7 +4,7 @@
 \alias{biomass2c}
 \title{Calculates biomass conversion to carbon}
 \usage{
-biomass2c(biomass, method, type, biome, sigma_biomass = NA)
+biomass2c(biomass, method, type = NULL, biome = NULL, sigma_biomass = NA)
 }
 \arguments{
 \item{biomass}{(usually kg or metric tonnes)}
