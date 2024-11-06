@@ -11,7 +11,7 @@ woodbiomass(treevol, nsg, sigma_treevol = NA)
 
 \item{nsg}{Nominal Specific Gravity}
 
-\item{sigma_treevol}{tree volume in metres sigma (optional)}
+\item{sigma_treevol}{tree volume sigma (optional)}
 }
 \value{
 biomass in oven dry tonnes or if sigma_treevol is provided then

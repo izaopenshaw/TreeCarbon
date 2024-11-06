@@ -30,7 +30,6 @@ broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
 55.96704
 broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
 broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
-plot(seq(1,20,1), broadleaf_tariff(spcode = 'OK', height = 25, dbh = seq(1,20,1)), ylab= "broadleaf_tariff", xlab = "dbh")
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

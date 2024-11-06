@@ -16,7 +16,7 @@ merchtreevol(dbh, tariff, sigma_dbh = NA, sigma_tariff = NA)
 \item{sigma_tariff}{tariff sigma (optional)}
 }
 \value{
-volume metres cubed and error if sigma of variables inputted
+volume in metres cubed and error if sigma of variables inputted
 }
 \description{
 Use the tree tariff number and dbh to estimate the mean
