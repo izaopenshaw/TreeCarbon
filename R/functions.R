@@ -134,7 +134,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
   if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric and positive")
   if(!is.numeric(height) || any(height<=0))stop("height must be numeric and positive")
 
-  utils::data(tariff_broaddf, envir = environment())
+  #utils::data(tariff_broaddf, envir = environment())
   tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
   tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
 
@@ -192,6 +192,69 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
     return(c(tariff = tariff, error = error))
   } else {
     return(tariff)
+  }
+}
+
+############# FC tariff number by stand height (FC Eq 4) ################
+#' TODO
+#' @title Tariff number by stand height
+#' @description Use the estimated stand top height to calculate the stand
+#' tariff number.
+#' @author Isabel Openshaw. I.Openshaw@kew.org
+#' @param height tree height in metres
+#' @param spcode species code
+#' @param sigma_h sigma for height (optional)
+#' @returns  either tariff number or if sigma_h is provided, then returns a list
+#' of the tariff number and uncertainty
+#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @examples
+#' tariffs("OK", 10)
+#' tariffs("OK", 10, sigma_h = 1)
+#' @export
+#'
+tariffs <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) {
+  n <- length(dbh)
+  if (length(spcode) != n || length(height) != n) {
+    stop("spcode, dbh, and height must be the same length")
+  }
+
+  if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric and positive")
+  if(!is.numeric(height) || any(height<=0))stop("height must be numeric and positive")
+
+  tariffs <- errors <- numeric(n)
+
+  #utils::data(tariff_broaddf, envir = environment())
+  for (i in 1:n) {
+    tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode[i], ]
+    if (nrow(tb) == 0) stop(paste("Species code not found in tariff_broaddf:", spcode[i]))
+
+    # Calculate tariff for this individual tree
+    tariffs[i] <- tb$a1 + (tb$a2 * height[i]) + (tb$a3 * dbh[i]) + (tb$a4 * dbh[i] * height[i])
+
+    if (!is.na(sigma_dbh) && !is.na(sigma_h)) {
+      if (!is.numeric(sigma_dbh) || sigma_dbh < 0) stop("sigma_dbh must be numeric and positive")
+      if (!is.numeric(sigma_h) || sigma_h < 0) stop("sigma_h must be numeric and positive")
+
+      if(length(sigma_dbh) > 1) {
+        errors[i] <- sqrt(
+          2.085826^2 +
+            error_product(tb$a3, 0.05184218, dbh[i], sigma_dbh[i]) +
+            error_product(tb$a2, 0.3908223, height[i], sigma_h[i]) +
+            error_product(tb$a4, 0.01108647, dbh[i], sigma_dbh[i], height[i], sigma_h[i]))
+      } else {
+        errors[i] <- sqrt( 2.085826^2 +
+                             error_product(tb$a3, 0.05184218, dbh[i], sigma_dbh) +
+                             error_product(tb$a2, 0.3908223, height[i], sigma_h) +
+                             error_product(tb$a4, 0.01108647, dbh[i], sigma_dbh, height[i], sigma_h))
+      }
+    }
+  }
+
+  if (!is.na(sigma_dbh) && !is.na(sigma_h)) {
+    return(tariff)
+  } else {
+    return(list(tariff = tariffs, error = errors))
   }
 }
 
@@ -591,102 +654,6 @@ ctoco2e <- function(carbon) {
 #'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
 #'  @export
 #'
-biomass2c <- function(biomass, method, type, biome, sigma_biomass = NA) {
-
-  # Check arguments
-#  if (any(!is.numeric(biomass) | biomass < 0)) {
-#    stop("All biomass values must be numeric and positive")
-#  } TODO
-
-  valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
-  if (!(method %in% valid_methods)) {
-    stop(paste("Invalid method. Choose from:", paste(valid_methods,
-                collapse = ", "), ". See R helpfile for more details."))
-  }
-
-  valid_types <- c("broadleaf", "conifer")
-  if ((method %in% c("Matthews2", "IPCC2", "Thomas")) && !missing(type) &&
-      !all(type %in% valid_types)) {
-    stop("Invalid type. Choose from: 'broadleaf', 'conifer'")
-  }
-
-  valid_biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
-  if ((method %in% c("IPCC2", "Thomas")) && !missing(biome) && !(biome %in% valid_biomes)) {
-    stop("Invalid biome. Choose from: 'tropical', 'subtropical', 'mediterranean', 'temperate', 'boreal'")
-  }
-
-  n <- length(biomass)
-
-  if(is.vector(type) && length(type) != n) {
-    stop("Length of 'type' must match the length of 'biomass'")
-  }
-  CVF <- confidence <- rep(NA,n)
-
-  # Set CVF and confidence based on method, type, and biome
-  if (method == "Matthews1") {            CVF <- 50
-  } else if (method == "Matthews2") {
-    if (type[i] == "broadleaf") {         CVF <- 49.3
-    } else if (type[i] == "conifer") {    CVF <- 50.1
-    }
-  } else if (method == "IPCC1") {         CVF <- 47.7
-  } else if (method == "IPCC2") {
-    if (biome == "tropical" ||
-        biome == "subtropical") {         CVF <- 47  ;  confidence <- 0.05
-    } else if (biome == "temperate" ||
-               biome == "boreal") {
-      for (i in 1:n){
-        if (type[i] == "broadleaf") {      CVF[i] <- 48  ;  confidence[i] <- 0.04
-        } else if (type[i] == "conifer") { CVF[i] <- 51  ;  confidence[i] <- 0.08
-        }
-      }
-    }
-  } else if (method == "Thomas") {
-    if (biome == "tropical") {
-      for (i in 1:n){
-        if (type[i] == "broadleaf") {       CVF[i] <- 47.1  ;  confidence[i] <- 0.4
-        } else if (type[i] == "conifer") {  CVF[i] <- 49.3  ;  confidence[i] <- 0.6
-        }
-      }
-    } else if (biome == "subtropical" || biome == "mediterranean") {
-      for (i in 1:n){
-      if (type[i] == "broadleaf") {       CVF[i] <- 48.1  ;  confidence[i] <- 0.9
-      } else if (type[i] == "conifer") {  CVF[i] <- 50.54 ;  confidence[i] <- 2.8
-      }
-      }
-    } else if (biome == "temperate" || biome == "boreal") {
-      for (i in 1:n){
-      if (type[i] == "broadleaf") {       CVF[i] <- 48.8  ;  confidence[i] <- 0.6
-      } else if (type[i] == "conifer") {  CVF[i] <- 50.8  ;  confidence[i] <- 0.6
-      }
-      }
-    }
-  }
-
-  if (method %in% c("Matthews1", "Matthews2", "IPCC1")){
-    CVF <- rep(CVF, n)
-    confidence <- rep(confidence, n)
-  }
-
-  # Calculate carbon values
-  AGC <- biomass * CVF / 100
-
-  if(!anyNA(sigma_biomass)){
-    if (length(sigma_biomass) != n) {
-      stop("Length of sigma_biomass must match the length of biomass")
-    }
-    if (any(!is.numeric(sigma_biomass) | sigma_biomass < 0)) {
-      stop("sigma_biomass must be numeric and positive")
-    }
-
-    error <- error_product(biomass, sigma_biomass, CVF/100, confidence/100)
-    #error <- mapply(error_product, biomass, sigma_biomass, MoreArgs = list(CVF / 100, confidence / 100))
-
-    return(list(AGC = AGC, sigma_AGC = error))
-  } else {
-    return(AGC)
-    }
-}
-
 biomass2c <- function(biomass, method, type = NULL, biome = NULL, sigma_biomass = NA) {
   # Check arguments
   if (any(!is.numeric(biomass) | biomass < 0)) {
