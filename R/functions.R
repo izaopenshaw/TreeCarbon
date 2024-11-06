@@ -1,6 +1,6 @@
 ############## Functions file for Woodland Carbon Code ########################
 # TODO:
-# error for c2co2e ?
+# error for ctoco2e ?
 # check biomass2c that error is confidence percentage by checking references
 
 ############ Tariff number from volume and tree basal area (FC Eq 1) ############
@@ -128,8 +128,6 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
 #' 55.96704
 #' broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
 #' broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
-#' plot(seq(1,20,1), broadleaf_tariff(spcode = 'OK', height = 25, dbh = seq(1,20,1)), ylab= "broadleaf_tariff", xlab = "dbh")
-# # TODO: why is this negative????
 #' @export
 #'
 broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) {
@@ -207,7 +205,7 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
 #' @param dbh diameter at breast height in centimetres
 #' @param sigma_tariff tariff sigma (optional)
 #' @param sigma_dbh diameter at breast height sigma (optional)
-#' @returns  volume metres cubed and error if sigma of variables inputted
+#' @returns  volume in metres cubed and error if sigma of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
@@ -335,7 +333,7 @@ error_product <- function(a, sig_a, b, sig_b, c=NA, sig_c=NA)
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param treevol tree volume in metres cubed
 #' @param nsg Nominal Specific Gravity
-#' @param sigma_treevol tree volume in metres sigma (optional)
+#' @param sigma_treevol tree volume sigma (optional)
 #' @returns  biomass in oven dry tonnes or if sigma_treevol is provided then
 #' additionally returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -405,7 +403,7 @@ crownbiomass <- function(spcode, dbh, sigma_dbh = NA) {
   # Load data for crown biomass calculations
   utils::data(crown_biomasdf, envir = environment())
 
-  for (i in seq_along(spcode)) {
+  for (i in 1:length(spcode)) {
 
     diam <- dbh[i]
     sigma <- ifelse(!anyNA(sigma_dbh) && length(sigma_dbh) > 1, sigma_dbh[i], sigma_dbh)
@@ -543,11 +541,11 @@ rootbiomass <- function(spcode, dbh, sigma_dbh = NA) {
 #' @param carbon carbon
 #' @returns carbon dioxide equivalent
 #' @examples
-#' c2co2e(448)
-#' c2co2e(c(448, 450))
+#' ctoco2e(448)
+#' ctoco2e(c(448, 450))
 #' @export
 #'
-c2co2e <- function(carbon) {
+ctoco2e <- function(carbon) {
   # Ensure carbon is numeric and positive
   if (any(!is.numeric(carbon) | carbon < 0)) {
     stop("All values of 'carbon' must be numeric and positive")
@@ -1032,10 +1030,6 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' @export
 #'
 #'
-#test <- fc_agc_error(spcode=rep('OK',21), dbh=seq(5,105,5), height=rep(10,21), method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
-#test <- fc_agc_error(spcode=c(rep('OK',21)), dbh=c(seq(10,110,5)), height=c(rep(10,21)), method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
-
-
 fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "temperate",
                    returnv = "All", sigma_dbh = 20, sigma_h = 8){
 
@@ -1061,17 +1055,17 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
 
   # Create results table
   if(returnv == 'All'){
-    r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA, sig_tariff=NA, mercvol=NA, sig_mercvol=NA, stemvol=NA, sig_stemvol=NA,
-                    stembiomass=NA, sig_stembiomass=NA, crownbiomass=NA, sig_crownbiomass=NA, rootbiomass=NA, sig_rootbiomass=NA, AGC=NA, sig_AGC=NA, stringsAsFactors=FALSE)
+    r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA, sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA, stemvol_m.3=NA, sig_stemvol=NA,
+                    stembiomass_t=NA, sig_stembiomass=NA, crownbiomass_t=NA, sig_crownbiomass=NA, rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   } else {
-    r <- data.frame(AGC=NA, sig_AGC=NA, stringsAsFactors=FALSE)
+    r <- data.frame(AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   }
   r <- r[1:n,]
   utils::data(lookup_df, envir = environment())
 
   # Loop over all trees
   for (i in 1:n) {
-    if (dbh[i]<=0 || !is.numeric(dbh[i])) {
+    if (dbh[i]<=0 || !is.numeric(dbh[i]) || is.na(dbh[i])) {
       warning("dbh is not numeric or positive for index:", i)
       next
     }
@@ -1107,7 +1101,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
     sigma_AGB <- sqrt(woodbio$error^2 + crownbio$error^2)
     AGC <- biomass2c(AGB, method=method, type, biome=biome, sigma_biomass = sigma_AGB) # Above ground Carbon
-    r$AGC[i] <- AGC$AGC
+    r$AGC_t[i] <- AGC$AGC
     r$sig_AGC[i] <- AGC$sigma_AGC
 
     if(returnv == "All"){
@@ -1118,18 +1112,18 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
       r$NSG[i] <- rec$NSG
       r$tariff[i] <- tariff$tariff
       r$sig_tariff[i] <- tariff$error
-      r$mercvol[i] <- mercvol$volume
+      r$mercvol_m.3[i] <- mercvol$volume
       r$sig_mercvol[i] <- mercvol$error
-      r$stemvol[i] <- stemvol$stemvolume
+      r$stemvol_m.3[i] <- stemvol$stemvolume
       r$sig_stemvol[i] <- stemvol$error
-      r$stembiomass[i] <- woodbio$woodbiomass
+      r$stembiomass_t[i] <- woodbio$woodbiomass
       r$sig_stembiomass[i] <- woodbio$error
-      r$crownbiomass[i] <- crownbio$biomass
+      r$crownbiomass_t[i] <- crownbio$biomass
       r$sig_crownbiomass[i] <- crownbio$error
 
       # Root Biomass
       rootbio <- rootbiomass(rec$Root, dbh[i], sigma_dbh)
-      r$rootbiomass[i] <- rootbio$rootbiomass
+      r$rootbiomass_t[i] <- rootbio$rootbiomass
       r$sig_rootbiomass[i] <- rootbio$error
     } else {
       # TODO

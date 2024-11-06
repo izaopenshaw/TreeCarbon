@@ -101,7 +101,24 @@
 #'   \item{Species3}{Third species classification (if applicable)}
 #' }
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
-"sp_lookupdf"
+"lookup_df"
+
+#' Coefficient of Variation lookup table
+#'
+#' This dataset provides a lookup table for values for the coefficient of variation for converting biomass to carbon
+#'
+#' @format A data frame with 5 columns:
+#' \describe{
+#'   \item{method}{reference for CVF}
+#'   \item{type}{type of tree: broadleaf or conifer}
+#'   \item{biome}{biome of study}
+#'   \item{CVF}{Percentage of coefficient of variation}
+#'   \item{confience}{Confience of estimate}
+#' }
+#' @sources (1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree tissues: a synthesis." Forests 3.2 (2012): 332-352.  https://www.mdpi.com/1999-4907/3/2/332.
+#' (2) IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines for National Greenhouse Gas Inventories; Institute for Global Environmental Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
+#' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
+"CVF_df"
 
 #' Stem Volume Data
 #'
