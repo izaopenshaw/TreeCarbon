@@ -74,7 +74,7 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
     stop("All input vectors (spcode, height, dbh, sigma_h, sigma_dbh) must have the same length.")
   }
 
-  utils::data(tariff_coniferdf, envir = environment())
+  #utils::data(tariff_coniferdf, envir = environment())
 
   n <- length(spcode)
 
@@ -138,7 +138,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
   tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
   tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
 
-  if(!anyNA(sigma_dbh) | !anyNA(sigma_h)){
+  if(!is.na(sigma_dbh) && !is.na(sigma_h)){
     if(!is.numeric(sigma_dbh) || any(sigma_dbh<0))stop("sigma_dbh must be numeric and positive")
     if(!is.numeric(sigma_h) || any(sigma_h<0))stop("sigma_h must be numeric and positive")
 
@@ -153,6 +153,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
     return(tariff)
   }
 }
+
 
 ############# FC tariff number by stand height (FC Eq 4) ################
 #'
@@ -176,7 +177,7 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
   if(!is.character(spcode))stop("spcode must be a character")
   if(!is.numeric(height) || any(height<0))stop("height must be numeric and positive")
 
-  utils::data(tarif2heightdf, envir = environment())
+  #utils::data(tarif2heightdf, envir = environment())
   rec <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
 
   if(nrow(rec)==0){stop("The species code, 'spcode' is not found in data(tarif2heightdf)")}
@@ -329,7 +330,7 @@ treevol <- function(mtreevol, dbh, sigma_mtreevol = NA) {
 
   dbh <- round(dbh)
   if (dbh < 500 & dbh > 6.5) {
-    utils::data(stemvol, envir = environment())
+    #utils::data(stemvol, envir = environment())
     cf <- stemvol[stemvol$dbh..cm. == dbh, ]$X
 
   } else if (dbh < 6.5){
@@ -464,7 +465,7 @@ crownbiomass <- function(spcode, dbh, sigma_dbh = NA) {
                                             and non-negative")
 
   # Load data for crown biomass calculations
-  utils::data(crown_biomasdf, envir = environment())
+  #utils::data(crown_biomasdf, envir = environment())
 
   for (i in 1:length(spcode)) {
 
@@ -549,7 +550,7 @@ rootbiomass <- function(spcode, dbh, sigma_dbh = NA) {
     results <- c()
   }
 
-  utils::data(root_biomassdf, envir = environment())
+  #utils::data(root_biomassdf, envir = environment())
 
   # Iterate through each species code and dbh value
   for (i in seq_along(spcode)) {
@@ -715,7 +716,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sigma_biomass 
 #' @export
 #'
 con_sap_seedling2C <- function(heightincm){
-  utils::data(seedlings_conifer, envir = environment())
+  #utils::data(seedlings_conifer, envir = environment())
   b <- utils::tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
   t <- utils::head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
   rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
@@ -747,7 +748,7 @@ broad_sap_seedling2C <- function(heightincm){
   if(heightincm > 1000)warning("Maximum for 'heightincm' is 1000cm")
   if(heightincm < 1)   warning("Minimum for 'heightincm' is 1cm")
 
-  utils::data(seedlings_broad, envir = environment())
+  #utils::data(seedlings_broad, envir = environment())
   #get first and last
   b <- utils::tail(seedlings_broad[seedlings_broad$height.cm <= heightincm,],1)
   t <- utils::head(seedlings_broad[seedlings_broad$height.cm >= heightincm,],1)
@@ -794,7 +795,7 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
   }
 
   # Load or define lookup_df (ensure it's available)
-  utils::data(lookup_df, envir = environment())
+  #utils::data(lookup_df, envir = environment())
 
   # Initialize result dataframe based on returnv
   n <- length(name)
@@ -916,7 +917,7 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
   r <- data.frame(spcode=NA, dbh=NA, height=NA, tariff=NA, mercvol=NA, stemvol=NA,
                   stembiomass=NA, crownbiomass=NA, rootbiomass=NA, AGC=NA, stringsAsFactors=FALSE)
   r <- r[1:n,]
-  utils::data(lookup_df, envir = environment())
+  #utils::data(lookup_df, envir = environment())
   #    data("lookup_df", package = "WoodlandCarbonCode")
 
   # Loop over all trees
@@ -1028,7 +1029,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     r <- data.frame(AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   }
   r <- r[1:n,]
-  utils::data(lookup_df, envir = environment())
+  #utils::data(lookup_df, envir = environment())
 
   # Loop over all trees
   for (i in 1:n) {
