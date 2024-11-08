@@ -14,6 +14,11 @@ A data frame with 5 columns:
 \item{confience}{Confience of estimate}
 }
 }
+\source{
+(1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree tissues: a synthesis." Forests 3.2 (2012): 332-352.  https://www.mdpi.com/1999-4907/3/2/332.
+(2) IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines for National Greenhouse Gas Inventories; Institute for Global Environmental Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
+(3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
+}
 \usage{
 CVF_df
 }

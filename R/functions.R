@@ -406,7 +406,6 @@ error_product <- function(a, sig_a, b, sig_b, c=NA, sig_c=NA)
 #' Report CI/Sfb i(J3). Building Research Establishment, Garston.
 #' @examples
 #' woodbiomass(10, 0.56, 5)
-#'
 #' @export
 #'
 woodbiomass <- function(treevol, nsg, sigma_treevol = NA) {
@@ -1196,28 +1195,44 @@ bunce <- function(spcode, dbh){
 #'
 biomass <- function(df, coords, region = "World", output.all = TRUE){
 
-  # TODO check inputs
+  # Check package and inputs
+  if (!requireNamespace("BIOMASS", quietly = TRUE)) {
+    stop("The 'BIOMASS' package is required but not installed. Please install it with:\n",
+         "install.packages('BIOMASS',dependencies = TRUE)", call. = FALSE)
+  }
+  if (!is.data.frame(df)) {stop("'df' must be a data frame.")}
 
-  # Call BIOMASS package
-  if(nchar(system.file(package='BIOMASS')) == 0 ){
-    install.packages("BIOMASS",dependencies = TRUE)}
-  library("BIOMASS")
+  if (!all(c("Genus", "Species", "DBH") %in% names(df))) {
+    stop("'df' must contain columns 'Genus', 'Species', and 'DBH'.")}
+
+  if (!is.matrix(coords) || ncol(coords) != 2) {
+    stop("'coords' must be a matrix with two columns for latitude and longitude.")
+  }
+
+  if (!is.character(region) || length(region) != 1) {
+    stop("'region' must be a single character string.")
+  }
+
+  if (!is.logical(output.all) || length(output.all) != 1) {
+    stop("'output.all' must be a single logical value (TRUE or FALSE).")
+  }
+
 
   # Correct name
-  correct <- correctTaxo(genus = df$Genus, species = df$Species)
+  correct <- BIOMASS::correctTaxo(genus = df$Genus, species = df$Species)
   df$Genus_corrected   <- correct$genusCorrected
   df$Species_corrected <- correct$speciesCorrected
   df$Modified          <- correct$nameModified
 
   # Get Wood Density
   # data("wdData") # Global wd database
-  wd <- getWoodDensity(df$Genus_corrected, df$Species_corrected, region=region)
+  wd <- BIOMASS::getWoodDensity(df$Genus_corrected, df$Species_corrected, region=region)
   df$Wood_Density    <- wd$meanWD
   df$Wood_Density_sd <- wd$sdWD
   df$Family          <- wd$family
 
   # Get height estimates using Chave E
-  h <- retrieveH(D = as.numeric(df$DBH), coord = coords)
+  h <- BIOMASS::retrieveH(D = as.numeric(df$DBH), coord = coords)
   df$RSE        <- h$RSE
   df$Height_est <- h[["H"]]
 
@@ -1231,14 +1246,14 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
   df <- rbind(h.data, h.est)
 
   # Calculate Carbon using Biomass package
-  df$AGB_Biomass_kg <- computeAGB(D=as.numeric(df$DBH),
+  df$AGB_Biomass_kg <- BIOMASS::computeAGB(D=as.numeric(df$DBH),
                                   WD=as.numeric(df$Wood_Density),
                                   H=df$Height_1)*1000
 
   if(output.all == FALSE){
     df <- df[c('Genus_corrected','Species_corrected','Family','Latitude',
-               'Longitude','DBH','AGB_Biomass_kg')]}
-
+               'Longitude','DBH','AGB_Biomass_kg')]
+    }
 
   return(df)
 }
@@ -1269,10 +1284,11 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 #'
 allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
 
-  # Call allodb package
-  if(nchar(system.file(package='allodb')) == 0 ){
-    remotes::install_github("ropensci/allodb")}
-  library("allodb")
+  if (!requireNamespace("allodb", quietly = TRUE)) {
+    stop("The 'allodb' package is required for this function but is not installed. ",
+         "You can install it using the following command:\n",
+         "remotes::install_github('ropensci/allodb')", call. = FALSE)
+  }
 
   # Biomass for all data. By default all equations will be used
   df$AGB_allodb_kg <- get_biomass(dbh = as.numeric(df$DBH),

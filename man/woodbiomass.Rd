@@ -23,7 +23,6 @@ gravity to give the biomass, in oven dry tonnes.
 }
 \examples{
 woodbiomass(10, 0.56, 5)
-
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
