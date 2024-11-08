@@ -1203,7 +1203,7 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
   if (!all(c("Genus", "Species", "DBH") %in% names(df))) {
     stop("'df' must contain columns 'Genus', 'Species', and 'DBH'.")}
 
-  if (!is.matrix(coords) || ncol(coords) != 2) {
+  if (!is.numeric(coords) || length(coords) != 2) {
     stop("'coords' must be a matrix with two columns for latitude and longitude.")
   }
 
