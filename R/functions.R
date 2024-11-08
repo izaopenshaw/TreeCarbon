@@ -210,8 +210,8 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
-#' tariffs("OK", 10)
-#' tariffs("OK", 10, sigma_h = 1)
+#' tariffs("OK", 10, 20)
+#' tariffs("OK", 10, 20, sigma_h = 1)
 #' @export
 #'
 tariffs <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) {
@@ -1190,16 +1190,14 @@ bunce <- function(spcode, dbh){
 #' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
-#' @importFrom BIOMASS correctTaxo getWoodDensity retrieveH computeAGB
+#' @importFrom utils install.packages
 #' @export
 #'
 biomass <- function(df, coords, region = "World", output.all = TRUE){
 
-  # Check package and inputs
-  if (!requireNamespace("BIOMASS", quietly = TRUE)) {
-    stop("The 'BIOMASS' package is required but not installed. Please install it with:\n",
-         "install.packages('BIOMASS',dependencies = TRUE)", call. = FALSE)
-  }
+  if(nchar(system.file(package='BIOMASS')) == 0 ){
+    utils::install.packages("BIOMASS",dependencies = TRUE)}
+
   if (!is.data.frame(df)) {stop("'df' must be a data frame.")}
 
   if (!all(c("Genus", "Species", "DBH") %in% names(df))) {
@@ -1279,19 +1277,16 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 #' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
-#' @importFrom allodb get_biomass est_params
 #' @export
 #'
 allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
 
-  if (!requireNamespace("allodb", quietly = TRUE)) {
-    stop("The 'allodb' package is required for this function but is not installed. ",
-         "You can install it using the following command:\n",
-         "remotes::install_github('ropensci/allodb')", call. = FALSE)
-  }
+  # Call allodb package
+  if(nchar(system.file(package='allodb')) == 0 ){
+    remotes::install_github("ropensci/allodb")}
 
   # Biomass for all data. By default all equations will be used
-  df$AGB_allodb_kg <- get_biomass(dbh = as.numeric(df$DBH),
+  df$AGB_allodb_kg <- allodb::get_biomass(dbh = as.numeric(df$DBH),
                                   genus = df$Genus_corrected,
                                   species = df$Species_corrected,
                                   coords = coords,
@@ -1301,7 +1296,7 @@ allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
     df$allodb_a <- df$allodb_b <- df$allodb_sigma <- NA
 
     # Get parameters and sigma: AGB= a*DBH^b+e {e ~ N(0,sigma^2}
-    params <- est_params(genus = df$Genus_corrected,
+    params <- allodb::est_params(genus = df$Genus_corrected,
                          species = df$Species_corrected,
                          coords = coords)
     # Create a name column in params and df
