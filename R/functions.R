@@ -166,7 +166,13 @@ broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, sig_
                 error_product(tb$a2, 0.3908223, height, sig_h) +
                 error_product(tb$a4, 0.01108647, dbh, sig_dbh, height, sig_h)
                 )
-    result <- list(tariff = tariff, error = error)
+
+    relative_error <- error / tariff
+
+    # Calculate final sig_tariff as a scaled version of tariff using relative error
+    sig_tariff <- tariff * relative_error
+
+    result <- list(tariff = tariff, absolute.error = error, relative.error = sig_tariff)
     return(result)
   } else {
     return(tariff)
