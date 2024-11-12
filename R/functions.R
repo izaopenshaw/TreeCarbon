@@ -1,6 +1,7 @@
 ############## Functions file for Woodland Carbon Code ########################
 # TODO:
 # error for ctoco2e ?
+# search not found and check that intermediate species are found in lookup_df
 # check biomass2c that error is confidence percentage by checking references
 
 ############ Tariff number from volume and tree basal area (FC Eq 1) ############
@@ -90,7 +91,15 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
 
   for(i in 1:n){
     rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode[i], ]
-    if(nrow(rec) == 0)stop("The specified 'spcode' is not found in tariff_coniferdf.rda")
+
+    if(nrow(rec) == 0){
+    spcode <- lookup_df$single[lookup_df$short == spcode]
+    rec <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode[i], ]
+
+    if(nrow(rec)==0){
+      warning(spcide[i], "spcode not found in data(tariff_coniferdf) or data(lookup_df$short)")
+    }
+  }
 
     tariffs[i] <- rec$a1 + (rec$a2 * height[i]) + (rec$a3 * dbh[i])
 
@@ -125,7 +134,6 @@ conifer_tariff <- function(spcode, height, dbh, sigma_h = NA, sigma_dbh = NA) {
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
 #' @importFrom utils data
 #' @examples broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-#' 55.96704
 #' broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
 #' broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
 #' @export
@@ -136,6 +144,16 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
 
   #utils::data(tariff_broaddf, envir = environment())
   tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
+
+  if(nrow(rec) == 0){
+    spcode <- lookup_df$single[lookup_df$short == spcode]
+    tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
+
+    if(nrow(rec)==0){
+      warning("spcode not found in data(tariff_broaddf) or data(lookup_df$short)")
+    }
+  }
+
   tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
 
   if(!is.na(sigma_dbh) && !is.na(sigma_h)){
@@ -171,6 +189,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
 #' @examples
 #' stand_tariff("OK", 10)
 #' stand_tariff("OK", 10, sigma_h = 1)
+#' stand_tariff("AH", 10, sigma_h = 1)
 #' @export
 #'
 stand_tariff <- function(spcode, height, sigma_h = NA) {
@@ -180,7 +199,15 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
   #utils::data(tarif2heightdf, envir = environment())
   rec <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
 
-  if(nrow(rec)==0){stop("The species code, 'spcode' is not found in data(tarif2heightdf)")}
+  if(nrow(rec)==0){
+    spcode <- lookup_df$stand[lookup_df$short == spcode]
+    rec <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
+
+    if(nrow(rec)==0){
+      stop("spcode not found in data(tarif2heightdf) or data(lookup_df)")
+    }
+
+  }
 
   tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * height^2)
 
@@ -197,7 +224,6 @@ stand_tariff <- function(spcode, height, sigma_h = NA) {
 }
 
 ############# FC tariff number by stand height (FC Eq 4) ################
-#' TODO
 #' @title Tariff number by stand height
 #' @description Use the estimated stand top height to calculate the stand
 #' tariff number.
@@ -228,7 +254,16 @@ tariffs <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) {
   #utils::data(tariff_broaddf, envir = environment())
   for (i in 1:n) {
     tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode[i], ]
-    if (nrow(tb) == 0) stop(paste("Species code not found in tariff_broaddf:", spcode[i]))
+
+    if(nrow(tb)==0){
+      spcode <- lookup_df$stand[lookup_df$short == spcode]
+      tb <- tarif2heightdf[tarif2heightdf$abbreviation == spcode, ]
+
+      if(nrow(tb)==0){
+        warning(paste("Species code not found for", spcode[i]))
+      }
+
+    }
 
     # Calculate tariff for this individual tree
     tariffs[i] <- tb$a1 + (tb$a2 * height[i]) + (tb$a3 * dbh[i]) + (tb$a4 * dbh[i] * height[i])
@@ -429,8 +464,8 @@ woodbiomass <- function(treevol, nsg, sigma_treevol = NA) {
 #' stem tips and foliage) depending on species and dbh
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param dbh diameter at breast height in centimetres
-#' @param spcode Crown biomass species code, crown_biomasdf$Code which
-#' relates to lookup_df$Crown
+#' @param spcode Crown biomass species code, crown_biomasdf$Code or if not
+#' defined for species, lookup_df$short to find relating lookup_df$Crown
 #' @param sigma_dbh dbh sigma
 #' @returns  biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -479,7 +514,13 @@ crownbiomass <- function(spcode, dbh, sigma_dbh = NA) {
     # Find the record in the data for the species code
     rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
     if (nrow(rec) == 0) {
-      stop(paste("The species code", spcode[i], "is not found in data(crown_biomasdf), see data(lookup_df) column 'Crown'"))
+
+      spcode <- lookup_df$Crown[lookup_df$short == spcode[i]]
+      rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
+
+      if (nrow(rec) == 0) {
+        warning(paste("The species code", spcode[i], "is not found in lookup_df$Crown"))
+        }
     }
 
     # Calculate biomass and error if sigma_dbh is provided
@@ -558,9 +599,17 @@ rootbiomass <- function(spcode, dbh, sigma_dbh = NA) {
 
     # Find the record in the data for the species code
     rec <- root_biomassdf[root_biomassdf$Code == spcode[i], ]
+
     if (nrow(rec) == 0) {
-      stop(sprintf("The species code '%s' is not found in data(root_biomassdf).", spcode[i]))
+
+      spcode <- lookup_df$Root[lookup_df$short == spcode[i]]
+      rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
+
+      if (nrow(rec) == 0) {
+        warning(paste("The species code", spcode[i], "is not found in lookup_df$Root"))
+      }
     }
+
 
     # Calculate root biomass based on dbh value
     if (diam <= 30) {
@@ -767,7 +816,6 @@ broad_sap_seedling2C <- function(heightincm){
 #' @description  Function that looks up species codes for Woodland Carbon Code
 #' @author Isabel Openshaw I.Openshaw@kew.org
 #' @param name name of species
-#' @param name_type either 'botanical' or 'common'
 #' @param type either 'broadleaf' or 'conifer'
 #' @param returnv either 'all', short', 'single', 'stand', 'root' from lookup_df.Rda
 #' @returns Species code
@@ -777,16 +825,15 @@ broad_sap_seedling2C <- function(heightincm){
 #' @importFrom utils data
 #' @examples
 #' lookspcode('Quercus robur', type = "broadleaf", returnv='short')
-#' lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"),name_type= "common", "short")
+#' lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"), "short")
 #' lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"))
 #' lookspcode(c('Quercus robur', 'Quercus') , type = c("broadleaf", "broadleaf"), returnv='short')
 #' @export
 #'
-lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
+lookspcode <- function(name, type, returnv = "all") {
 
   # Check inputs
   if (!is.character(name)) stop("'name' must be a character vector or list")
-  if (!is.character(name_type)) stop("'name_type' must be either 'botanical' or 'common'.")
   if (length(type) != length(name)) stop("'type' and 'name' must have the same length.")
   if (!all(type %in% c("broadleaf", "conifer", NA, ""))) stop("'type' must be either 'broadleaf', 'conifer'")
   if (!is.character(returnv) || !returnv %in% c("short", "single", "stand", "root", "all")) {
@@ -812,31 +859,28 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
     # Case insensitive and trim spaces
     search_name <- stringr::str_trim(tolower(name[i]))
 
-    # Lookup based on name_type
-    if (name_type == "common") {
-      rec <- lookup_df[tolower(lookup_df$common_name) == search_name, ]
-      if (nrow(rec) == 1) {
-        match_type <- "Common name"
-      } else {
-        rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
-        if (nrow(rec) == 1) {
-          match_type <- "Genus"
-        }
-      }
-    } else {  # Botanical name lookup
-      rec <- lookup_df[tolower(lookup_df$latin_name) == search_name, ]
-      if (nrow(rec) == 1) {
-        match_type <- "Botanical name"
-      } else {
-        rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
-        if (nrow(rec) == 1) {
-          match_type <- "Genus"
-        }
-      }
-    }
+    # Lookup common name
+    rec <- lookup_df[tolower(lookup_df$common_name) == search_name, ]
 
-    # If neither name nor genus matched, fall back to type classification
-    if (anyNA(match_type) || nrow(rec) == 0) {
+    if (nrow(rec) == 1) {
+      match_type <- "Common name"
+    } else {
+
+      # Lookup species binomial
+      rec <- lookup_df[tolower(lookup_df$latin_name) == search_name, ]
+
+      if (nrow(rec) == 1) {
+        match_type <- "Species binomial"
+      } else {
+        rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
+        if (nrow(rec) == 1) {
+          match_type <- "Genus"
+         }
+        }
+       }
+
+    # If name not been matched, fall back to type classification
+    if (is.na(match_type) || nrow(rec) == 0) {
       rec <- lookup_df[lookup_df$General.type == type[i], ]
       if (nrow(rec) == 1) {
         match_type <- type[i]  # e.g., broadleaf or conifer
@@ -862,7 +906,6 @@ lookspcode <- function(name, type, name_type = "botanical", returnv = "all") {
       r[i, "matchtype"] <- "Not found"
     }
   }
-
   return(r)
 }
 
@@ -1165,7 +1208,7 @@ bunce <- function(spcode, dbh){
   coeffs <- buncedf[buncedf$spcode == spcode,]
 
   if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in
-                        data(bunce), therefore, the combined coefficients
+                        data(buncedf), therefore, the combined coefficients
                            will be used")}
 
   biomass <- coeffs$a + coeffs$b*log(pi*dbh)
@@ -1204,7 +1247,7 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
     stop("'df' must contain columns 'Genus', 'Species', and 'DBH'.")}
 
   if (!is.numeric(coords) || length(coords) != 2) {
-    stop("'coords' must be a matrix with two columns for latitude and longitude.")
+    stop("'coords' must be a vector of latitude and longitude.")
   }
 
   if (!is.character(region) || length(region) != 1) {
