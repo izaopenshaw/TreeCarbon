@@ -4,14 +4,12 @@
 \alias{lookspcode}
 \title{Lookup species code}
 \usage{
-lookspcode(name, type, name_type = "botanical", returnv = "all")
+lookspcode(name, type, returnv = "all")
 }
 \arguments{
 \item{name}{name of species}
 
 \item{type}{either 'broadleaf' or 'conifer'}
-
-\item{name_type}{either 'botanical' or 'common'}
 
 \item{returnv}{either 'all', short', 'single', 'stand', 'root' from lookup_df.Rda}
 }
@@ -23,7 +21,7 @@ Function that looks up species codes for Woodland Carbon Code
 }
 \examples{
 lookspcode('Quercus robur', type = "broadleaf", returnv='short')
-lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"),name_type= "common", "short")
+lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"), "short")
 lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"))
 lookspcode(c('Quercus robur', 'Quercus') , type = c("broadleaf", "broadleaf"), returnv='short')
 }

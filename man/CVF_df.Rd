@@ -11,7 +11,7 @@ A data frame with 5 columns:
 \item{type}{type of tree: broadleaf or conifer}
 \item{biome}{biome of study}
 \item{CVF}{Percentage of coefficient of variation}
-\item{confience}{Confience of estimate}
+\item{confidence}{confidence of estimate}
 }
 }
 \source{

@@ -21,12 +21,9 @@ of the tariff number and uncertainty
 Use the estimated stand top height to calculate the stand
 tariff number.
 }
-\details{
-TODO
-}
 \examples{
-tariffs("OK", 10)
-tariffs("OK", 10, sigma_h = 1)
+tariffs("OK", 10, 20)
+tariffs("OK", 10, 20, sigma_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

@@ -145,11 +145,11 @@ broadleaf_tariff <- function(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA) 
   #utils::data(tariff_broaddf, envir = environment())
   tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
 
-  if(nrow(rec) == 0){
+  if(nrow(tb) == 0){
     spcode <- lookup_df$single[lookup_df$short == spcode]
     tb <- tariff_broaddf[tariff_broaddf$abbreviation == spcode, ]
 
-    if(nrow(rec)==0){
+    if(nrow(tb)==0){
       warning("spcode not found in data(tariff_broaddf) or data(lookup_df$short)")
     }
   }

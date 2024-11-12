@@ -24,6 +24,7 @@ tariff number.
 \examples{
 stand_tariff("OK", 10)
 stand_tariff("OK", 10, sigma_h = 1)
+stand_tariff("AH", 10, sigma_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

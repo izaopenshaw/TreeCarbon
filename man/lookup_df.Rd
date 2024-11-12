@@ -19,7 +19,7 @@ A data frame with 18 columns:
 \item{Crown}{Crown type code}
 \item{Root}{Root type code}
 \item{notes}{Additional notes}
-\item{General.for.genus}{If the entry is for a genus and not species level}
+\item{General.genus}{If the entry is for a genus and not species level}
 \item{General.for.classification}{If the entry is for broafleaf or confier}
 \item{Genus}{Genus of the species}
 \item{Species1}{First species classification}

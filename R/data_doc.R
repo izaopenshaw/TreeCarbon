@@ -93,7 +93,7 @@
 #'   \item{Crown}{Crown type code}
 #'   \item{Root}{Root type code}
 #'   \item{notes}{Additional notes}
-#'   \item{General.for.genus}{If the entry is for a genus and not species level}
+#'   \item{General.genus}{If the entry is for a genus and not species level}
 #'   \item{General.for.classification}{If the entry is for broafleaf or confier}
 #'   \item{Genus}{Genus of the species}
 #'   \item{Species1}{First species classification}
@@ -113,7 +113,7 @@
 #'   \item{type}{type of tree: broadleaf or conifer}
 #'   \item{biome}{biome of study}
 #'   \item{CVF}{Percentage of coefficient of variation}
-#'   \item{confience}{Confience of estimate}
+#'   \item{confidence}{confidence of estimate}
 #' }
 #' @source (1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree tissues: a synthesis." Forests 3.2 (2012): 332-352.  https://www.mdpi.com/1999-4907/3/2/332.
 #' (2) IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines for National Greenhouse Gas Inventories; Institute for Global Environmental Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
