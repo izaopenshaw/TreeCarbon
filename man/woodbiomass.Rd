@@ -4,7 +4,7 @@
 \alias{woodbiomass}
 \title{Forestry commission wood biomass}
 \usage{
-woodbiomass(treevol, nsg, sig_treevol = NA)
+woodbiomass(treevol, nsg, sig_treevol = NA, sig_nsg = NA)
 }
 \arguments{
 \item{treevol}{tree volume in metres cubed}
@@ -12,6 +12,8 @@ woodbiomass(treevol, nsg, sig_treevol = NA)
 \item{nsg}{Nominal Specific Gravity}
 
 \item{sig_treevol}{tree volume sigma (optional)}
+
+\item{sig_nsg}{sigma for nsg (optional)}
 }
 \value{
 biomass in oven dry tonnes or if sig_treevol is provided then

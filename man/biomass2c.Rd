@@ -26,7 +26,8 @@ Only needed for 'IPCC2' and 'Thomas' methods.}
 \item{sig_biomass}{biomass uncertainty (optional)}
 }
 \value{
-either carbon or if 'sig_biomass' is provided, returns a list of carbon value and error. Only associated errors with method = 'IPCC2' and 'Thomas'
+either carbon or if 'sig_biomass' is provided, returns a list of
+carbon value and error. Errors only given with method = 'IPCC2' or 'Thomas'.
 }
 \description{
 Converts biomass to carbon values using the carbon volatile

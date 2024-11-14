@@ -4,7 +4,7 @@
 \alias{rootbiomass}
 \title{Forestry commission root biomass estimates}
 \usage{
-rootbiomass(spcode, dbh, sig_dbh = NA)
+rootbiomass(spcode, dbh, sig_dbh = NA, conf = 0.05)
 }
 \arguments{
 \item{spcode}{species code}
@@ -12,6 +12,9 @@ rootbiomass(spcode, dbh, sig_dbh = NA)
 \item{dbh}{diameter at breast height (1.3 m) in centimetres}
 
 \item{sig_dbh}{sigma for DBH (optional)}
+
+\item{conf}{one minus percentage confidence or relative error for
+coefficients of the equation}
 }
 \value{
 biomass (oven dry tonnes)

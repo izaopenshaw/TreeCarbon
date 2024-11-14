@@ -4,7 +4,7 @@
 \alias{stand_tariff}
 \title{Tariff number by stand height}
 \usage{
-stand_tariff(spcode, height, sig_h = NA)
+stand_tariff(spcode, height, sig_h = NA, conf_a = 0.05)
 }
 \arguments{
 \item{spcode}{species code}
@@ -12,6 +12,9 @@ stand_tariff(spcode, height, sig_h = NA)
 \item{height}{tree height in metres}
 
 \item{sig_h}{sigma for height (optional)}
+
+\item{conf_a}{1 - the percentage confidence interval for coefficients or
+the relative error of coefficients (default = 5\%)}
 }
 \value{
 either tariff number or if sig_h is provided, then returns a list
@@ -22,9 +25,9 @@ Use the estimated stand top height to calculate the stand
 tariff number.
 }
 \examples{
-stand_tariff("OK", 10)
-stand_tariff("OK", 10, sig_h = 1)
-stand_tariff("AH", 10, sig_h = 1)
+stand_tariff("OK", height = 10)
+stand_tariff("OK", height = 10, sig_h = 1)
+stand_tariff(spcode = "AH", height = 10, sig_h = 0.5)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

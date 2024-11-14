@@ -4,14 +4,21 @@
 \alias{tariffs}
 \title{Tariff number by stand height}
 \usage{
-tariffs(spcode, height, dbh, sig_dbh = NA, sig_h = NA)
+tariffs(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.05)
 }
 \arguments{
-\item{spcode}{species code}
+\item{spcode}{species code (short)}
 
 \item{height}{tree height in metres}
 
+\item{dbh}{diameter at breast height in centimetres}
+
 \item{sig_h}{sigma for height (optional)}
+
+\item{sig_dbh}{sigma for diameter at breast height (optional)}
+
+\item{conf_a}{1 - the percentage confidence interval for coefficients or
+the relative error of coefficients (default = 5\%)}
 }
 \value{
 either tariff number or if sig_h is provided, then returns a list
@@ -23,12 +30,13 @@ tariff number.
 }
 \examples{
 tariffs("OK", 10, 20)
-tariffs("OK", 10, 20, sig_h = 1)
+tariffs("OK", 10, 20, sig_h = 1, sig_dbh = 1)
+tariffs("OK", height = 10, sig_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018).
 }
 \author{
-Isabel Openshaw. I.Openshaw@kew.org
+Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 }

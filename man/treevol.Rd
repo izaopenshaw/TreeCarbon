@@ -4,7 +4,7 @@
 \alias{treevol}
 \title{Forestry commission tree wood volume}
 \usage{
-treevol(mtreevol, dbh, sig_mtreevol = NA)
+treevol(mtreevol, dbh, sig_mtreevol = NA, conf_cf = 0.05)
 }
 \arguments{
 \item{mtreevol}{merchantable tree volume}
@@ -12,6 +12,9 @@ treevol(mtreevol, dbh, sig_mtreevol = NA)
 \item{dbh}{diameter at breast height in centimeters (greater than 6.5 cm)}
 
 \item{sig_mtreevol}{sigma for mtreevol (optional)}
+
+\item{conf_cf}{1 - the percentage confidence interval for conversion factor
+or the relative error of coefficients (default = 5\%)}
 }
 \value{
 volume metres cubed or if sig_mtreevol is provided then additionally
@@ -20,6 +23,10 @@ returns the error as a list
 \description{
 Calculate the stem volume by multiplying the merchantable
 tree volume by the appropriate species multiplication factor from stemvol.rda
+}
+\examples{
+treevol(mtreevol = 10, dbh = 24)
+treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

@@ -4,16 +4,24 @@
 \alias{con_sap_seedling2C}
 \title{Conifer seedlings and saplings to carbon}
 \usage{
-con_sap_seedling2C(heightincm)
+con_sap_seedling2C(heightincm, sig_h = NA, conf = 0.05)
 }
 \arguments{
 \item{heightincm}{tree height in centimetres}
+
+\item{sig_h}{estimated measurement error of height}
+
+\item{conf}{relative error of coefficients in percentage}
 }
 \value{
 carbon in tonnes
 }
 \description{
 todo*
+}
+\examples{
+con_sap_seedling2C(10)
+con_sap_seedling2C(50)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

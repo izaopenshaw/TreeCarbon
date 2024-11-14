@@ -484,7 +484,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = NA) {
   error <- NA
 
   if(!anyNA(sig_treevol)){
-    error <- error_product(treevol, sig_treevol, nsg, sig_nsg)
+    error <- error_product(treevol, sig_treevol, nsg, sig_nsg=0.08) # TODO ***
   }
   return(list(woodbiomass = woodbio, error = error))
 }

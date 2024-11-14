@@ -4,7 +4,7 @@
 \alias{crownbiomass}
 \title{Forestry commission crown biomass estimates}
 \usage{
-crownbiomass(spcode, dbh, sig_dbh = NA)
+crownbiomass(spcode, dbh, sig_dbh = NA, conf = 0.05)
 }
 \arguments{
 \item{spcode}{Crown biomass species code, crown_biomasdf$Code or if not
@@ -13,6 +13,9 @@ defined for species, lookup_df$short to find relating lookup_df$Crown}
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{sig_dbh}{dbh sigma}
+
+\item{conf}{one minus percentage confidence or relative error for
+coefficients of the equation}
 }
 \value{
 biomass (oven dry tonnes)
@@ -23,8 +26,8 @@ stem tips and foliage) depending on species and dbh
 }
 \examples{
 crownbiomass("CBSP", 25)
-crownbiomass("CBOK", 25, sig_dbh = 10)
-crownbiomass(c("CBOK","CBOK"), dbh = c(30,30), sig_dbh = c(10,50))
+crownbiomass("CBOK", dbh = 25, sig_dbh = 10)
+crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), sig_dbh = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
