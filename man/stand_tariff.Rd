@@ -4,17 +4,17 @@
 \alias{stand_tariff}
 \title{Tariff number by stand height}
 \usage{
-stand_tariff(spcode, height, sigma_h = NA)
+stand_tariff(spcode, height, sig_h = NA)
 }
 \arguments{
 \item{spcode}{species code}
 
 \item{height}{tree height in metres}
 
-\item{sigma_h}{sigma for height (optional)}
+\item{sig_h}{sigma for height (optional)}
 }
 \value{
-either tariff number or if sigma_h is provided, then returns a list
+either tariff number or if sig_h is provided, then returns a list
 of the tariff number and uncertainty
 }
 \description{
@@ -23,8 +23,8 @@ tariff number.
 }
 \examples{
 stand_tariff("OK", 10)
-stand_tariff("OK", 10, sigma_h = 1)
-stand_tariff("AH", 10, sigma_h = 1)
+stand_tariff("OK", 10, sig_h = 1)
+stand_tariff("AH", 10, sig_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

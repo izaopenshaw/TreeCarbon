@@ -4,17 +4,17 @@
 \alias{treevol}
 \title{Forestry commission tree wood volume}
 \usage{
-treevol(mtreevol, dbh, sigma_mtreevol = NA)
+treevol(mtreevol, dbh, sig_mtreevol = NA)
 }
 \arguments{
 \item{mtreevol}{merchantable tree volume}
 
 \item{dbh}{diameter at breast height in centimeters (greater than 6.5 cm)}
 
-\item{sigma_mtreevol}{sigma for mtreevol (optional)}
+\item{sig_mtreevol}{sigma for mtreevol (optional)}
 }
 \value{
-volume metres cubed or if sigma_mtreevol is provided then additionally
+volume metres cubed or if sig_mtreevol is provided then additionally
 returns the error as a list
 }
 \description{

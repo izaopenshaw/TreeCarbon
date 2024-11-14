@@ -4,7 +4,7 @@
 \alias{biomass2c}
 \title{Calculates biomass conversion to carbon}
 \usage{
-biomass2c(biomass, method, type = NULL, biome = NULL, sigma_biomass = NA)
+biomass2c(biomass, method, type = NULL, biome = NULL, sig_biomass = NA)
 }
 \arguments{
 \item{biomass}{(usually kg or metric tonnes)}
@@ -23,10 +23,10 @@ Thomas2 - Lookup by type and biome}
 \item{biome}{tropical, subtropical, mediterranean, temperate or boreal.
 Only needed for 'IPCC2' and 'Thomas' methods.}
 
-\item{sigma_biomass}{biomass uncertainty (optional)}
+\item{sig_biomass}{biomass uncertainty (optional)}
 }
 \value{
-either carbon or if 'sigma_biomass' is provided, returns a list of carbon value and error. Only associated errors with method = 'IPCC2' and 'Thomas'
+either carbon or if 'sig_biomass' is provided, returns a list of carbon value and error. Only associated errors with method = 'IPCC2' and 'Thomas'
 }
 \description{
 Converts biomass to carbon values using the carbon volatile

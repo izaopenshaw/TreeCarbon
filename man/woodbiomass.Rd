@@ -4,17 +4,17 @@
 \alias{woodbiomass}
 \title{Forestry commission wood biomass}
 \usage{
-woodbiomass(treevol, nsg, sigma_treevol = NA)
+woodbiomass(treevol, nsg, sig_treevol = NA)
 }
 \arguments{
 \item{treevol}{tree volume in metres cubed}
 
 \item{nsg}{Nominal Specific Gravity}
 
-\item{sigma_treevol}{tree volume sigma (optional)}
+\item{sig_treevol}{tree volume sigma (optional)}
 }
 \value{
-biomass in oven dry tonnes or if sigma_treevol is provided then
+biomass in oven dry tonnes or if sig_treevol is provided then
 additionally returns the error as a list
 }
 \description{

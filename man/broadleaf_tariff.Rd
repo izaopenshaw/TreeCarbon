@@ -4,7 +4,7 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA)
+broadleaf_tariff(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.05)
 }
 \arguments{
 \item{spcode}{species code (single)}
@@ -13,9 +13,12 @@ broadleaf_tariff(spcode, height, dbh, sigma_dbh = NA, sigma_h = NA)
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{sigma_dbh}{sigma for diameter at breast height (optional)}
+\item{sig_dbh}{sigma for diameter at breast height (optional)}
 
-\item{sigma_h}{sigma for tree height (optional)}
+\item{sig_h}{sigma for tree height (optional)}
+
+\item{conf_a}{1 - the percentage confidence interval for coefficients or
+the relative error of coefficients (default = 5\%)}
 }
 \value{
 tariff number and error if sigma of variables inputted
@@ -27,8 +30,8 @@ R data file, 'tariff_broaddf'.
 }
 \examples{
 broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
-broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sigma_dbh = 10, sigma_h = 1)
+broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sig_dbh = 10, sig_h = 1)
+broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sig_dbh = 10, sig_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

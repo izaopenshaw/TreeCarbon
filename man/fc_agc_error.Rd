@@ -11,8 +11,8 @@ fc_agc_error(
   method = "IPCC2",
   biome = "temperate",
   returnv = "All",
-  sigma_dbh = 20,
-  sigma_h = 8
+  sig_dbh = 20,
+  sig_h = 8
 )
 }
 \arguments{
@@ -28,9 +28,9 @@ fc_agc_error(
 
 \item{returnv}{To return either 'AGC' (default) or 'All'}
 
-\item{sigma_dbh}{error in sampling of dbh, single value}
+\item{sig_dbh}{error in sampling of dbh, single value}
 
-\item{sigma_h}{error in sampling of height, single value}
+\item{sig_h}{error in sampling of height, single value}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff
@@ -43,8 +43,8 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sigma_dbh=10, sigma_h=1)
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sigma_dbh=10, sigma_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sig_dbh=10, sig_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sig_dbh=10, sig_h=1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

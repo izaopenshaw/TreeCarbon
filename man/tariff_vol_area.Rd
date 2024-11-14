@@ -4,16 +4,19 @@
 \alias{tariff_vol_area}
 \title{Tariff number from volume and basal area}
 \usage{
-tariff_vol_area(vol, dbh, sigma_vol = NA, sigma_dbh = NA)
+tariff_vol_area(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.05)
 }
 \arguments{
 \item{vol}{tree volume in metres cubed}
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{sigma_vol}{sigma for tree volume (optional)}
+\item{sig_vol}{sigma for tree volume (optional)}
 
-\item{sigma_dbh}{sigma for diameter at breast height (optional)}
+\item{sig_dbh}{sigma for diameter at breast height (optional)}
+
+\item{conf_a}{1 - the percentage confidence interval for coefficients or
+the relative error of coefficients (default = 5\%)}
 }
 \value{
 Tariff number or if sigma for inputs are provided, then will return
@@ -24,7 +27,7 @@ Using the sample tree’s basal area and volume to calculate the
 tariff number. Basal area is calculated by ba = (pi * dbh^2)/40000.
 }
 \examples{
-tariff_vol_area(vol=50, dbh=24, sigma_vol = 10, sigma_dbh = 1)
+tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, sig_dbh = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
