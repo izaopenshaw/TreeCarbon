@@ -5,6 +5,9 @@
 # search not found and check that intermediate species are found in lookup_df
 # check biomass2c that error is confidence percentage by checking references
 
+# fall back species code: MX
+lookup_df[lookup_df$short == "MX", ]
+
 ############ Tariff number from volume and tree basal area (FC Eq 1) ############
 #'
 #' @title Tariff number from volume and basal area
@@ -475,7 +478,7 @@ error_product <- function(a, sig_a, b, sig_b, c=NA, sig_c=NA)
 #' woodbiomass(10, 0.56, 5)
 #' @export
 #'
-woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = NA) {
+woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
 
 #  if(!is.numeric(treevol) || any(treevol<0))stop("treevol must be numeric and positive") #todo
   if(!is.numeric(nsg) || any(nsg<0))stop("nsg must be numeric and positive")
@@ -484,7 +487,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = NA) {
   error <- NA
 
   if(!anyNA(sig_treevol)){
-    error <- error_product(treevol, sig_treevol, nsg, sig_nsg=0.08) # TODO ***
+    error <- error_product(treevol, sig_treevol, nsg, sig_nsg) # TODO ***
   }
   return(list(woodbiomass = woodbio, error = error))
 }
