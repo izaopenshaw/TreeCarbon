@@ -45,6 +45,7 @@ Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 @examples
 biomass2c(4, method="IPCC2", c("conifer"), "temperate")
 biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
+@importFrom utils globalVariables
 @export
 }
 \author{

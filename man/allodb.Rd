@@ -14,6 +14,8 @@ Height (in m). Height is optional, but df must include this column.}
 coordinates for each tree of longitude and latitude}
 
 \item{output.all}{if TRUE outputs all data from processing, else just outputs carbon figures}
+
+\item{new.eqtable}{a subset or extension of the allometric equation table. Create with allodb::new_equations}
 }
 \value{
 your dataframe back with added columns of carbon estimates. If

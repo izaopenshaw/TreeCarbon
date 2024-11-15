@@ -7,8 +7,7 @@
 
 # species specific sd for nsg?
 
-# fall back species code: MX
-lookup_df[lookup_df$short == "MX", ]
+# fall back species code: MX :: lookup_df[lookup_df$short == "MX", ]
 
 ############ Tariff number from volume and tree basal area (FC Eq 1) ############
 #'
@@ -400,7 +399,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.05) {
   dbh <- round(dbh)
   if (dbh < 500 & dbh > 6.5) {
     #utils::data(stemvol, envir = environment())
-    cf <- stemvol[stemvol$dbh..cm. == dbh, ]$X
+    cf <- stemvol$X[stemvol$dbh..cm. == dbh]
 
   } else if (dbh < 6.5){
     warning("dbh is less than 6.5 cm, multiplication factor is not specified")
@@ -762,7 +761,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
   n <- length(biomass)
   CVF <- conf <- rep(NA, n)
 
-  utils::globalVariables(c("CVF_df"))
+  #utils::globalVariables(c("CVF_df"))
 
   # Retrieve CVF and conf values using the lookup table
   for (i in seq_len(n)) {
@@ -1087,7 +1086,7 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sig_dbh=10, sig_h=1)
+#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", sig_dbh=10, sig_h=1)
 #' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sig_dbh=10, sig_h=1)
 #' @export
 #'

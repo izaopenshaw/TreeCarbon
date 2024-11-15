@@ -43,7 +43,7 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="All", sig_dbh=10, sig_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", sig_dbh=10, sig_h=1)
 fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sig_dbh=10, sig_h=1)
 }
 \references{

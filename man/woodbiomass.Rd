@@ -4,7 +4,7 @@
 \alias{woodbiomass}
 \title{Forestry commission wood biomass}
 \usage{
-woodbiomass(treevol, nsg, sig_treevol = NA, sig_nsg = NA)
+woodbiomass(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391)
 }
 \arguments{
 \item{treevol}{tree volume in metres cubed}
