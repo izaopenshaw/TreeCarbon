@@ -5,6 +5,8 @@
 # search not found and check that intermediate species are found in lookup_df
 # check biomass2c that error is confidence percentage by checking references
 
+# species specific sd for nsg?
+
 # fall back species code: MX
 lookup_df[lookup_df$short == "MX", ]
 
@@ -739,6 +741,7 @@ ctoco2e <- function(carbon) {
 #'  @examples
 #'  biomass2c(4, method="IPCC2", c("conifer"), "temperate")
 #'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
+#'  @importFrom utils globalVariables
 #'  @export
 #'
 biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = NA) {
@@ -758,6 +761,8 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
 
   n <- length(biomass)
   CVF <- conf <- rep(NA, n)
+
+  utils::globalVariables(c("CVF_df"))
 
   # Retrieve CVF and conf values using the lookup table
   for (i in seq_len(n)) {
@@ -1351,11 +1356,11 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 #         or a matrix of coordinates for each tree
 # ==== Optional Inputs:
 # output.all: if TRUE outputs the coefficients of the model, a*DBH^b+e {e ~ N(0,sigma^2}
-# new.eqtable: a subset or extension of the allometric equation table. Create with new_equations
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
 #' @param df dataframe containing columns; Genus, Species, DBH (in cm),
 #' Height (in m). Height is optional, but df must include this column.
+#' @param new.eqtable a subset or extension of the allometric equation table. Create with allodb::new_equations
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
 #' @param output.all if TRUE outputs all data from processing, else just outputs carbon figures

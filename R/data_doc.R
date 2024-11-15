@@ -94,11 +94,12 @@
 #'   \item{Root}{Root type code}
 #'   \item{notes}{Additional notes}
 #'   \item{General.genus}{If the entry is for a genus and not species level}
-#'   \item{General.for.classification}{If the entry is for broafleaf or confier}
+#'   \item{General.type}{If the entry is for broafleaf or confier}
 #'   \item{Genus}{Genus of the species}
-#'   \item{Species1}{First species classification}
-#'   \item{Species2}{Second species classification (if applicable)}
-#'   \item{Species3}{Third species classification (if applicable)}
+#'   \item{Species}{The second term in the bionomial, species}
+#'   \item{NSG_sd}{Wood density standard deviation calculated from Zanne et al 2009} # ** TODOs
+#'   \item{MeanWD}{Wood density from the BIOMASS package}
+#'   \item{sdWD}{Wood density standard deviation from the BIOMASS package}
 #' }
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
 "lookup_df"
