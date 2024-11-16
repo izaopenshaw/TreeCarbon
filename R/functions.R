@@ -1273,24 +1273,35 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' Tree Dry Weight" (1968)
 #'
 #' @importFrom utils data
+#' @examples
+#' bunce("OK", 24)
+#' bunce(c("OK","OK"), c(24,20))
 #' @export
 #'
 bunce <- function(spcode, dbh){
+  if (any(!is.numeric(dbh) | dbh < 0))
+    stop("Argument 'dbh' must be numeric and non-negative")
 
-  if(!is.numeric(dbh) || dbh < 0)stop("Argument 'dbh' must be numeric and non-negative")
-
-  data("buncedf", envir = environment())
+  #data("buncedf", envir = environment())
   coeffs <- buncedf[buncedf$spcode == spcode,]
 
-  if(nrow(coeffs)==0){warning("The species code, 'spcode' is not found in
-                        data(buncedf), therefore, the combined coefficients
-                           will be used")}
+  if (nrow(coeffs) == 0) {
+    warning("The species code, 'spcode' is not found in data(buncedf),
+             therefore, the combined coefficients will be used")
+  }
 
-  biomass <- coeffs$a + coeffs$b*log(pi*dbh)
+  calculate_biomass <- function(dbh_value) {
+    biomass <- coeffs$a + coeffs$b * log(pi * dbh_value)
+    return(exp(biomass))
+  }
 
-  return(exp(biomass))
+  # Apply function to each dbh if it's a vector or single value
+  if (length(dbh) > 1) {
+    return(sapply(dbh, calculate_biomass))
+  } else {
+    return(calculate_biomass(dbh))
+  }
 }
-
 
 #=============== Calculate Carbon using Biomass ==========================
 #'
