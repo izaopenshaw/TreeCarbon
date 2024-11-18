@@ -1278,29 +1278,49 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' bunce(c("OK","OK"), c(24,20))
 #' @export
 #'
-bunce <- function(spcode, dbh){
+bunce <- function(spcode, dbh) {
+  # Ensure all DBH values are numeric and non-negative
   if (any(!is.numeric(dbh) | dbh < 0))
     stop("Argument 'dbh' must be numeric and non-negative")
 
-  #data("buncedf", envir = environment())
-  coeffs <- buncedf[buncedf$spcode == spcode,]
-
-  if (nrow(coeffs) == 0) {
-    warning("The species code, 'spcode' is not found in data(buncedf),
-             therefore, the combined coefficients will be used")
+  # Ensure spcode and dbh are of the same length or allow recycling
+  if (length(spcode) != length(dbh)) {
+    if (length(spcode) == 1) {
+      spcode <- rep(spcode, length(dbh))
+    } else if (length(dbh) == 1) {
+      dbh <- rep(dbh, length(spcode))
+    } else {
+      stop("'spcode' and 'dbh' must be of the same length or one of them must have length 1")
+    }
   }
 
-  calculate_biomass <- function(dbh_value) {
+  calculate_biomass <- function(spcodes, dbh_value) {
+    # Extract coefficients for the given species code
+    coeffs <- buncedf[buncedf$spcode == spcodes,]
+    used_spcode <- spcodes  # Default to the input spcode
+
+    # Use combined coefficients if species code is not found
+    if (nrow(coeffs) == 0) {
+      # warning(spcodes, " not found in data (buncedf), combined coefficients will be used")
+      coeffs <- buncedf[buncedf$spcode == "XB",]
+      used_spcode <- "XB"  # Indicate fallback code
+    }
+
+    # Calculate biomass
     biomass <- coeffs$a + coeffs$b * log(pi * dbh_value)
-    return(exp(biomass))
+    return(list(biomass = exp(biomass), spcode = used_spcode))
   }
 
-  # Apply function to each dbh if it's a vector or single value
-  if (length(dbh) > 1) {
-    return(sapply(dbh, calculate_biomass))
-  } else {
-    return(calculate_biomass(dbh))
-  }
+  # Apply the calculation over all inputs
+  results <- mapply(calculate_biomass, spcode, dbh, SIMPLIFY = FALSE)
+
+  # Separate the biomass and species code into a named list
+  biomass <- sapply(results, function(x) x$biomass)
+  spcodes_used <- sapply(results, function(x) x$spcode)
+
+  # Return biomass with species codes as names
+  names(biomass) <- spcodes_used
+  return(biomass)
 }
 
 #=============== Calculate Carbon using Biomass ==========================
