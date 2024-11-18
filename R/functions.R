@@ -975,9 +975,6 @@ lookspcode <- function(name, type = NA, returnv = "all") {
         r[i, ] <- rec[1, ]
       } else {
         spcode <- switch(returnv, short = rec$short, single = rec$single, stand = rec$stand, root = rec$Root)
-        r[i, "spname"] <- name[i]
-        r[i, "spcode"] <- spcode
-        r[i, "matchtype"] <- match_type
       }
     }
     }
