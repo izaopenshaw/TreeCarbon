@@ -29,7 +29,7 @@
 #' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, sig_dbh = 1)
 #' @export
 #'
-tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.05){
+tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025){
   if (!is.numeric(vol) || !is.numeric(dbh)) { #if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
     stop("vol and dbh must be non-negative numeric values")  #  stop("vol and dbh must be non-negative numeric values")
   }
@@ -86,7 +86,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.05)
 #' conifer_tariff("SP", 74, 24, 5, 5)
 #' @export
 #'
-conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.05) {
+conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.025) {
   if(any(!is.numeric(height)))stop("height must be numeric") else if(any(height<=0))stop("height must be positive")
   if(any(!is.numeric(dbh)))   stop("dbh must be numeric") else if(any(dbh<=0))   stop("dbh must be positive")
 
@@ -144,7 +144,7 @@ conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a
 #' broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, sig_dbh = 5, sig_h = 1)
 #' @export
 #'
-broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.05) {
+broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.025) {
   if(any(!is.numeric(height)))stop("height must be numeric")
   if(any(!is.numeric(dbh)))   stop("dbh must be numeric")
   if(any(height<=0))stop("height must be positive")
@@ -203,7 +203,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf
 #' conifer_tariff(spcode=c("SP", "NS", "OK"), c(74, 25,2), c(74, 25,2), 5, 5)
 #' @export
 #'
-stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.05) {
+stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.025) {
   if(any(!is.character(spcode)))stop("spcode must be a character")
   if(any(!is.numeric(height)))stop("height must be numeric")
   if(any(height<=0))stop("height must be positive")
@@ -261,7 +261,7 @@ stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.05) {
 #' tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), sig_h = 1, sig_dbh = 1)
 #' @export
 #'
-tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.05) {
+tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.025) {
 
   # Ensure all inputs have the same length
   n <- length(height)
@@ -333,7 +333,7 @@ tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a =
 #' merchtreevol(dbh = 24, tariff = 24, sig_dbh = 1, sig_tariff = 1)
 #' @export
 #'
-merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.05) {
+merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.025) {
   if(anyNA(tariff) || !is.numeric(tariff))
     stop("tariff must be numeric")
   if(!is.numeric(dbh) || any(dbh<=0))
@@ -390,7 +390,7 @@ merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.05
 #' treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
 #' @export
 #'
-treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.05) {
+treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.025) {
 
   if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric and positive")
 #  if(!is.numeric(mtreevol) || any(mtreevol<=0))stop("mtreevol must be numeric and positive") # todo
@@ -514,7 +514,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
 #' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), sig_dbh = 1)
 #' @export
 #'
-crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.05) {
+crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
 
   # Check inputs
   if (length(spcode) != length(dbh)) stop("Length of 'spcode' and 'dbh' must be the same")
@@ -603,7 +603,7 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.05) {
 #' rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 #' @export
 #'
-rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.05) {
+rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
 
   # Initialise
   if (length(spcode) != length(dbh)) {
@@ -809,7 +809,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
 #' con_sap_seedling2C(50)
 #' @export
 #'
-con_sap_seedling2C <- function(heightincm, sig_h = NA, conf = 0.05){
+con_sap_seedling2C <- function(heightincm, sig_h = NA, conf = 0.025){
   #utils::data(seedlings_conifer, envir = environment())
 
   if(heightincm < 0 || anyNA(heightincm))stop("heightincm must be numeric and postive")
@@ -1089,7 +1089,7 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #'
 #'
 fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "temperate",
-                   returnv = "All", sig_dbh = 10, sig_h = 1, conf = 0.05, sig_nsg = 0.09413391){
+                   returnv = "All", sig_dbh = 10, sig_h = 1, conf = 0.025, sig_nsg = 0.09413391){
 
   # Check arguments
   if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
