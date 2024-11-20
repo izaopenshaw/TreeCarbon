@@ -10,12 +10,12 @@ biomass2c(biomass, method, type = NULL, biome = NULL, sig_biomass = NA)
 \item{biomass}{(usually kg or metric tonnes)}
 
 \item{method}{Method of calculating the carbon volatile fraction.
-Matthews1 - Simplest with the carbon volatile fraction, CVF = 50\% (Matthews, 1993)
-Matthews2 - CVF based on type (broadleaf or conifer)
-IPCC1 - CVF = 47.7\% (IPCC, 2006)
-IPCC2 - Lookup CVF by type and biome
-Thomas1 - CVF = 48.3\% and 95\% CI of 0.3\% (Thomas and Martin, 2012)
-Thomas2 - Lookup by type and biome}
+"Matthews1": Simplest with the carbon volatile fraction, CVF = 50\% (Matthews, 1993)
+"Matthews2": CVF based on type (broadleaf or conifer)
+"IPCC1": CVF = 47.7\% (IPCC, 2006)
+"IPCC2": Lookup CVF by type and biome
+"Thomas1": CVF = 48.3\% and 95\% CI of 0.3\% (Thomas and Martin, 2012)
+"Thomas2": Lookup by type and biome}
 
 \item{type}{broadleaf or conifer. Only required for method = 'Matthews2',
 'IPCC2' or 'Thomas'}

@@ -4,7 +4,7 @@
 \alias{merchtreevol}
 \title{Forestry merchantable volume}
 \usage{
-merchtreevol(dbh, tariff, sig_dbh = NA, sig_tariff = NA)
+merchtreevol(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.05)
 }
 \arguments{
 \item{dbh}{diameter at breast height in centimetres}
@@ -14,6 +14,9 @@ merchtreevol(dbh, tariff, sig_dbh = NA, sig_tariff = NA)
 \item{sig_dbh}{diameter at breast height sig (optional)}
 
 \item{sig_tariff}{tariff sigma (optional)}
+
+\item{conf_cf}{1 - the percentage confidence interval for conversion factor
+or the relative error of coefficients (default = 5\%)}
 }
 \value{
 volume in metres cubed and error if sig of variables inputted

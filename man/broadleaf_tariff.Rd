@@ -30,8 +30,8 @@ R data file, 'tariff_broaddf'.
 }
 \examples{
 broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-broadleaf_tariff(spcode = "OK", height = 25, dbh = 1.5, sig_dbh = 10, sig_h = 1)
-broadleaf_tariff(spcode = "OK", height = 24, dbh = 1.5, sig_dbh = 10, sig_h = 1)
+broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, sig_dbh = 5, sig_h = 1)
+broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, sig_dbh = 5, sig_h = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

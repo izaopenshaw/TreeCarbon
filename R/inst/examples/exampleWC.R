@@ -6,6 +6,20 @@
 #library(WoodlandCarbonCode)
 
 
+spcode = "OK"
+height = 25
+dbh = 15
+sig_dbh = 1 #to test
+sig_h = NA
+
+spcode = c("OK", "NA", "SP", "NA", "NA", "NA", "SP" , "SP")
+height = c(10,   NA,   NA,    10,   NA,   10,   10 , NA)
+dbh    = c(20,   NA,   NA,    NA,   10,   10,   NA, 10)
+
+tariffs(spcode, height, dbh, sig_h = sig_h, sig_dbh = sig_dbh)
+
+tariffs(c("SP","SP", "SP", "SP"), c(10,10,10,NA), c(20,20,20, 20), sig_h = 1, sig_dbh = 1)
+tariffs(c("SP","SP", "SP", "SP"), c(10,10,10,10), c(20,NA,20, 20), sig_h = 1, sig_dbh = 1)
 
 # Example tree metrics
 dbh    <- 74 # cm

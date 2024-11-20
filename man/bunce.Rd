@@ -17,6 +17,10 @@ biomass in kg
 \description{
 Calculates dry weight based on species and dbh
 }
+\examples{
+bunce("OK", 24)
+bunce(c("OK","OK"), c(24,20))
+}
 \references{
 Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of

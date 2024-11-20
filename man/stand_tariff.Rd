@@ -28,6 +28,7 @@ tariff number.
 stand_tariff("OK", height = 10)
 stand_tariff("OK", height = 10, sig_h = 1)
 stand_tariff(spcode = "AH", height = 10, sig_h = 0.5)
+conifer_tariff(spcode=c("SP", "NS", "OK"), c(74, 25,2), c(74, 25,2), 5, 5)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

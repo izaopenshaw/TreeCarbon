@@ -29,9 +29,9 @@ Use the estimated stand top height to calculate the stand
 tariff number.
 }
 \examples{
-tariffs("OK", 10, 20)
+tariffs("OK", height= 10, dbh = 20)
 tariffs("OK", 10, 20, sig_h = 1, sig_dbh = 1)
-tariffs("OK", height = 10, sig_h = 1)
+tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), sig_h = 1, sig_dbh = 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

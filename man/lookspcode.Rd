@@ -4,7 +4,7 @@
 \alias{lookspcode}
 \title{Lookup species code}
 \usage{
-lookspcode(name, type, returnv = "all")
+lookspcode(name, type = NA, returnv = "all")
 }
 \arguments{
 \item{name}{name of species}
@@ -20,8 +20,8 @@ Species code
 Function that looks up species codes for Woodland Carbon Code
 }
 \examples{
-lookspcode('Quercus robur', type = "broadleaf", returnv='short')
-lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"), "short")
+lookspcode(name='Quercus robur', type = "broadleaf", returnv='short')
+lookspcode(c("Scots pine", "Oak"), c("conifer", "NA"), "short")
 lookspcode(c("Scots pine", "Oak"), c("conifer", "broadleaf"))
 lookspcode(c('Quercus robur', 'Quercus') , type = c("broadleaf", "broadleaf"), returnv='short')
 }
