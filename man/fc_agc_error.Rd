@@ -13,7 +13,7 @@ fc_agc_error(
   returnv = "All",
   sig_dbh = 10,
   sig_h = 1,
-  conf = 0.05,
+  conf = 0.025,
   sig_nsg = 0.09413391
 )
 }

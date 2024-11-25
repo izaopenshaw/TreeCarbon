@@ -4,7 +4,7 @@
 \alias{conifer_tariff}
 \title{Conifer tree tariff number}
 \usage{
-conifer_tariff(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.05)
+conifer_tariff(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}

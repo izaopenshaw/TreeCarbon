@@ -4,7 +4,7 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.05)
+broadleaf_tariff(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}

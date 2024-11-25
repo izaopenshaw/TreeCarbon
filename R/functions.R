@@ -1,5 +1,6 @@
 ############## Functions file for Woodland Carbon Code ########################
 # TODO:
+# to find seedling function and add it to fc function
 # error for ctoco2e ?
 # todo error for nsg
 # search not found and check that intermediate species are found in lookup_df
@@ -9,7 +10,7 @@
 
 # fall back species code: MX :: lookup_df[lookup_df$short == "MX", ]
 
-############ Tariff number from volume and tree basal area (FC Eq 1) ############
+############# FC Tariff number from volume and tree basal area (WCC Eq 1) ############
 #'
 #' @title Tariff number from volume and basal area
 #' @description Using the sample tree’s basal area and volume to calculate the
@@ -63,7 +64,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025
   }
 }
 
-############# FC conifer tree tariff number (FC Eq 3) ############################
+############# FC conifer tree tariff number (WCC Eq 3) ############################
 #'
 #' @title Conifer tree tariff number
 #' @description Use dbh and tree height to calculate the tariff number of each
@@ -121,7 +122,7 @@ conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a
     }
 }
 
-############# FC broadleaf tree tariff number (FC Eq 2) ##########################
+############# FC broadleaf tree tariff number (WCC Eq 2) ##########################
 #'
 #' @title Carbon tariff number for broadleaf tree
 #' @description Use dbh and tree height to derive the tariff number of each
@@ -181,7 +182,7 @@ broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf
   }
 }
 
-############# FC tariff number by stand height (FC Eq 4) ################
+############# FC tariff number by stand height (WCC Eq 4) ################
 #'
 #' @title Tariff number by stand height
 #' @description Use the estimated stand top height to calculate the stand
@@ -239,7 +240,7 @@ stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.025) {
   }
 }
 
-############# FC tariff number by stand height (FC Eq 4) ################
+############# FC tariff number by stand height (WCC Eq 4) ################
 #' @title Tariff number by stand height
 #' @description Use the estimated stand top height to calculate the stand
 #' tariff number.
@@ -313,7 +314,7 @@ tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a =
 }
 
 
-############# FC tree merchantable volume (FC Eq 5) ################
+############# FC tree merchantable volume (WCC Eq 5) ################
 #'
 #' @title Forestry merchantable volume
 #' @description Use the tree tariff number and dbh to estimate the mean
@@ -492,7 +493,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
   return(list(woodbiomass = woodbio, error = error))
 }
 
-############# FC crown biomass (FC Eq 6 & 7) ################
+############# FC crown biomass (WCC Eq 6 & 7) ################
 #'
 #' @title Forestry commission crown biomass estimates
 #' @description  Function to find crown biomass (composed of branches,
@@ -584,7 +585,7 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
   return(results)
 }
 
-############# FC Root Biomass (FC Eq 8 & 9) ################
+############# FC Root Biomass (WCC Eq 8 & 9) ################
 #'
 #' @title Forestry commission root biomass estimates
 #' @description Function to calculate the root biomass depending on species and dbh
@@ -792,28 +793,31 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
   }
 }
 
-############# FC Conifer seedlings and saplings to carbon ################
+############# FC Seedlings and saplings to carbon ################
 #'
-#' @title Conifer seedlings and saplings to carbon
-#' @description todo*
+#' @title Seedlings and saplings to carbon
+#' @description Calculate the total carbon content of tree seedlings
+#' (below and above ground)
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param heightincm tree height in centimetres
 #' @param sig_h estimated measurement error of height
 #' @param conf relative error of coefficients in percentage
+#' @param type 'conifer' or 'broadleaf' tree
 #' @returns  carbon in tonnes
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' Carbon Assessment Protocol (v2. 0)." (2018)
+#' Carbon Assessment Protocol (v2. 0)." (2018) Table 6.1.2.
 #' @importFrom utils data head tail
 #' @examples
 #' con_sap_seedling2C(10)
 #' con_sap_seedling2C(50)
 #' @export
 #'
-con_sap_seedling2C <- function(heightincm, sig_h = NA, conf = 0.025){
+sap_seedling2C <- function(heightincm, type, sig_h = NA, conf = 0.05){
   #utils::data(seedlings_conifer, envir = environment())
 
   if(heightincm < 0 || anyNA(heightincm))stop("heightincm must be numeric and postive")
   if(heightincm > 1000)warning("not defined for seedlings over 10 m")
+  if(type < 0 || anyNA(heightincm))stop("heightincm must be numeric and postive")
 
   b <- utils::tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
   t <- utils::head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
@@ -821,46 +825,96 @@ con_sap_seedling2C <- function(heightincm, sig_h = NA, conf = 0.025){
   if ((nrow(b) == 0) |  (nrow (t) == 0)){
     NULL
   } else if (is.nan(rt)){
-    t$Carbon.kg
+    return(t$Carbon.kg)
   } else {
-    b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
+    carbon <- b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
+
+    if(!is.na(sig_h)){
+      # Partial derivatives
+      d_t <- (b$height.cm - heightincm) / (t$height.cm - b$height.cm)^2
+      d_b <- -(t$height.cm - heightincm) / (t$height.cm - b$height.cm)^2
+
+      # Propagate errors
+      sigma_rt <- sqrt((d_t * sig_h)^2 + (d_b * sig_h)^2)
+
+      sigma_carbon <- sqrt(((1 - rt) * conf * b$Carbon.kg)^2 +
+                             (rt * conf * t$Carbon.kg)^2 +
+                             (t$Carbon.kg - b$Carbon.kg * sigma_rt)^2)
+      return(c(carbon = carbon, error = sigma_carbon))
+    } else {
+      return(carbon)
+    }
   }
 }
 
-############# FC Broadleaf seedlings and saplings to carbon ################
+############# FC Seedlings and saplings to carbon ################
 #'
-#' @title Broadleaf seedlings and saplings to carbon
-#' @description todo*
+#' @title Seedlings and saplings to carbon
+#' @description Calculate the total carbon content of tree seedlings
+#' (below and above ground)
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param heightincm tree height in centimetres
-#' @returns  carbon in tonnes
+#' @param type 'conifer' or 'broadleaf'
+#' @param conf relative error or 1-percentage confidence interval on estimates
+#' @returns carbon in tonnes
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
 #' @importFrom utils data head tail
+#' @examples
+#' sap_seedling2C(50)
+#' sap_seedling2C(heightincm = 900, type = 'broadleaf', sig_height = 5)
 #' @export
 #'
-broad_sap_seedling2C <- function(heightincm){
+sap_seedling2C <- function(heightincm, type, sig_height = NA, conf = 0.05) {
   if(!is.numeric(heightincm) || heightincm < 0)stop("
   Argument 'heightincm' must be numeric and non-negative")
   if(heightincm > 1000)warning("Maximum for 'heightincm' is 1000cm")
   if(heightincm < 1)   warning("Minimum for 'heightincm' is 1cm")
 
-  #utils::data(seedlings_broad, envir = environment())
-  #get first and last
-  b <- utils::tail(seedlings_broad[seedlings_broad$height.cm <= heightincm,],1)
-  t <- utils::head(seedlings_broad[seedlings_broad$height.cm >= heightincm,],1)
-  rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
-  if ((nrow(b) == 0) |  (nrow (t) == 0)){
-    NULL
-  } else if (is.nan(rt)){
-    t$Carbon.kg
+  if(type == "broadleaf"){
+    data <- seedlings_broad
+  } else if(type == "conifer"){
+    data <- seedlings_conifer
   } else {
-    b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
+    stop('define type as broadleaf or conifer.')
+  }
+
+  # Find the bounding rows for interpolation
+  lower_bound <- utils::tail(data[data$height.cm <= heightincm, ], 1)
+  upper_bound <- utils::head(data[data$height.cm >= heightincm, ], 1)
+
+  # If heightincm matches exactly a row in data
+  if (lower_bound$height.cm == upper_bound$height.cm) {
+    carbon_value <- lower_bound$Carbon.kg
+    if(is.na(sig_height)){
+      return(carbon_value)
+    } else {
+      carbon_sd <- conf * carbon_value
+      return(list(carbon = carbon_value, sd = carbon_sd))
+    }
+  }
+
+  # Perform linear interpolation if within bounds
+  if (nrow(lower_bound) == 1 && nrow(upper_bound) == 1) {
+    height_diff <- upper_bound$height.cm - lower_bound$height.cm
+    carbon_diff <- upper_bound$Carbon.kg - lower_bound$Carbon.kg
+    proportion <- (heightincm - lower_bound$height.cm) / height_diff
+    interpolated_carbon <- lower_bound$Carbon.kg + proportion * carbon_diff
+
+
+   if(!is.na(sig_height)) {
+    interpolated_sd <- sqrt((conf * interpolated_carbon)^2 +
+                       ((carbon_diff / height_diff) * sig_height)^2)
+
+    return(list(carbon = interpolated_carbon, sd = interpolated_sd))
+   } else {
+    return(interpolated_carbon)
+  }
   }
 }
 
-############# Lookup Species Code ################
+############# FC Lookup Species Code ################
 #'
 #' @title Lookup species code
 #' @description  Function that looks up species codes for Woodland Carbon Code
@@ -955,7 +1009,7 @@ lookspcode <- function(name, type = NA, returnv = "all") {
   return(result_df)
 }
 
-############# Above Ground Carbon ################
+############# FC Above Ground Carbon ################
 #'
 #' @title Calculate above ground carbon
 #' @description  Function that inputs tree species code, dbh, height and method
@@ -1139,23 +1193,30 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
       next
     }
 
-    # Get tariff number depending on broadleaf or conifer
-    tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], sig_h = sig_h, sig_dbh = sig_dbh, conf_a = conf)
+    # If height less than 6.5 use sapling model
+    if(height < 6.5){
+      carbon <- sap_seedling2C(heightincm = height*100, type, sig_h = sig_h, conf = conf)
+      r$AGC_t[i] <- carbon$carbon
+      r$sig_AGC[i] <- carbon$sd
+    } else {
+      # Get tariff number depending on broadleaf or conifer
+      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], sig_h = sig_h, sig_dbh = sig_dbh, conf_a = conf)
 
-    if (length(tariff) == 0) {
-      warning("Error in", type, "_tariff function at index: ", i)
+      if (length(tariff) == 0) {
+        warning("Error in", type, "_tariff function at index: ", i)
+      }
+
+      # Calculate volumes and biomass
+      mercvol <- merchtreevol(dbh[i], tariff$tariff, sig_dbh, as.numeric(tariff[2]), conf) # Merchantable tree volume
+      stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$error, conf)         # Stem volume
+      woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$error, sig_nsg)   # Stem Biomass
+      crownbio <- crownbiomass(rec$Crown, dbh[i], sig_dbh, conf)    # Crown Biomass
+      AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
+      sig_AGB <- sqrt(woodbio$error^2 + crownbio$error^2)
+      AGC <- biomass2c(AGB, method=method, type, biome=biome, sig_biomass = sig_AGB) # Above ground Carbon
+      r$AGC_t[i] <- AGC$AGC
+      r$sig_AGC[i] <- AGC$sig_AGC
     }
-
-    # Calculate volumes and biomass
-    mercvol <- merchtreevol(dbh[i], tariff$tariff, sig_dbh, as.numeric(tariff[2]), conf) # Merchantable tree volume
-    stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$error, conf)         # Stem volume
-    woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$error, sig_nsg)   # Stem Biomass
-    crownbio <- crownbiomass(rec$Crown, dbh[i], sig_dbh, conf)    # Crown Biomass
-    AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
-    sig_AGB <- sqrt(woodbio$error^2 + crownbio$error^2)
-    AGC <- biomass2c(AGB, method=method, type, biome=biome, sig_biomass = sig_AGB) # Above ground Carbon
-    r$AGC_t[i] <- AGC$AGC
-    r$sig_AGC[i] <- AGC$sig_AGC
 
     if(returnv == "All"){
       r$spcode[i] <- spcode[i]
@@ -1163,21 +1224,24 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
       r$dbh[i]    <- dbh[i]
       r$height[i] <- height[i]
       r$NSG[i] <- rec$NSG
-      r$tariff[i] <- tariff$tariff
-      r$sig_tariff[i] <- tariff$error
-      r$mercvol_m.3[i] <- mercvol$volume
-      r$sig_mercvol[i] <- mercvol$error
-      r$stemvol_m.3[i] <- stemvol$stemvolume
-      r$sig_stemvol[i] <- stemvol$error
-      r$stembiomass_t[i] <- woodbio$woodbiomass
-      r$sig_stembiomass[i] <- woodbio$error
-      r$crownbiomass_t[i] <- crownbio$biomass
-      r$sig_crownbiomass[i] <- crownbio$error
 
-      # Root Biomass
-      rootbio <- rootbiomass(rec$Root, dbh[i], sig_dbh)
-      r$rootbiomass_t[i] <- rootbio$rootbiomass
-      r$sig_rootbiomass[i] <- rootbio$error
+      if(height >= 6.5){
+        r$tariff[i] <- tariff$tariff
+        r$sig_tariff[i] <- tariff$error
+        r$mercvol_m.3[i] <- mercvol$volume
+        r$sig_mercvol[i] <- mercvol$error
+        r$stemvol_m.3[i] <- stemvol$stemvolume
+        r$sig_stemvol[i] <- stemvol$error
+        r$stembiomass_t[i] <- woodbio$woodbiomass
+        r$sig_stembiomass[i] <- woodbio$error
+        r$crownbiomass_t[i] <- crownbio$biomass
+        r$sig_crownbiomass[i] <- crownbio$error
+
+        # Root Biomass
+        rootbio <- rootbiomass(rec$Root, dbh[i], sig_dbh)
+        r$rootbiomass_t[i] <- rootbio$rootbiomass
+        r$sig_rootbiomass[i] <- rootbio$error
+      }
     }
   }
   return(r)
@@ -1226,7 +1290,7 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 }
 #AGB = 0.0673 * (WD * H * D^2)^0.976
 
-######################### Bunce Eq ########################
+############# Bunce Equation carbon calculation ########################
 #'
 #' @title Bunce biomass equation
 #' @description Calculates dry weight based on species and dbh
@@ -1289,7 +1353,7 @@ bunce <- function(spcode, dbh) {
   return(biomass)
 }
 
-#=============== Calculate Carbon using Biomass ==========================
+############# BIOMASS Package carbon calculation ==========================
 #'
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
@@ -1371,7 +1435,7 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
   return(df)
 }
 
-#=============== Calculate Carbon using allodb ==========================
+############# allodb Package carbon calculation ==========================
 # ==== Inputs:
 # df: data frame containing columns; DBH (in cm), Genus_corrected, Species_corrected (from output of biomass function)
 # coords: either the coordinates of the site, a vector of longitude and latitude

@@ -4,7 +4,7 @@
 \alias{crownbiomass}
 \title{Forestry commission crown biomass estimates}
 \usage{
-crownbiomass(spcode, dbh, sig_dbh = NA, conf = 0.05)
+crownbiomass(spcode, dbh, sig_dbh = NA, conf = 0.025)
 }
 \arguments{
 \item{spcode}{Crown biomass species code, crown_biomasdf$Code or if not

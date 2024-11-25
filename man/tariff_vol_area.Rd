@@ -4,7 +4,7 @@
 \alias{tariff_vol_area}
 \title{Tariff number from volume and basal area}
 \usage{
-tariff_vol_area(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.05)
+tariff_vol_area(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025)
 }
 \arguments{
 \item{vol}{tree volume in metres cubed}
