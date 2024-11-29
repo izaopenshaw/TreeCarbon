@@ -1,6 +1,5 @@
 ############## Functions file for Woodland Carbon Code ########################
 # TODO:
-# to find seedling function and add it to fc function
 # error for ctoco2e ?
 # todo error for nsg
 # search not found and check that intermediate species are found in lookup_df
@@ -19,18 +18,17 @@
 #' @param vol tree volume in metres cubed
 #' @param dbh diameter at breast height in centimetres
 #' @param sig_vol sigma for tree volume (optional)
-#' @param sig_dbh sigma for diameter at breast height (optional)
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
+#' @param re_dbh relative measurement error for diameter at breast height (optional)
+#' @param re_a  relative error of coefficients (default = 2.5%)
 #' @returns  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
 #' @examples
-#' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, sig_dbh = 1)
+#' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, re_dbh = 1)
 #' @export
 #'
-tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025){
+tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = NA, re_a = 0.025){
   if (!is.numeric(vol) || !is.numeric(dbh)) { #if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
     stop("vol and dbh must be non-negative numeric values")  #  stop("vol and dbh must be non-negative numeric values")
   }
@@ -45,18 +43,18 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025
   a1 <- (vol - const_vol) / (ba - const_ba)
   tariff <- (coef_a1 * a1) + const_tariff
 
-  if(!anyNA(sig_vol) || !anyNA(sig_dbh)){
+  if(!anyNA(sig_vol) || !anyNA(re_dbh)){
     if (any(sig_vol < 0) || !is.numeric(sig_vol)) {stop("sigm_vol must be non-negative numeric")}
-    if (any(sig_dbh < 0) || !is.numeric(sig_dbh)) {stop("sig_dbh must be non-negative numeric")}
+    if (any(re_dbh < 0) || !is.numeric(re_dbh)) {stop("re_dbh must be non-negative numeric")}
 
-    sig_ba <- (pi * 2 * dbh / 40000) * sig_dbh
+    sig_ba <- (pi * 2 * dbh / 40000) * re_dbh
     sig_a1 <- a1 * sqrt(
       (sig_vol / (vol - const_vol))^2 +         # Error from vol
         (sig_ba / (ba - const_ba))^2 +            # Error from ba
-        (conf_a * const_vol / (vol - const_vol))^2 +   # Error from const_vol
-        (conf_a * const_ba / (ba - const_ba))^2        # Error from const_ba
+        (re_a * const_vol / (vol - const_vol))^2 +   # Error from const_vol
+        (re_a * const_ba / (ba - const_ba))^2        # Error from const_ba
     )
-    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * conf_a * coef_a1)^2)
+    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re_a * coef_a1)^2)
 
     return(list(tariff=tariff, sigma_tariff=sig_t))
   } else {
@@ -74,10 +72,9 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025
 #' @param height tree height in metres
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode species code (single)
-#' @param sig_h uncertainty in height
-#' @param sig_dbh uncertainty in dbh
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
+#' @param re_h relative error of height measurement (optional)
+#' @param re_dbh relative error for diameter at breast height (optional)
+#' @param re_a  relative error of coefficients (default = 2.5%)
 #' @returns  tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -87,12 +84,12 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, sig_dbh = NA, conf_a = 0.025
 #' conifer_tariff("SP", 74, 24, 5, 5)
 #' @export
 #'
-conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.025) {
+conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025) {
   if(any(!is.numeric(height)))stop("height must be numeric") else if(any(height<=0))stop("height must be positive")
   if(any(!is.numeric(dbh)))   stop("dbh must be numeric") else if(any(dbh<=0))   stop("dbh must be positive")
 
   if (!(length(spcode) == length(height) && length(height) == length(dbh))) {
-    stop("All input vectors (spcode, height, dbh, sig_h, sig_dbh) must have the same length.")
+    stop("All input vectors (spcode, height, dbh, re_h, re_dbh) must have the same length.")
   }
 
     tc <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode, ]
@@ -109,12 +106,12 @@ conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a
 
     tariff <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
 
-    if(!is.na(sig_dbh) || !is.na(sig_h)){
-      if(!is.numeric(sig_dbh) || any(sig_dbh<0))stop("must provide a numeric and positive sig_dbh with sig_h")
-      if(!is.numeric(sig_h) || any(sig_h<0))stop("must provide a numeric and positive sig_h with sig_dbh")
+    if(!is.na(re_dbh) || !is.na(re_h)){
+      if(!is.numeric(re_dbh) || any(re_dbh<0))stop("must provide a numeric and positive re_dbh with re_h")
+      if(!is.numeric(re_h) || any(re_h<0))stop("must provide a numeric and positive re_h with re_dbh")
 
-      error <- sqrt(tc$a1*conf_a^2 + error_product(tc$a2, tc$a2*conf_a, height, sig_h)
-                      + error_product(tc$a3, tc$a3*conf_a, dbh, sig_dbh))
+      error <- sqrt(tc$a1*re_a^2 + error_product(tc$a2, tc$a2*re_a, height, re_h)
+                      + error_product(tc$a3, tc$a3*re_a, dbh, re_dbh))
 
       return(data.frame(tariff = tariff, error = error))
       } else {
@@ -132,20 +129,19 @@ conifer_tariff <- function(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a
 #' @param height tree height in meters
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode species code (single)
-#' @param sig_h sigma for tree height (optional)
-#' @param sig_dbh sigma for diameter at breast height (optional)
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
+#' @param re_h relative error of height measurement (optional)
+#' @param re_dbh relative error for DBH/percentage measurement error (optional)
+#' @param re_a relative error of coefficients (default = 2.5%)
 #' @returns  tariff number and error if sigma of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
 #' @importFrom utils data
 #' @examples broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-#' broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, sig_dbh = 5, sig_h = 1)
-#' broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, sig_dbh = 5, sig_h = 1)
+#' broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, re_dbh = 5, re_h = 1)
+#' broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, re_dbh = 5, re_h = 1)
 #' @export
 #'
-broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf_a = 0.025) {
+broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a = 0.025) {
   if(any(!is.numeric(height)))stop("height must be numeric")
   if(any(!is.numeric(dbh)))   stop("dbh must be numeric")
   if(any(height<=0))stop("height must be positive")
@@ -167,14 +163,14 @@ broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf
 
   tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
 
-  if(!is.na(sig_dbh) || !is.na(sig_h)){
-    if(!is.numeric(sig_dbh) || any(sig_dbh<0))stop("must provide a numeric and positive sig_dbh with sig_h")
-    if(!is.numeric(sig_h) || any(sig_h<0))stop("must provide a numeric and positive sig_h with sig_dbh")
+  if(!is.na(re_dbh) || !is.na(re_h)){
+    if(!is.numeric(re_dbh) || any(re_dbh<0))stop("must provide a numeric and positive re_dbh with re_h")
+    if(!is.numeric(re_h) || any(re_h<0))stop("must provide a numeric and positive re_h with re_dbh")
 
-    error <- sqrt((conf_a*tb$a1)^2 +
-                error_product(tb$a3, conf_a*tb$a3, dbh, sig_dbh) +
-                error_product(tb$a2, conf_a*tb$a2, height, sig_h) +
-                error_product(tb$a4, conf_a*tb$a4, dbh, sig_dbh, height, sig_h)
+    error <- sqrt((re_a*tb$a1)^2 +
+                error_product(tb$a3, re_a*tb$a3, dbh, re_dbh) +
+                error_product(tb$a2, re_a*tb$a2, height, re_h) +
+                error_product(tb$a4, re_a*tb$a4, dbh, re_dbh, height, re_h)
                 )
     return(data.frame(tariff = tariff, error = error))
   } else {
@@ -190,21 +186,20 @@ broadleaf_tariff <- function(spcode, height, dbh, sig_dbh = NA, sig_h = NA, conf
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in metres
 #' @param spcode species code
-#' @param sig_h sigma for height (optional)
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
-#' @returns  either tariff number or if sig_h is provided, then returns a list
+#' @param re_h relative error of height measurement (optional)
+#' @param re_a relative error of coefficients (default = 2.5%)
+#' @returns  either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and uncertainty
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
 #' stand_tariff("OK", height = 10)
-#' stand_tariff("OK", height = 10, sig_h = 1)
-#' stand_tariff(spcode = "AH", height = 10, sig_h = 0.5)
+#' stand_tariff("OK", height = 10, re_h = 1)
+#' stand_tariff(spcode = "AH", height = 10, re_h = 0.5)
 #' conifer_tariff(spcode=c("SP", "NS", "OK"), c(74, 25,2), c(74, 25,2), 5, 5)
 #' @export
 #'
-stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.025) {
+stand_tariff <- function(spcode, height, re_h = NA, re_a=0.025) {
   if(any(!is.character(spcode)))stop("spcode must be a character")
   if(any(!is.numeric(height)))stop("height must be numeric")
   if(any(height<=0))stop("height must be positive")
@@ -224,14 +219,14 @@ stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.025) {
 
   tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * height^2)
 
-  if(!anyNA(sig_h)){
-    if(!is.numeric(sig_h) || any(sig_h<0))stop("sig_h must be numeric and positive")
+  if(!anyNA(re_h)){
+    if(!is.numeric(re_h) || any(re_h<0))stop("re_h must be numeric and positive")
 
-    error <- sqrt(rec$a1 * conf_a^2 +
-                    error_product(rec$a2, rec$a2 * conf_a, height, sig_h))
+    error <- sqrt(rec$a1 * re_a^2 +
+                    error_product(rec$a2, rec$a2 * re_a, height, re_h))
 
     if (rec$a3 != 0) { # Include the quadratic term if rec$a3 is nonzero
-      error <- sqrt(error^2 + error_product(rec$a3, rec$a3 * conf_a, height, sig_h))
+      error <- sqrt(error^2 + error_product(rec$a3, rec$a3 * re_a, height, re_h))
     }
 
     return(data.frame(tariff = tariff, error = error))
@@ -247,31 +242,30 @@ stand_tariff <- function(spcode, height, sig_h = NA, conf_a=0.025) {
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param spcode species code (short)
 #' @param height tree height in metres
-#' @param sig_h sigma for height (optional)
+#' @param re_h relative error of height measurement (optional)
 #' @param dbh diameter at breast height in centimetres
-#' @param sig_dbh sigma for diameter at breast height (optional)
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
-#' @returns either tariff number or if sig_h is provided, then returns a list
+#' @param re_dbh relative error for diameter at breast height (optional)
+#' @param re_a relative error of coefficients (default = 2.5%)
+#' @returns either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and uncertainty
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
 #' tariffs("OK", height= 10, dbh = 20)
-#' tariffs("OK", 10, 20, sig_h = 1, sig_dbh = 1)
-#' tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), sig_h = 1, sig_dbh = 1)
+#' tariffs("OK", 10, 20, re_h = 1, re_dbh = 1)
+#' tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), re_h = 1, re_dbh = 1)
 #' @export
 #'
-tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.025) {
+tariffs <- function(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.025) {
 
   # Ensure all inputs have the same length
   n <- length(height)
   if (!(length(spcode) == n && length(dbh) == n || is.na(dbh))) {
-    stop("All input vectors (spcode, height, dbh, sig_h, sig_dbh) must have the same length.")
+    stop("All input vectors (spcode, height, dbh, re_h, re_dbh) must have the same length.")
   }
   # Prepare output lists
   tariffs_result <- rep(NA, n)
-  if(!anyNA(sig_h)){errors_result <- rep(NA, n)}
+  if(!anyNA(re_h)){errors_result <- rep(NA, n)}
 
   # Loop over each tree to calculate tariffs
   for (i in 1:n) {
@@ -289,11 +283,11 @@ tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a =
       } else {
         # Call the appropriate tariff function
         if (is.na(dbh[i])) {
-          result <- stand_tariff(spcode[i], height[i], sig_h, conf_a)
+          result <- stand_tariff(spcode[i], height[i], re_h, re_a)
         } else if (type == "conifer") {
-          result <- conifer_tariff(spcode[i], height[i], dbh[i], sig_h, sig_dbh, conf_a)
+          result <- conifer_tariff(spcode[i], height[i], dbh[i], re_h, re_dbh, re_a)
         } else if (type == "broadleaf") {
-          result <- broadleaf_tariff(spcode[i], height[i], dbh[i], sig_h, sig_dbh, conf_a)
+          result <- broadleaf_tariff(spcode[i], height[i], dbh[i], re_h, re_dbh, re_a)
         } else {
           warning("Unrecognized species type for spcode ", spcode[i], ".")
         }
@@ -306,7 +300,7 @@ tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a =
         errors_result[i]  <- as.numeric(result[2])
        }
     }
-  if (anyNA(sig_dbh) || anyNA(sig_h)) {
+  if (anyNA(re_dbh) || anyNA(re_h)) {
     return(tariffs_result)
   } else {
     return(data.frame(tariff = tariffs_result, error = errors_result))
@@ -323,18 +317,17 @@ tariffs <- function(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a =
 #' @param tariff tree or stand tariff number
 #' @param dbh diameter at breast height in centimetres
 #' @param sig_tariff tariff sigma (optional)
-#' @param sig_dbh diameter at breast height sig (optional)
-#' @param conf_cf 1 - the percentage confidence interval for conversion factor
-#' or the relative error of coefficients (default = 5%)
+#' @param re_dbh relative error for diameter at breast height (optional)
+#' @param re relative error of coefficients (default = 2.5%)
 #' @returns  volume in metres cubed and error if sig of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
 #' merchtreevol(dbh = 24, tariff = 24)
-#' merchtreevol(dbh = 24, tariff = 24, sig_dbh = 1, sig_tariff = 1)
+#' merchtreevol(dbh = 24, tariff = 24, re_dbh = 1, sig_tariff = 1)
 #' @export
 #'
-merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.025) {
+merchtreevol <- function(dbh, tariff, re_dbh = NA, sig_tariff = NA, re = 0.025) {
   if(anyNA(tariff) || !is.numeric(tariff))
     stop("tariff must be numeric")
   if(!is.numeric(dbh) || any(dbh<=0))
@@ -351,10 +344,10 @@ merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.02
   a1 <- (k3 * tariff) - (a2 * k4)
   vol <- a1 + (a2 * ba)
 
-  if(anyNA(sig_dbh)) {
+  if(anyNA(re_dbh)) {
     return(vol)
   } else {
-    sig_ba <- (pi * dbh / 20000) * sig_dbh
+    sig_ba <- (pi * dbh / 20000) * re_dbh
     sig_a2 <- 0.315049301 * sig_tariff
     sig_a1 <- sqrt(
       (0.0360541 - 0.315049301 * 0.118288)^2 * sig_tariff^2 +
@@ -380,8 +373,7 @@ merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.02
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param sig_mtreevol sigma for mtreevol (optional)
-#' @param conf_cf 1 - the percentage confidence interval for conversion factor
-#' or the relative error of coefficients (default = 5%)
+#' @param re_cf relative error of conversion factor (default = 2.5%)
 #' @returns  volume metres cubed or if sig_mtreevol is provided then additionally
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -391,7 +383,7 @@ merchtreevol <- function(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.02
 #' treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
 #' @export
 #'
-treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.025) {
+treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re_cf=0.025) {
 
   if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric and positive")
 #  if(!is.numeric(mtreevol) || any(mtreevol<=0))stop("mtreevol must be numeric and positive") # todo
@@ -402,7 +394,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.025) {
     cf <- stemvol$X[stemvol$dbh..cm. == dbh]
 
   } else if (dbh < 6.5){
-    warning("dbh is less than 6.5 cm, multiplication factor is not specified")
+    warning(paste(dbh, "dbh is less than 6.5 cm, multiplication factor is not specified"))
     cf <- 1
   } else if (dbh > 500){
     warning("dbh is above 5 m")
@@ -414,7 +406,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, conf_cf=0.025) {
     return(stemvol)
   } else {
     if(!is.numeric(sig_mtreevol) || any(sig_mtreevol<=0))stop("sig_mtreevol must be numeric and positive")
-    error <- error_product(cf, cf*conf_cf, mtreevol, sig_mtreevol)
+    error <- error_product(cf, cf*re_cf, mtreevol, sig_mtreevol)
 
     result <- list(stemvolume = stemvol, error = error)
     return(result)
@@ -502,28 +494,27 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode Crown biomass species code, crown_biomasdf$Code or if not
 #' defined for species, lookup_df$short to find relating lookup_df$Crown
-#' @param sig_dbh dbh sigma
-#' @param conf one minus percentage confidence or relative error for
-#' coefficients of the equation
+#' @param re_dbh relative error for diameter at breast height (optional)
+#' @param re relative error of coefficients (default = 2.5%)
 #' @returns  biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
 #' @importFrom utils data
 #' @examples
 #' crownbiomass("CBSP", 25)
-#' crownbiomass("CBOK", dbh = 25, sig_dbh = 10)
-#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), sig_dbh = 1)
+#' crownbiomass("CBOK", dbh = 25, re_dbh = 10)
+#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), re_dbh = 1)
 #' @export
 #'
-crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
+crownbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
 
   # Check inputs
   if (length(spcode) != length(dbh)) stop("Length of 'spcode' and 'dbh' must be the same")
 
   if (length(dbh) > 1){
-    if (!anyNA(sig_dbh)) {
-      if (length(sig_dbh) != 1 && length(sig_dbh) != length(dbh)) {
-        stop("Length of 'sig_dbh' must be either 1 or match the length of 'dbh'")
+    if (!anyNA(re_dbh)) {
+      if (length(re_dbh) != 1 && length(re_dbh) != length(dbh)) {
+        stop("Length of 're_dbh' must be either 1 or match the length of 'dbh'")
       }
       results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA, error = NA)
     } else {
@@ -539,11 +530,11 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
   for (i in 1:length(spcode)) {
 
     diam <- dbh[i]
-    # Set sigma based on whether sig_dbh is a vector or single value
-    sigma <- if (!anyNA(sig_dbh)) sig_dbh[i] else sig_dbh
+    # Set sigma based on whether re_dbh is a vector or single value
+    sigma <- if (!anyNA(re_dbh)) re_dbh[i] else re_dbh
 
     # Warning for dbh < 7
-    if (diam < 7) warning("Equation is only specified for dbh >= 7")
+    if (diam < 7) warning(paste(dbh, "Equation is only specified for dbh >= 7"))
 
     # Find the record in the data for the species code
     rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
@@ -561,9 +552,9 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
       # Error calculation for diam <= 50
       if (!is.na(sigma)) {
         if (!is.numeric(sigma) || sigma < 0)
-          stop("Argument 'sig_dbh' must be numeric and non-negative")
+          stop("Argument 're_dbh' must be numeric and non-negative")
 
-        results$error[i] <- sqrt((rec$b1 * conf * diam^rec$p)^2 +
+        results$error[i] <- sqrt((rec$b1 * re * diam^rec$p)^2 +
             (rec$b1 * rec$p * diam^(rec$p - 1) * sigma)^2)
       }
 
@@ -574,9 +565,9 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
       # Error calculation for diam > 50
       if (!is.na(sigma)) {
         if (!is.numeric(sigma) || sigma < 0)
-          stop("Argument 'sig_dbh' must be numeric and non-negative")
+          stop("Argument 're_dbh' must be numeric and non-negative")
 
-        results$error[i] <- sqrt((rec$b2 * conf * diam)^2 + (rec$b2 * sigma)^2
+        results$error[i] <- sqrt((rec$b2 * re * diam)^2 + (rec$b2 * sigma)^2
         )
       }
     }
@@ -592,19 +583,18 @@ crownbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param dbh diameter at breast height (1.3 m) in centimetres
 #' @param spcode species code
-#' @param sig_dbh sigma for DBH (optional)
-#' @param conf one minus percentage confidence or relative error for
-#' coefficients of the equation
+#' @param re_dbh relative error for diameter at breast height (optional)
+#' @param re relative error of coefficients of the equation (default = 2.5%)
 #' @returns biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.3.
 #' @examples
 #' rootbiomass(spcode = 'RBRAR', dbh = 50)
-#' rootbiomass(spcode = 'RBRAR', dbh = 50, sig_dbh = 10)
+#' rootbiomass(spcode = 'RBRAR', dbh = 50, re_dbh = 10)
 #' rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 #' @export
 #'
-rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
+rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
 
   # Initialise
   if (length(spcode) != length(dbh)) {
@@ -614,9 +604,9 @@ rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
     stop("All values of 'dbh' must be numeric and non-negative")
   }
   if (length(dbh) > 1){
-    if (!anyNA(sig_dbh)) {
-      if (length(sig_dbh) != 1 && length(sig_dbh) != length(dbh)) {
-        stop("Length of 'sig_dbh' must be either 1 or match the length of 'dbh'")
+    if (!anyNA(re_dbh)) {
+      if (length(re_dbh) != 1 && length(re_dbh) != length(dbh)) {
+        stop("Length of 're_dbh' must be either 1 or match the length of 'dbh'")
       }
       results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = NA, error = NA)
     } else {
@@ -631,7 +621,7 @@ rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
   # Iterate through each species code and dbh value
   for (i in seq_along(spcode)) {
     diam <- dbh[i]
-    sigma <- if (!anyNA(sig_dbh) && length(sig_dbh) > 1) sig_dbh[i] else sig_dbh
+    sigma <- if (!anyNA(re_dbh) && length(re_dbh) > 1) re_dbh[i] else re_dbh
 
     # Find the record in the data for the species code
     rec <- root_biomassdf[root_biomassdf$Code == spcode[i], ]
@@ -651,25 +641,25 @@ rootbiomass <- function(spcode, dbh, sig_dbh = NA, conf = 0.025) {
     if (diam <= 30) {
       root_biomass <- rec$b1 * diam^2.5
 
-      # Calculate error if sig_dbh is provided
+      # Calculate error if re_dbh is provided
       if (!anyNA(sigma)) {
         if (!is.numeric(sigma) || sigma < 0) {
-          stop("Argument 'sig_dbh' must be numeric and non-negative")
+          stop("Argument 're_dbh' must be numeric and non-negative")
         }
         sig_root <- root_biomass * sqrt(
-          (rec$b1 * conf / rec$b1)^2 + (2.5 * sigma / diam)^2
+          (rec$b1 * re / rec$b1)^2 + (2.5 * sigma / diam)^2
         )
 
       }
     } else {
       root_biomass <- rec$a + rec$b2 * diam
 
-      # Calculate error if sig_dbh is provided
+      # Calculate error if re_dbh is provided
       if (!anyNA(sigma)) {
         if (!is.numeric(sigma) || sigma < 0) {
-          stop("Argument 'sig_dbh' must be numeric and non-negative")
+          stop("Argument 're_dbh' must be numeric and non-negative")
         }
-        sig_root <- sqrt((rec$a*conf)^2 + error_product(rec$b2, rec$b2*conf, diam, sigma))
+        sig_root <- sqrt((rec$a*re)^2 + error_product(rec$b2, rec$b2*re, diam, sigma))
       }
     }
 
@@ -759,11 +749,11 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
   if (method %in% c("IPCC2", "Thomas") && !all(biome %in% valid_biomes)) stop("Invalid biome.")
 
   n <- length(biomass)
-  CVF <- conf <- rep(NA, n)
+  CVF <- re <- rep(NA, n)
 
   #utils::globalVariables(c("CVF_df"))
 
-  # Retrieve CVF and conf values using the lookup table
+  # Retrieve CVF and re values using the lookup table
   for (i in seq_len(n)) {
     filter_conditions <- !is.na(CVF_df$method) & CVF_df$method == method &
       (is.na(CVF_df$type) | CVF_df$type == type[i]) &
@@ -772,7 +762,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
 
     if (nrow(matching_row) == 1) {
       CVF[i] <- matching_row$CVF
-      conf[i] <- matching_row$conf
+      re[i] <- matching_row$confidence
     } else {
       stop("Could not find a matching CVF value for the provided parameters.")
     }
@@ -786,66 +776,13 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
     if (length(sig_biomass) != n) stop("Length of sig_biomass must match length of biomass")
     if (any(!is.numeric(sig_biomass) | sig_biomass < 0)) stop("sig_biomass must be numeric and positive")
 
-    error <- sqrt((sig_biomass / biomass)^2 + (conf / 100)^2) * AGC
+    error <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC
     return(list(AGC = AGC, sig_AGC = error))
   } else {
     return(AGC)
   }
 }
 
-############# FC Seedlings and saplings to carbon ################
-#'
-#' @title Seedlings and saplings to carbon
-#' @description Calculate the total carbon content of tree seedlings
-#' (below and above ground)
-#' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param heightincm tree height in centimetres
-#' @param sig_h estimated measurement error of height
-#' @param conf relative error of coefficients in percentage
-#' @param type 'conifer' or 'broadleaf' tree
-#' @returns  carbon in tonnes
-#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' Carbon Assessment Protocol (v2. 0)." (2018) Table 6.1.2.
-#' @importFrom utils data head tail
-#' @examples
-#' con_sap_seedling2C(10)
-#' con_sap_seedling2C(50)
-#' @export
-#'
-sap_seedling2C <- function(heightincm, type, sig_h = NA, conf = 0.05){
-  #utils::data(seedlings_conifer, envir = environment())
-
-  if(heightincm < 0 || anyNA(heightincm))stop("heightincm must be numeric and postive")
-  if(heightincm > 1000)warning("not defined for seedlings over 10 m")
-  if(type < 0 || anyNA(heightincm))stop("heightincm must be numeric and postive")
-
-  b <- utils::tail(seedlings_conifer[seedlings_conifer$height.cm <= heightincm,],1)
-  t <- utils::head(seedlings_conifer[seedlings_conifer$height.cm >= heightincm,],1)
-  rt <- (t$height.cm - heightincm)/(t$height.cm-b$height.cm)
-  if ((nrow(b) == 0) |  (nrow (t) == 0)){
-    NULL
-  } else if (is.nan(rt)){
-    return(t$Carbon.kg)
-  } else {
-    carbon <- b$Carbon.kg + ((t$Carbon.kg - b$Carbon.kg) * rt)
-
-    if(!is.na(sig_h)){
-      # Partial derivatives
-      d_t <- (b$height.cm - heightincm) / (t$height.cm - b$height.cm)^2
-      d_b <- -(t$height.cm - heightincm) / (t$height.cm - b$height.cm)^2
-
-      # Propagate errors
-      sigma_rt <- sqrt((d_t * sig_h)^2 + (d_b * sig_h)^2)
-
-      sigma_carbon <- sqrt(((1 - rt) * conf * b$Carbon.kg)^2 +
-                             (rt * conf * t$Carbon.kg)^2 +
-                             (t$Carbon.kg - b$Carbon.kg * sigma_rt)^2)
-      return(c(carbon = carbon, error = sigma_carbon))
-    } else {
-      return(carbon)
-    }
-  }
-}
 
 ############# FC Seedlings and saplings to carbon ################
 #'
@@ -855,22 +792,23 @@ sap_seedling2C <- function(heightincm, type, sig_h = NA, conf = 0.05){
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param heightincm tree height in centimetres
 #' @param type 'conifer' or 'broadleaf'
-#' @param conf relative error or 1-percentage confidence interval on estimates
-#' @returns carbon in tonnes
+#' @param re relative error of estimates (default = 2.5%)
+#' @param re_h relative error of height measurement in cm (optional)
+#' @returns carbon in tonnes or if re_h provided then additionally the error
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
 #' @importFrom utils data head tail
 #' @examples
-#' sap_seedling2C(50)
-#' sap_seedling2C(heightincm = 900, type = 'broadleaf', sig_height = 5)
+#' sap_seedling2C(50, 'conifer')
+#' sap_seedling2C(heightincm = 900, type = 'broadleaf', re_h = 5)
 #' @export
 #'
-sap_seedling2C <- function(heightincm, type, sig_height = NA, conf = 0.05) {
+sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
   if(!is.numeric(heightincm) || heightincm < 0)stop("
   Argument 'heightincm' must be numeric and non-negative")
-  if(heightincm > 1000)warning("Maximum for 'heightincm' is 1000cm")
-  if(heightincm < 1)   warning("Minimum for 'heightincm' is 1cm")
+  if(heightincm > 1000)stop("Maximum for 'heightincm' is 1000cm")
+  if(heightincm < 1)   stop("Minimum for 'heightincm' is 1cm")
 
   if(type == "broadleaf"){
     data <- seedlings_broad
@@ -887,10 +825,10 @@ sap_seedling2C <- function(heightincm, type, sig_height = NA, conf = 0.05) {
   # If heightincm matches exactly a row in data
   if (lower_bound$height.cm == upper_bound$height.cm) {
     carbon_value <- lower_bound$Carbon.kg
-    if(is.na(sig_height)){
+    if(is.na(re_h)){
       return(carbon_value)
     } else {
-      carbon_sd <- conf * carbon_value
+      carbon_sd <- re * carbon_value
       return(list(carbon = carbon_value, sd = carbon_sd))
     }
   }
@@ -903,9 +841,9 @@ sap_seedling2C <- function(heightincm, type, sig_height = NA, conf = 0.05) {
     interpolated_carbon <- lower_bound$Carbon.kg + proportion * carbon_diff
 
 
-   if(!is.na(sig_height)) {
-    interpolated_sd <- sqrt((conf * interpolated_carbon)^2 +
-                       ((carbon_diff / height_diff) * sig_height)^2)
+   if(!is.na(re_h)) {
+    interpolated_sd <- sqrt((re * interpolated_carbon)^2 +
+                       ((carbon_diff / height_diff) * re_h)^2)
 
     return(list(carbon = interpolated_carbon, sd = interpolated_sd))
    } else {
@@ -1125,10 +1063,10 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param returnv To return either 'AGC' (default) or 'All'
-#' @param sig_dbh error in sampling of dbh, single value
-#' @param sig_h error in sampling of height, single value
-#' @param conf_a 1 - the percentage confidence interval for coefficients or
-#' the relative error of coefficients (default = 5%)
+#' @param re_dbh relative measurement error for diameter at breast height, single value
+#' @param re_h relative error of height measurement, single value
+#' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
+#' @param re relative error of coefficients (default = 2.5%)
 #' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
 #' number, merchantable volume (metres cubed), stem volume (metres cubed),
 #' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
@@ -1137,22 +1075,21 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", sig_dbh=10, sig_h=1)
-#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sig_dbh=10, sig_h=1)
+#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=10, re_h=1)
+#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
 #' @export
 #'
-#'
 fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "temperate",
-                   returnv = "All", sig_dbh = 10, sig_h = 1, conf = 0.025, sig_nsg = 0.09413391){
+                   returnv = "All", re_dbh = 10, re_h = 1, re = 0.025, sig_nsg = 0.09413391){
 
   # Check arguments
   if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
      length(height) != length(dbh))stop("input lengths must be the same")
   if(!is.character(spcode))stop("spcode must be a character")
 #  if(!is.numeric(height)||any(height<=0))stop("height must be numeric & positive") not sure if i need this if checks are within functions
-  if(!is.numeric(sig_dbh)||any(sig_dbh<=0))stop("sig_dbh must be numeric & positive")
-  if(!is.numeric(sig_h)||any(sig_h<0)){
-    stop("sig_h must be numeric & positive")
+  if(!is.numeric(re_dbh)||any(re_dbh<=0))stop("re_dbh must be numeric & positive")
+  if(!is.numeric(re_h)||any(re_h<0)){
+    stop("re_h must be numeric & positive")
     }
   if (!(method %in% c("IPCC2", "Thomas"))) {
     stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
@@ -1167,8 +1104,11 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
 
   # Create results table
   if(returnv == 'All'){
-    r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA, sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA, stemvol_m.3=NA, sig_stemvol=NA,
-                    stembiomass_t=NA, sig_stembiomass=NA, crownbiomass_t=NA, sig_crownbiomass=NA, rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
+    r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA,
+         sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA, stemvol_m.3=NA,
+         sig_stemvol=NA,stembiomass_t=NA, sig_stembiomass=NA, crownbiomass_t=NA,
+         sig_crownbiomass=NA, rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA,
+         sig_AGC=NA, sapC=NA, sig_sapC=NA, stringsAsFactors=FALSE)
   } else {
     r <- data.frame(AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   }
@@ -1194,23 +1134,23 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
     }
 
     # If height less than 6.5 use sapling model
-    if(height < 6.5){
-      carbon <- sap_seedling2C(heightincm = height*100, type, sig_h = sig_h, conf = conf)
-      r$AGC_t[i] <- carbon$carbon
-      r$sig_AGC[i] <- carbon$sd
+    if(height[i] < 5){
+      carbon <- sap_seedling2C(heightincm = height[i]*100, type, re_h = re_h, re = re)
+      r$sapC[i] <- carbon$carbon
+      r$sig_sapC[i] <- carbon$sd
     } else {
       # Get tariff number depending on broadleaf or conifer
-      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], sig_h = sig_h, sig_dbh = sig_dbh, conf_a = conf)
+      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], re_h = re_h, re_dbh = re_dbh, re_a = re)
 
       if (length(tariff) == 0) {
         warning("Error in", type, "_tariff function at index: ", i)
       }
 
       # Calculate volumes and biomass
-      mercvol <- merchtreevol(dbh[i], tariff$tariff, sig_dbh, as.numeric(tariff[2]), conf) # Merchantable tree volume
-      stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$error, conf)         # Stem volume
+      mercvol <- merchtreevol(dbh[i], tariff$tariff, re_dbh, as.numeric(tariff[2]), re) # Merchantable tree volume
+      stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$error, re)         # Stem volume
       woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$error, sig_nsg)   # Stem Biomass
-      crownbio <- crownbiomass(rec$Crown, dbh[i], sig_dbh, conf)    # Crown Biomass
+      crownbio <- crownbiomass(rec$Crown, dbh[i], re_dbh, re)    # Crown Biomass
       AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
       sig_AGB <- sqrt(woodbio$error^2 + crownbio$error^2)
       AGC <- biomass2c(AGB, method=method, type, biome=biome, sig_biomass = sig_AGB) # Above ground Carbon
@@ -1225,7 +1165,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
       r$height[i] <- height[i]
       r$NSG[i] <- rec$NSG
 
-      if(height >= 6.5){
+      if(height[i] >= 5){
         r$tariff[i] <- tariff$tariff
         r$sig_tariff[i] <- tariff$error
         r$mercvol_m.3[i] <- mercvol$volume
@@ -1238,10 +1178,10 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome = "tempera
         r$sig_crownbiomass[i] <- crownbio$error
 
         # Root Biomass
-        rootbio <- rootbiomass(rec$Root, dbh[i], sig_dbh)
+        rootbio <- rootbiomass(rec$Root, dbh[i], re_dbh)
         r$rootbiomass_t[i] <- rootbio$rootbiomass
         r$sig_rootbiomass[i] <- rootbio$error
-      }
+        }
     }
   }
   return(r)
@@ -1301,7 +1241,6 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @references Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
-#'
 #' @importFrom utils data
 #' @examples
 #' bunce("OK", 24)

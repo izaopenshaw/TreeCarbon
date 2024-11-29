@@ -79,7 +79,7 @@
 #'
 #' This dataset provides a lookup table for species, including common names, Latin names, and other attributes.
 #'
-#' @format A data frame with 18 columns:
+#' @format A data frame with 19 columns:
 #' \describe{
 #'   \item{short}{Short species code}
 #'   \item{common_name}{Common name of the species}
@@ -98,7 +98,7 @@
 #'   \item{Genus}{Genus of the species}
 #'   \item{Species}{The second term in the bionomial, species}
 #'   \item{NSG_sd}{Wood density standard deviation calculated from Zanne et al 2009} # ** TODOs
-#'   \item{MeanWD}{Wood density from the BIOMASS package}
+#'   \item{meanWD}{Wood density from the BIOMASS package}
 #'   \item{sdWD}{Wood density standard deviation from the BIOMASS package}
 #' }
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
@@ -155,7 +155,7 @@
 #'
 #' This dataset contains tariff parameters for broadleaf species.
 #'
-#' @format A data frame with 5 columns:
+#' @format A data frame with 6 columns:
 #' \describe{
 #'   \item{Common.name}{Common name of the species}
 #'   \item{abbreviation}{Abbreviation for the species}
@@ -183,3 +183,19 @@
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: #' Carbon
 #' Assessment Protocol (v2. 0)." (2018). (Equation 1)
 "tariff_coniferdf"
+
+#' Bunce equation coefficient data table
+#'
+#' This dataset contains coefficients for the Bunce allometric equation.
+#'
+#' @format A data frame with 4 columns:
+#' \describe{
+#'   \item{X}{Common name of the species}
+#'   \item{spcode}{Abbreviation for the species}
+#'   \item{a}{Bunce coefficient a}
+#'   \item{b}{Bunce coefficient b}
+#' }
+#' @source Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
+#' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
+#' Tree Dry Weight" (1968)
+"buncedf"

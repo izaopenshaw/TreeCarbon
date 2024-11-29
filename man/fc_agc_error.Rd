@@ -34,8 +34,10 @@ fc_agc_error(
 
 \item{sig_h}{error in sampling of height, single value}
 
-\item{conf_a}{1 - the percentage confidence interval for coefficients or
+\item{conf}{1 - the percentage confidence interval for coefficients or
 the relative error of coefficients (default = 5\%)}
+
+\item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or a list of tariff

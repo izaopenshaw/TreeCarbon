@@ -5,7 +5,7 @@
 \alias{tariff_broaddf}
 \title{Broadleaf Tariff Data}
 \format{
-A data frame with 5 columns:
+A data frame with 6 columns:
 \describe{
 \item{Common.name}{Common name of the species}
 \item{abbreviation}{Abbreviation for the species}

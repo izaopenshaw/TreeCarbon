@@ -15,7 +15,7 @@ merchtreevol(dbh, tariff, sig_dbh = NA, sig_tariff = NA, conf = 0.025)
 
 \item{sig_tariff}{tariff sigma (optional)}
 
-\item{conf_cf}{1 - the percentage confidence interval for conversion factor
+\item{conf}{1 - the percentage confidence interval for conversion factor
 or the relative error of coefficients (default = 5\%)}
 }
 \value{

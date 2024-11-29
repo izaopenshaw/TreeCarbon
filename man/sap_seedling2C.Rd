@@ -4,28 +4,21 @@
 \alias{sap_seedling2C}
 \title{Seedlings and saplings to carbon}
 \usage{
-sap_seedling2C(heightincm, type, sig_height = NA, conf = 0.05)
-
-sap_seedling2C(heightincm, type, sig_height = NA, conf = 0.05)
+sap_seedling2C(heightincm, type, sig_h = NA, conf = 0.05)
 }
 \arguments{
 \item{heightincm}{tree height in centimetres}
 
 \item{type}{'conifer' or 'broadleaf'}
 
-\item{conf}{relative error or 1-percentage confidence interval on estimates}
+\item{sig_h}{measurement error in height in cm}
 
-\item{sig_h}{estimated measurement error of height}
+\item{conf}{relative error or 1-percentage confidence interval on estimates}
 }
 \value{
 carbon in tonnes
-
-carbon in tonnes
 }
 \description{
-Calculate the total carbon content of tree seedlings
-(below and above ground)
-
 Calculate the total carbon content of tree seedlings
 (below and above ground)
 }
@@ -33,15 +26,10 @@ Calculate the total carbon content of tree seedlings
 just uses simple linear relationship to get between measures
 }
 \examples{
-con_sap_seedling2C(10)
-con_sap_seedling2C(50)
-sap_seedling2C(50)
-sap_seedling2C(heightincm = 900, type = 'broadleaf', sig_height = 5)
+sap_seedling2C(50, 'conifer')
+sap_seedling2C(heightincm = 900, type = 'broadleaf', sig_h = 5)
 }
 \references{
-Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-Carbon Assessment Protocol (v2. 0)." (2018) Table 6.1.2.
-
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018)
 }

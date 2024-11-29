@@ -5,7 +5,7 @@
 \alias{lookup_df}
 \title{Species Lookup Table}
 \format{
-A data frame with 18 columns:
+A data frame with 19 columns:
 \describe{
 \item{short}{Short species code}
 \item{common_name}{Common name of the species}
@@ -24,7 +24,7 @@ A data frame with 18 columns:
 \item{Genus}{Genus of the species}
 \item{Species}{The second term in the bionomial, species}
 \item{NSG_sd}{Wood density standard deviation calculated from Zanne et al 2009} # ** TODOs
-\item{MeanWD}{Wood density from the BIOMASS package}
+\item{meanWD}{Wood density from the BIOMASS package}
 \item{sdWD}{Wood density standard deviation from the BIOMASS package}
 }
 }
