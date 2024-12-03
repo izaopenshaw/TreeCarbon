@@ -4,7 +4,7 @@
 \alias{treevol}
 \title{Forestry commission tree wood volume}
 \usage{
-treevol(mtreevol, dbh, sig_mtreevol = NA, conf_cf = 0.025)
+treevol(mtreevol, dbh, sig_mtreevol = NA, re = 0.025)
 }
 \arguments{
 \item{mtreevol}{merchantable tree volume}
@@ -13,8 +13,7 @@ treevol(mtreevol, dbh, sig_mtreevol = NA, conf_cf = 0.025)
 
 \item{sig_mtreevol}{sigma for mtreevol (optional)}
 
-\item{conf_cf}{1 - the percentage confidence interval for conversion factor
-or the relative error of coefficients (default = 5\%)}
+\item{re_cf}{relative error of conversion factor (default = 2.5\%)}
 }
 \value{
 volume metres cubed or if sig_mtreevol is provided then additionally

@@ -4,7 +4,7 @@
 \alias{conifer_tariff}
 \title{Conifer tree tariff number}
 \usage{
-conifer_tariff(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.025)
+conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}
@@ -13,15 +13,15 @@ conifer_tariff(spcode, height, dbh, sig_h = NA, sig_dbh = NA, conf_a = 0.025)
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{sig_h}{uncertainty in height}
+\item{re_h}{relative error of height measurement (optional)}
 
-\item{sig_dbh}{uncertainty in dbh}
+\item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{conf_a}{1 - the percentage confidence interval for coefficients or
-the relative error of coefficients (default = 5\%)}
+\item{re_a}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
-tariff number
+tariff number or if relative errors are provided returns a list of
+tariff number and an estimate for sigma
 }
 \description{
 Use dbh and tree height to calculate the tariff number of each

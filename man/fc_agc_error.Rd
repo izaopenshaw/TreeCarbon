@@ -11,9 +11,10 @@ fc_agc_error(
   method = "IPCC2",
   biome = "temperate",
   returnv = "All",
-  sig_dbh = 10,
-  sig_h = 1,
-  conf = 0.025,
+  re_dbh = 0.05,
+  re_h = 0.1,
+  re = 0.025,
+  nsg = NA,
   sig_nsg = 0.09413391
 )
 }
@@ -30,12 +31,11 @@ fc_agc_error(
 
 \item{returnv}{To return either 'AGC' (default) or 'All'}
 
-\item{sig_dbh}{error in sampling of dbh, single value}
+\item{re_dbh}{relative measurement error for diameter at breast height, single value}
 
-\item{sig_h}{error in sampling of height, single value}
+\item{re_h}{relative error of height measurement, single value}
 
-\item{conf}{1 - the percentage confidence interval for coefficients or
-the relative error of coefficients (default = 5\%)}
+\item{re}{relative error of coefficients (default = 2.5\%)}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
 }
@@ -50,8 +50,11 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", sig_dbh=10, sig_h=1)
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", sig_dbh=10, sig_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10, re_h=0.05)
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
+# Input wood density and sd from BIOMASS package
+wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
+fc_agc_error('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

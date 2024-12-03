@@ -57,3 +57,7 @@ merchtreevol(tariff, dbh, sigma_dbh = sigma_dbh, sigma_tariff = NA)
 #df <- read.csv("df_7_24.csv")
 
 
+# Input wood density and sd from BIOMASS package
+library(BIOMASS)
+wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
+fc_agc_error(spcode, dbh, height, method = "IPCC2", biome = "temperate", returnv = "All", nsg = wd$meanWD, sig_nsg = wd$sdWD)

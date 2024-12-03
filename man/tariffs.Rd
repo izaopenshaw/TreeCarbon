@@ -4,7 +4,7 @@
 \alias{tariffs}
 \title{Tariff number by stand height}
 \usage{
-tariffs(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.025)
+tariffs(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.025)
 }
 \arguments{
 \item{spcode}{species code (short)}
@@ -13,15 +13,14 @@ tariffs(spcode, height, dbh = NA, sig_h = NA, sig_dbh = NA, conf_a = 0.025)
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{sig_h}{sigma for height (optional)}
+\item{re_h}{relative error of height measurement (optional)}
 
-\item{sig_dbh}{sigma for diameter at breast height (optional)}
+\item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{conf_a}{1 - the percentage confidence interval for coefficients or
-the relative error of coefficients (default = 5\%)}
+\item{re_a}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
-either tariff number or if sig_h is provided, then returns a list
+either tariff number or if re_h is provided, then returns a list
 of the tariff number and uncertainty
 }
 \description{
@@ -30,8 +29,8 @@ tariff number.
 }
 \examples{
 tariffs("OK", height= 10, dbh = 20)
-tariffs("OK", 10, 20, sig_h = 1, sig_dbh = 1)
-tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), sig_h = 1, sig_dbh = 1)
+tariffs("OK", 10, 20, re_h = 0.1, re_dbh = 0.05)
+tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), re_h = 0.01, re_dbh = 0.05)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

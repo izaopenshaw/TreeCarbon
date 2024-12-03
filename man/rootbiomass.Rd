@@ -4,17 +4,16 @@
 \alias{rootbiomass}
 \title{Forestry commission root biomass estimates}
 \usage{
-rootbiomass(spcode, dbh, sig_dbh = NA, conf = 0.025)
+rootbiomass(spcode, dbh, re_dbh = NA, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code}
 
 \item{dbh}{diameter at breast height (1.3 m) in centimetres}
 
-\item{sig_dbh}{sigma for DBH (optional)}
+\item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{conf}{one minus percentage confidence or relative error for
-coefficients of the equation}
+\item{re}{relative error of coefficients of the equation (default = 2.5\%)}
 }
 \value{
 biomass (oven dry tonnes)
@@ -24,7 +23,7 @@ Function to calculate the root biomass depending on species and dbh
 }
 \examples{
 rootbiomass(spcode = 'RBRAR', dbh = 50)
-rootbiomass(spcode = 'RBRAR', dbh = 50, sig_dbh = 10)
+rootbiomass(spcode = 'RBRAR', dbh = 50, re_dbh = 0.10)
 rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 }
 \references{

@@ -4,7 +4,7 @@
 \alias{error_product}
 \title{Analytical error progression for a product}
 \usage{
-error_product(a, sig_a, b, sig_b, c = NA, sig_c = NA)
+error_product(a, sig_a, b, sig_b, c = NA, sig_c = NA, returnv = "sigmasquared")
 }
 \arguments{
 \item{a}{first variable in product}
@@ -18,17 +18,19 @@ error_product(a, sig_a, b, sig_b, c = NA, sig_c = NA)
 \item{c}{(optional) third variable in product}
 
 \item{sig_c}{sigma for c (if c provided then provide sig_c also)}
+
+\item{returnv}{return value, either 'sigma' (standard deviation) or
+'sigma squared' (variance)}
 }
 \value{
-error for x = (abs(a * b) * sqrt((sig_a / a)^2 + (sig_b / b)^2))^2
-or (abs(a * b * c) * sqrt((sig_a / a)^2 + (sig_b / b)^2 + (sig_c / c)^2))^2
+either an estimate for sigma or sigma squared of a product
 }
 \description{
-Calculates the error for x when x = a * b or x = a * b * c
+Calculates sigma squared for x when x = a * b or x = a * b * c
 }
 \examples{
 error_product(5, 0.01, 10, 0.1)
-error_product(5, 0.01, 10, 0.1, c=5, sig_c=0.01)
+error_product(5, 0.01, 10, 0.1, 5, 0.01)
 }
 \references{
 Taylor, J. R. (1997). An Introduction to Error Analysis: The Study of Uncertainties in Physical Measurements (2nd ed.). University Science Books.
