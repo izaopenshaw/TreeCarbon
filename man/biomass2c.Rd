@@ -43,11 +43,11 @@ for National Greenhouse Gas Inventories; Institute for Global Environmental
 Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
+@export
 @examples
 biomass2c(4, method="IPCC2", c("conifer"), "temperate")
 biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
 @importFrom utils globalVariables
-@export
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

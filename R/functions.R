@@ -785,17 +785,17 @@ ctoco2e <- function(carbon) {
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 #' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
+#'  @export
 #'  @examples
 #'  biomass2c(4, method="IPCC2", c("conifer"), "temperate")
 #'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
 #'  @importFrom utils globalVariables
-#'  @export
 #'
 biomass2c <- function(biomass, method, type = NA, biome = 'temperate', sig_biomass = NA) {
   # Check arguments
   if (anyNA(biomass) | any(!is.numeric(biomass) | biomass < 0)) {
     warning("Biomass values must be numeric and positive")
-    }
+  }
 
   valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
   if (!(method %in% valid_methods)) stop("Invalid method. Choose from:", paste(valid_methods,collapse = ", "))
@@ -875,6 +875,8 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
   } else {
     stop('define type as broadleaf or conifer.')
   }
+
+  # test
 
   # Find the bounding rows for interpolation
   lower_bound <- utils::tail(data[data$height.cm <= heightincm, ], 1)
