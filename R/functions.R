@@ -19,7 +19,7 @@
 #' @param dbh diameter at breast height in centimetres
 #' @param sig_vol sigma for tree volume (optional)
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
-#' @param re_a  relative error of coefficients (default = 2.5%)
+#' @param re_c  relative error of coefficients (default = 2.5%)
 #' @returns  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -28,7 +28,7 @@
 #' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, re_dbh = 0.05)
 #' @export
 #'
-tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = NA, re_a = 0.025){
+tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = 0.025, re_c = 0.025){
   if (!is.numeric(vol) || !is.numeric(dbh)) { #if (!is.numeric(vol) || any(vol < 0) || !is.numeric(dbh) || any(dbh < 0)) {
     stop("vol and dbh must be non-negative numeric values")  #  stop("vol and dbh must be non-negative numeric values")
   }
@@ -43,18 +43,23 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = NA, re_a = 0.025){
   a1 <- (vol - const_vol) / (ba - const_ba)
   tariff <- (coef_a1 * a1) + const_tariff
 
-  if(!anyNA(sig_vol) || !anyNA(re_dbh)){
+  if(!anyNA(sig_vol)){
     if (any(sig_vol < 0) || !is.numeric(sig_vol)) {stop("sigm_vol must be non-negative numeric")}
-    if (any(re_dbh < 0) || !is.numeric(re_dbh)) {stop("re_dbh must be non-negative numeric")}
+    if (!is.numeric(re_dbh) || re_dbh < 0)
+      stop("Argument 're_dbh' must be positive and numeric")
+    if (!is.numeric(re_c) || re_c < 0)
+      stop("Argument 're_c' must be positive and numeric")
+    if (re_dbh > 1 || re_c > 1)
+      warning("Relative error indicates high uncertainty to measured value")
 
     sig_ba <- (pi * 2 * dbh / 40000) * re_dbh*dbh
     sig_a1 <- a1 * sqrt(
       (sig_vol / (vol - const_vol))^2 +         # Error from vol
         (sig_ba / (ba - const_ba))^2 +            # Error from ba
-        (re_a * const_vol / (vol - const_vol))^2 +   # Error from const_vol
-        (re_a * const_ba / (ba - const_ba))^2        # Error from const_ba
+        (re_c * const_vol / (vol - const_vol))^2 +   # Error from const_vol
+        (re_c * const_ba / (ba - const_ba))^2        # Error from const_ba
     )
-    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re_a * coef_a1)^2)
+    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re_c * coef_a1)^2)
 
     return(list(tariff=tariff, sigma_tariff=sig_t))
   } else {
@@ -90,7 +95,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0
   if(any(!is.numeric(dbh)))   stop("dbh must be numeric") else if(any(dbh<=0))   stop("dbh must be positive")
 
   if (!(length(spcode) == length(height) && length(height) == length(dbh))) {
-    stop("All input vectors (spcode, height, dbh, re_h, re_dbh) must have the same length.")
+    stop("Input vectors for spcode, height & dbh must have the same length.")
   }
 
     tc <- tariff_coniferdf[tariff_coniferdf$abbreviation == spcode, ]
@@ -110,6 +115,8 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0
     if(!is.na(re_dbh) || !is.na(re_h)){
       if(!is.numeric(re_dbh) || any(re_dbh<0))stop("must provide a numeric and positive re_dbh with re_h")
       if(!is.numeric(re_h) || any(re_h<0))stop("must provide a numeric and positive re_h with re_dbh")
+      if (re_dbh > 1 || re_dbh > 1 || re_h > 1 || re_h > 1)
+        warning("Relative errors indicate high uncertainty to measured value")
 
       sigma <- sqrt(
         (tc$a1 * re_a)^2 +
@@ -171,6 +178,9 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a =
   if(!is.na(re_dbh) || !is.na(re_h)){
     if(!is.numeric(re_dbh) || any(re_dbh<0))stop("must provide a numeric and positive re_dbh with re_h")
     if(!is.numeric(re_h) || any(re_h<0))stop("must provide a numeric and positive re_h with re_dbh")
+    if (re_dbh > 1 || re_dbh > 1 || re_h > 1 || re_h > 1)
+      warning("Relative errors indicate high uncertainty to measured value")
+
 
     sigma <- sqrt((re_a * tb$a1)^2 +
         error_product(tb$a2, re_a*tb$a2, height, re_h*height) +
@@ -225,6 +235,8 @@ stand_tariff <- function(spcode, height, re_h = NA, re_a=0.025) {
 
   if(!anyNA(re_h)){
     if(!is.numeric(re_h) || any(re_h<0))stop("re_h must be numeric and positive")
+    if (re_h > 1 || re_h > 1)
+      warning("Relative error indicate high uncertainty to measured value")
 
     sigma <- sqrt((rec$a1 * re_a)^2 +
                     error_product(rec$a2, rec$a2 * re_a, height, re_h*height))
@@ -370,25 +382,19 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
     if(anyNA(sig_tariff)) {
       return(vol)
     } else {
-      # Direct calculation of uncertainties
+      if(!is.numeric(re_dbh)||re_dbh<0){stop("'re_dbh' must be positive & numeric")}
+      if (re_dbh > 1 || re_dbh > 1)
+        warning("Relative errors indicate high uncertainty to measured value")
+
       sig_ba <- (pi * dbh / 20000) * re_dbh * dbh
       sig_a2 <- k1 * sig_tariff
       sig_a1 <- sqrt(
         (k3 - k1 * k4)^2 * sig_tariff^2 +
           (k4 * sig_a2)^2
       )
-      sigma_direct <- sqrt(sig_a1^2 + (ba * sig_a2)^2 + (a2 * sig_ba)^2)
+      sigma <- sqrt(sig_a1^2 + (ba * sig_a2)^2 + (a2 * sig_ba)^2)
 
-      # Using `error_product` for consistency
-      sigma_ba <- 2 * ba * re_dbh
-      sig_tk <- sqrt(sig_tariff^2 + (k2 * re)^2)
-      sig_a2 <- error_product(k1, k1 * re, tariff - k2, sig_tk, returnv = "sigma")
-      sigsq_a1 <- error_product(k3, k3 * re, tariff, sig_tariff, returnv = "sigmasquared") +
-        error_product(a2, sig_a2, k4, k4 * re, returnv = "sigmasquared")
-      sigma_v <- sqrt(sigsq_a1 + error_product(a2, sig_a2, ba, sigma_ba, returnv = "sigmasquared"))
-
-      # Compare results and return
-      result <- list(volume = vol, sigma_direct = sigma_direct, sigma = sqrt(sigma_v))
+      result <- list(volume = vol, sigma = sigma)
       return(result)
     }
   }
@@ -420,7 +426,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re=0.025) {
 
   dbh <- round(dbh)
   if (dbh < 500 & dbh > 6.5) {
-    #utils::data(stemvol, envir = environment())
+    utils::data(stemvol, envir = environment())
     cf <- stemvol$X[stemvol$dbh..cm. == dbh]
 
   } else if (dbh < 6.5){
@@ -436,6 +442,10 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re=0.025) {
     return(stemvol)
   } else {
     if(!is.numeric(sig_mtreevol) || any(sig_mtreevol<=0))stop("sig_mtreevol must be numeric and positive")
+    if(!is.numeric(re)||re<0){stop("'re' must be positive & numeric")}
+    if(re > 1 || re > 1)
+      warning("Relative errors indicate high uncertainty to measured value")
+
     sigma <- error_product(cf, cf*re, mtreevol, sig_mtreevol, returnv = "sigma")
 
     result <- list(stemvolume = stemvol, sigma = sigma)
@@ -524,13 +534,18 @@ error_product <- function(a, sig_a, b, sig_b, c = NA, sig_c = NA,
 #'
 woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
 
-#  if(!is.numeric(treevol) || any(treevol<0))stop("treevol must be numeric and positive") #todo
-  if(!is.numeric(nsg) || any(nsg<0))stop("nsg must be numeric and positive")
+  if(!is.numeric(treevol))stop("treevol must be numeric") #todo and positive??
+  if(!is.numeric(nsg) || any(nsg<0)){
+    sig_nsg = 0.09413391
+  }
 
   woodbio <- treevol * nsg
   sigma <- NA
 
   if(!anyNA(sig_treevol)){
+    if(!is.numeric(sig_treevol)||sig_treevol<0){stop("'sig_treevol' must be positive & numeric")}
+    if(!is.numeric(sig_nsg)||sig_nsg<0){stop("'sig_nsg' must be positive & numeric")}
+
     sigma <- error_product(treevol, sig_treevol, nsg, sig_nsg, returnv = "sigma")
   }
   return(list(woodbiomass = woodbio, sigma = sigma))
@@ -545,35 +560,32 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode Crown biomass species code, crown_biomasdf$Code or if not
 #' defined for species, lookup_df$short to find relating lookup_df$Crown
-#' @param re_dbh relative error for diameter at breast height measurement (optional)
+#' @param re_d relative error for diameter at breast height measurement (default = 5%)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns  biomass (oven dry tonnes)
+#' @returns  biomass (oven dry tonnes) and estimated sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
 #' @importFrom utils data
 #' @examples
 #' crownbiomass("CBSP", 25)
-#' crownbiomass("CBOK", dbh = 25, re_dbh = 0.01)
-#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), re_dbh = 0.01)
+#' crownbiomass("CBOK", dbh = 25, re_d = 0.01)
+#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), re_d = 0.01)
 #' @export
 #'
-crownbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
+crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
 
   # Check inputs
   if (length(spcode) != length(dbh)) stop("Length of 'spcode' and 'dbh' must be the same")
-
-  if (length(dbh) > 1){
-    if (!anyNA(re_dbh)) {
-      if (length(re_dbh) != 1 && length(re_dbh) != length(dbh)) {
-        stop("Length of 're_dbh' must be either 1 or match the length of 'dbh'")
-      }
-      results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA, sigma = NA)
-    } else {
-      results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA)
-    }
-  } else {
-    results <- c()
+  if (!is.numeric(dbh) || any(dbh < 0)){
+    stop("Argument 'dbh' must be numeric and non-negative")
   }
+  if (!is.numeric(re_d) || re_d < 0 || re_d > 1){
+    stop("Argument 're_d' is a probability so must be between 0 and 1")
+  }
+  if (!is.numeric(re) || re < 0 || re > 1){
+    stop("Argument 're' is a probability so must be between 0 and 1")
+  }
+  results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA, sigma = NA)
 
   if (any(!is.numeric(dbh) | dbh < 0)) stop("All values of 'dbh' must be numeric and non-negative")
 
@@ -581,11 +593,6 @@ crownbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
   for (i in 1:length(spcode)) {
 
     diam <- dbh[i]
-    # Set sigma based on whether re_dbh is a vector or single value
-    sigma <- if (!anyNA(re_dbh)) re_dbh[i] else re_dbh
-
-    # Warning for dbh < 7
-    if (diam < 7) warning(paste(dbh, "Equation is only specified for dbh >= 7"))
 
     # Find the record in the data for the species code
     rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
@@ -597,51 +604,30 @@ crownbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
 
     # Calculate biomass and error
     if (diam <= 50) {
-      crown_biomass <- rec$b1 * diam^rec$p
+      dp <- diam^rec$p
+      crown_biomass <- rec$b1 * dp
       results$biomass[i] <- crown_biomass
 
-      # Error calculation for diam <= 50
-      if (!is.na(sigma)) {
-        if (!is.numeric(sigma) || sigma < 0)
-          stop("Argument 're_dbh' must be numeric and non-negative")
-
-        #V2
-        results$sigma[i] <- sqrt(
-          (re * rec$A)^2 +
-            error_product(rec$b2, re * rec$b2, diam, re_dbh * diam)
-        )
-        #V3
-        #sigma_b1 <- re * rec$b1
-        #sigma_diam_p <- abs(rec$p) * re_dbh * diam
-        #results$sigma[i] <- crown_biomass * sqrt((sigma_b1 / rec$b1)^2 + (sigma_diam_p / (diam^rec$p))^2)
-
-        #V1 <- sqrt((rec$b1 * re * diam^rec$p)^2 + (rec$b1 * rec$p * diam^(rec$p - 1) * sigma)^2)
-      }
+      sigma_dp <- dp * sqrt((rec$p*re_d)^2 + (log(diam)*rec$p*re)^2)
+      results$sigma[i] <- error_product(rec$b1, rec$b1*re, dp, sigma_dp)
 
     } else {
       crown_biomass <- rec$A + rec$b2 * diam
       results$biomass[i] <- crown_biomass
 
       # Error calculation for diam > 50
-      if (!is.na(sigma)) {
-        if (!is.numeric(sigma) || sigma < 0)
+      if (!is.na(re_d)) {
+        if (!is.numeric(re_d) || re_d < 0)
           stop("Argument 're_dbh' must be numeric and non-negative")
 
-        # V2
-        results$sigma[i] <- sqrt(
-          error_product(rec$b1, re * rec$b1, diam^rec$p, abs(rec$p) * re_dbh * diam)
-        )
-
-        # V3
-        #results$sigma[i] <- sigma_A <- re * rec$A
-        #sigma_b2_diam <- sqrt((re * rec$b2)^2 + (re_dbh)^2) * diam
-        #error_crown_biomass <- sqrt(sigma_A^2 + sigma_b2_diam^2)
-
-        #V1 <- sqrt((rec$b2 * re * diam)^2 + (rec$b2 * sigma)^2 )
-
+        results$sigma[i] <- sqrt((rec$A*re)^2 +
+                              (diam * rec$b2*re)^2 + (rec$b2 * diam * re_d)^2)
       }
     }
   }
+
+  # Warning for dbh < 7
+  if (any(dbh < 7)) warning(paste("Equation is only specified for dbh >= 7"))
 
   return(results)
 }
@@ -678,6 +664,13 @@ rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
       if (length(re_dbh) != 1 && length(re_dbh) != length(dbh)) {
         stop("Length of 're_dbh' must be either 1 or match the length of 'dbh'")
       }
+      if (!is.numeric(re) || re < 0) {
+        stop("Argument 're' must be numeric and non-negative")
+      }
+      if (!is.numeric(re_dbh) || re_dbh < 0) {
+        stop("Argument 're_dbh' must be numeric and non-negative")
+      }
+
       results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = NA, sigma = NA)
     } else {
       results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = NA)
@@ -685,8 +678,6 @@ rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
   } else {
     results <- c()
   }
-
-  #utils::data(root_biomassdf, envir = environment())
 
   # Iterate through each species code and dbh value
   for (i in seq_along(spcode)) {
@@ -712,13 +703,9 @@ rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
       root_biomass <- rec$b1 * diam^2.5
 
       # Calculate error if re_dbh is provided
-      if (!anyNA(sigma)) {
-        if (!is.numeric(sigma) || sigma < 0) {
-          stop("Argument 're_dbh' must be numeric and non-negative")
-        }
-        sig_root <- root_biomass * sqrt(
-          (rec$b1 * re / rec$b1)^2 + (2.5 * sigma / diam)^2
-        )
+      if (!anyNA(re_dbh)) {
+        sig_diam <- diam^2.5 * sqrt((2.5*re_dbh)^2 + (log(diam)*re*2.5)^2)
+        sig_root <- error_product(rec$b1, rec$b1*re, diam^2.5, sig_diam, returnv = "sigma")
 
       }
     } else {
@@ -726,10 +713,10 @@ rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
 
       # Calculate error if re_dbh is provided
       if (!anyNA(sigma)) {
-        if (!is.numeric(sigma) || sigma < 0) {
-          stop("Argument 're_dbh' must be numeric and non-negative")
-        }
-        sig_root <- sqrt((rec$a*re)^2 + error_product(rec$b2, rec$b2*re, diam, sigma))
+        sig_root <- sqrt((rec$a*re)^2 + error_product(rec$b2, rec$b2*re, diam, re_dbh*diam))
+
+
+
       }
     }
 
@@ -786,7 +773,8 @@ ctoco2e <- function(carbon) {
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
 #' Only needed for 'IPCC2' and 'Thomas' methods.
-#' @param sig_biomass biomass uncertainty (optional)
+#' @param sig_biomass biomass uncertainty (optional, only avaliable with 'IPCC2'
+#'  and 'Thomas' methods)
 #' @returns either carbon or if 'sig_biomass' is provided, returns a list of
 #' carbon value and error. Errors only given with method = 'IPCC2' or 'Thomas'.
 #' @references (1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
@@ -803,17 +791,18 @@ ctoco2e <- function(carbon) {
 #'  @importFrom utils globalVariables
 #'  @export
 #'
-biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = NA) {
+biomass2c <- function(biomass, method, type = NA, biome = 'temperate', sig_biomass = NA) {
   # Check arguments
-  if (any(!is.numeric(biomass) | biomass < 0)) {
-    warning("All biomass values must be numeric and positive")
+  if (anyNA(biomass) | any(!is.numeric(biomass) | biomass < 0)) {
+    warning("Biomass values must be numeric and positive")
     }
 
   valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
   if (!(method %in% valid_methods)) stop("Invalid method. Choose from:", paste(valid_methods,collapse = ", "))
 
   valid_types <- c("broadleaf", "conifer")
-  if (method %in% c("Matthews2", "IPCC2", "Thomas") && !all(type %in% valid_types)) stop("Invalid type.")
+  if (method %in% c("Matthews2","IPCC2","Thomas") && !all(type %in% valid_types))
+    stop("Type = 'broadleaf' or 'conifer' required for the chosen method.")
 
   valid_biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
   if (method %in% c("IPCC2", "Thomas") && !all(biome %in% valid_biomes)) stop("Invalid biome.")
@@ -846,13 +835,12 @@ biomass2c <- function(biomass, method, type = NULL, biome = NULL, sig_biomass = 
     if (length(sig_biomass) != n) stop("Length of sig_biomass must match length of biomass")
     if (any(!is.numeric(sig_biomass) | sig_biomass < 0)) stop("sig_biomass must be numeric and positive")
 
-    sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC
-    return(list(AGC = AGC, sig_AGC = sigma))
+    sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC # TODO to check
+    return(data.frame(AGC = AGC, sig_AGC = sigma))
   } else {
     return(AGC)
   }
 }
-
 
 ############# FC Seedlings and saplings to carbon ################
 #'
@@ -898,6 +886,9 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
     if(is.na(re_h)){
       return(carbon_value)
     } else {
+      if(!is.numeric(re_h) || re_h < 0)stop("'re_h' must be numeric and postive")
+      if(!is.numeric(re) || re < 0)stop("'re' must be numeric and postive")
+
       carbon_sd <- re * carbon_value
       return(list(carbon = carbon_value, sd = carbon_sd))
     }
@@ -912,10 +903,13 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 
 
    if(!is.na(re_h)) {
-    interpolated_sd <- sqrt((re * interpolated_carbon)^2 +
+     if(!is.numeric(re_h) || re_h < 0)stop("'re_h' must be numeric and postive")
+     if(!is.numeric(re) || re < 0)stop("'re' must be numeric and postive")
+
+     carbon_sd <- sqrt((re * interpolated_carbon)^2 +
                        ((carbon_diff / height_diff) * re_h*height)^2)
 
-    return(list(carbon = interpolated_carbon, sd = interpolated_sd))
+    return(list(carbon = interpolated_carbon, sd = carbon_sd))
    } else {
     return(interpolated_carbon)
   }
@@ -1162,9 +1156,8 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
   if(!is.character(spcode))stop("spcode must be a character")
 #  if(!is.numeric(height)||any(height<=0))stop("height must be numeric & positive") not sure if i need this if checks are within functions
   if(!is.numeric(re_dbh)||any(re_dbh<=0))stop("re_dbh must be numeric & positive")
-  if(!is.numeric(re_h)||any(re_h<0)){
-    stop("re_h must be numeric & positive")
-    }
+  if(!is.numeric(re_h)||any(re_h<0))stop("re_h must be numeric & positive")
+
   if (!(method %in% c("IPCC2", "Thomas"))) {
     stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
   }
@@ -1222,11 +1215,11 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
 
       # Calculate volumes and biomass
       mercvol <- merchtreevol(dbh[i], tariff$tariff, re_dbh, as.numeric(tariff[2]), re) # Merchantable tree volume
-      stemvol <- treevol(mercvol$volume, dbh = dbh[i], mercvol$sigma, re)         # Stem volume
+      stemvol <- treevol(as.numeric(mercvol[1]), dbh = dbh[i], as.numeric(mercvol[2]), re)         # Stem volume
       woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$sigma, sig_nsg)   # Stem Biomass
       crownbio <- crownbiomass(rec$Crown, dbh[i], re_dbh, re)    # Crown Biomass
       AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
-      sig_AGB <- sqrt(woodbio$sigma^2 + crownbio$sigma^2)
+      sig_AGB <- sqrt(woodbio$sigma^2 + as.numeric(crownbio[4])^2)   # tocheck
       AGC <- biomass2c(AGB, method=method, type, biome=biome, sig_biomass = sig_AGB) # Above ground Carbon
       r$AGC_t[i] <- AGC$AGC
       r$sig_AGC[i] <- AGC$sig_AGC
@@ -1249,7 +1242,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
         r$stembiomass_t[i] <- woodbio$woodbiomass
         r$sig_stembiomass[i] <- woodbio$sigma
         r$crownbiomass_t[i] <- crownbio$biomass
-        r$sig_crownbiomass[i] <- crownbio$sigma
+        r$sig_crownbiomass[i] <- as.numeric(crownbio[4])  # tocheck
 
         # Root Biomass
         rootbio <- rootbiomass(rec$Root, dbh[i], re_dbh)

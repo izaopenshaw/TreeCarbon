@@ -4,7 +4,7 @@
 \alias{tariff_vol_area}
 \title{Tariff number from volume and basal area}
 \usage{
-tariff_vol_area(vol, dbh, sig_vol = NA, re_dbh = NA, re_a = 0.025)
+tariff_vol_area(vol, dbh, sig_vol = NA, re_dbh = 0.025, re_c = 0.025)
 }
 \arguments{
 \item{vol}{tree volume in metres cubed}
@@ -15,7 +15,7 @@ tariff_vol_area(vol, dbh, sig_vol = NA, re_dbh = NA, re_a = 0.025)
 
 \item{re_dbh}{relative measurement error for diameter at breast height (optional)}
 
-\item{re_a}{relative error of coefficients (default = 2.5\%)}
+\item{re_c}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
 Tariff number or if sigma for inputs are provided, then will return
