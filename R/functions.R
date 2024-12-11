@@ -773,7 +773,7 @@ ctoco2e <- function(carbon) {
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
 #' Only needed for 'IPCC2' and 'Thomas' methods.
-#' @param sig_biomass biomass uncertainty (optional, only avaliable with 'IPCC2'
+#' @param sig_biomass biomass uncertainty (optional, only available with 'IPCC2'
 #'  and 'Thomas' methods)
 #' @returns either carbon or if 'sig_biomass' is provided, returns a list of
 #' carbon value and error. Errors only given with method = 'IPCC2' or 'Thomas'.
@@ -786,14 +786,16 @@ ctoco2e <- function(carbon) {
 #' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 #'  @examples
-#'  biomass2c(4, method="IPCC2", c("conifer"), "temperate")
-#'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate",
-#'  c(0.7,1))
+#'  biomass2c(1, method="IPCC2", c("conifer"), "temperate")
+#'
 #'  @importFrom utils globalVariables
 #' @export
 #'
 biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
-                      sig_biomass = NA) {
+                      sig_biomass = NULL) {
+  if (length(type) != length(biomass)) {
+    stop("'type' and 'biomass' must have the same length.")}
+
   # Check arguments
   if (anyNA(biomass) | any(!is.numeric(biomass) | biomass < 0)) {
     warning("Biomass values must be numeric and positive")
@@ -804,8 +806,10 @@ biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
                                          paste(valid_methods,collapse = ", "))
 
   valid_types <- c("broadleaf", "conifer")
-  if (method %in% c("Matthews2","IPCC2","Thomas") && !all(type %in% valid_types))
-    stop("Type = 'broadleaf' or 'conifer' required for the chosen method.")
+  if (method %in% c("Matthews2","IPCC2","Thomas") && (!all(type %in%
+      valid_types) | length(type) != length(biomass) ))
+    stop("Type = 'broadleaf' or 'conifer' required for the chosen method as a
+         list of same length of biomass and sig_biomass.")
 
   valid_biomes <- c("tropical", "subtropical", "mediterranean",
                     "temperate", "boreal")
@@ -835,13 +839,13 @@ biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
   # Calculate carbon values
   AGC <- biomass * CVF / 100
 
-  # Calculate uncertainty if sig_biomass is provided
-  if (!anyNA(sig_biomass)) {
+  # Calculate uncertainty
+  if (method %in% c("IPCC2", "Thomas") && !is.null(sig_biomass)) {
     if (length(sig_biomass) != n) {
       stop("Length of sig_biomass must match length of biomass")
     }
-    if (any(!is.numeric(sig_biomass) | sig_biomass < 0)) {
-      stop("sig_biomass must be numeric and positive")
+    if (anyNA(sig_biomass) | any(!is.numeric(sig_biomass) | sig_biomass < 0)) {
+      warning("sig_biomass must be numeric and positive to get sigma")
     }
 
     sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC # TODO
@@ -900,7 +904,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
       if(!is.numeric(re_h) || re_h < 0)stop("'re_h' must be numeric and postive")
       if(!is.numeric(re) || re < 0)stop("'re' must be numeric and postive")
 
-      carbon_sd <- re * carbon_value
+      carbon_sd <- 10 * re * carbon_value
       return(list(carbon = carbon_value, sd = carbon_sd))
     }
   }
@@ -918,7 +922,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
      if(!is.numeric(re) || re < 0)stop("'re' must be numeric and postive")
 
      carbon_sd <- sqrt((re * interpolated_carbon)^2 +
-                       ((carbon_diff / height_diff) * re_h*height)^2)
+                       ((carbon_diff / height_diff) * re_h*heightincm)^2)
 
     return(list(carbon = interpolated_carbon, sd = carbon_sd))
    } else {
@@ -1225,13 +1229,17 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
       }
 
       # Calculate volumes and biomass
-      mercvol <- merchtreevol(dbh[i], tariff$tariff, re_dbh, as.numeric(tariff[2]), re) # Merchantable tree volume
-      stemvol <- treevol(as.numeric(mercvol[1]), dbh = dbh[i], as.numeric(mercvol[2]), re)         # Stem volume
-      woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG, stemvol$sigma, sig_nsg)   # Stem Biomass
+      mercvol <- merchtreevol(dbh[i], tariff$tariff, re_dbh,
+                         as.numeric(tariff[2]),  re)             # Tree volume
+      stemvol <- treevol(as.numeric(mercvol[1]), dbh = dbh[i],
+                         as.numeric(mercvol[2]), re)             # Stem volume
+      woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG,
+                             stemvol$sigma, sig_nsg = sig_nsg)   # Stem  Biomass
       crownbio <- crownbiomass(rec$Crown, dbh[i], re_dbh, re)    # Crown Biomass
-      AGB <- woodbio$woodbiomass + crownbio$biomass             # Above ground Biomass
+      AGB <- woodbio$woodbiomass + crownbio$biomass       # Above ground Biomass
       sig_AGB <- sqrt(woodbio$sigma^2 + as.numeric(crownbio[4])^2)   # tocheck
-      AGC <- biomass2c(AGB, method=method, type, biome=biome, sig_biomass = sig_AGB) # Above ground Carbon
+      AGC <- biomass2c(AGB, method=method, type, biome=biome,
+                       sig_biomass = sig_AGB)             # Above ground Carbon
       r$AGC_t[i] <- AGC$AGC
       r$sig_AGC[i] <- AGC$sig_AGC
     }
