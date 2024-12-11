@@ -10,12 +10,12 @@ biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NA)
 \item{biomass}{(usually kg or metric tonnes)}
 
 \item{method}{Method of calculating the carbon volatile fraction.
-"Matthews1": Simplest with the carbon volatile fraction, CVF = 50\% (Matthews, 1993)
-"Matthews2": CVF based on type (broadleaf or conifer)
-"IPCC1": CVF = 47.7\% (IPCC, 2006)
-"IPCC2": Lookup CVF by type and biome
-"Thomas1": CVF = 48.3\% and 95\% CI of 0.3\% (Thomas and Martin, 2012)
-"Thomas2": Lookup by type and biome}
+"Matthews1": Simplest with the carbon volatile fraction, CVF = 50\%
+"Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
+"IPCC1": CVF = 47.7\%
+"IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
+"Thomas1": CVF = 48.3\% and 95\% CI of 0.3\%
+"Thomas2": Lookup by type and biome  (Thomas and Martin, 2012)}
 
 \item{type}{broadleaf or conifer. Only required for method = 'Matthews2',
 'IPCC2' or 'Thomas'}
@@ -43,10 +43,10 @@ for National Greenhouse Gas Inventories; Institute for Global Environmental
 Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
-@export
 @examples
 biomass2c(4, method="IPCC2", c("conifer"), "temperate")
-biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
+biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate",
+c(0.7,1))
 @importFrom utils globalVariables
 }
 \author{

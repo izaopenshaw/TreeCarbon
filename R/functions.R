@@ -763,12 +763,12 @@ ctoco2e <- function(carbon) {
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param biomass (usually kg or metric tonnes)
 #' @param method Method of calculating the carbon volatile fraction.
-#' "Matthews1": Simplest with the carbon volatile fraction, CVF = 50% (Matthews, 1993)
-#' "Matthews2": CVF based on type (broadleaf or conifer)
-#' "IPCC1": CVF = 47.7% (IPCC, 2006)
-#' "IPCC2": Lookup CVF by type and biome
-#' "Thomas1": CVF = 48.3% and 95% CI of 0.3% (Thomas and Martin, 2012)
-#' "Thomas2": Lookup by type and biome
+#' "Matthews1": Simplest with the carbon volatile fraction, CVF = 50%
+#' "Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
+#' "IPCC1": CVF = 47.7%
+#' "IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
+#' "Thomas1": CVF = 48.3% and 95% CI of 0.3%
+#' "Thomas2": Lookup by type and biome  (Thomas and Martin, 2012)
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
@@ -785,27 +785,32 @@ ctoco2e <- function(carbon) {
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 #' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
-#'  @export
 #'  @examples
 #'  biomass2c(4, method="IPCC2", c("conifer"), "temperate")
-#'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate", c(0.7,1))
+#'  biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate",
+#'  c(0.7,1))
 #'  @importFrom utils globalVariables
+#' @export
 #'
-biomass2c <- function(biomass, method, type = NA, biome = 'temperate', sig_biomass = NA) {
+biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
+                      sig_biomass = NA) {
   # Check arguments
   if (anyNA(biomass) | any(!is.numeric(biomass) | biomass < 0)) {
     warning("Biomass values must be numeric and positive")
   }
 
   valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
-  if (!(method %in% valid_methods)) stop("Invalid method. Choose from:", paste(valid_methods,collapse = ", "))
+  if (!(method %in% valid_methods)) stop("Invalid method. Choose from:",
+                                         paste(valid_methods,collapse = ", "))
 
   valid_types <- c("broadleaf", "conifer")
   if (method %in% c("Matthews2","IPCC2","Thomas") && !all(type %in% valid_types))
     stop("Type = 'broadleaf' or 'conifer' required for the chosen method.")
 
-  valid_biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
-  if (method %in% c("IPCC2", "Thomas") && !all(biome %in% valid_biomes)) stop("Invalid biome.")
+  valid_biomes <- c("tropical", "subtropical", "mediterranean",
+                    "temperate", "boreal")
+  if (method %in% c("IPCC2", "Thomas") && !all(biome %in% valid_biomes))
+    stop("Invalid biome.")
 
   n <- length(biomass)
   CVF <- re <- rep(NA, n)
@@ -832,10 +837,14 @@ biomass2c <- function(biomass, method, type = NA, biome = 'temperate', sig_bioma
 
   # Calculate uncertainty if sig_biomass is provided
   if (!anyNA(sig_biomass)) {
-    if (length(sig_biomass) != n) stop("Length of sig_biomass must match length of biomass")
-    if (any(!is.numeric(sig_biomass) | sig_biomass < 0)) stop("sig_biomass must be numeric and positive")
+    if (length(sig_biomass) != n) {
+      stop("Length of sig_biomass must match length of biomass")
+    }
+    if (any(!is.numeric(sig_biomass) | sig_biomass < 0)) {
+      stop("sig_biomass must be numeric and positive")
+    }
 
-    sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC # TODO to check
+    sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC # TODO
     return(data.frame(AGC = AGC, sig_AGC = sigma))
   } else {
     return(AGC)

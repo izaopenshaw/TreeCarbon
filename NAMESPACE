@@ -2,6 +2,7 @@
 
 export(allodb)
 export(biomass)
+export(biomass2c)
 export(broadleaf_tariff)
 export(bunce)
 export(conifer_tariff)
