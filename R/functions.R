@@ -1190,7 +1190,7 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
          sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA, stemvol_m.3=NA,
          sig_stemvol=NA,stembiomass_t=NA, sig_stembiomass=NA, crownbiomass_t=NA,
          sig_crownbiomass=NA, rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA,
-         sig_AGC=NA, sapC=NA, sig_sapC=NA, stringsAsFactors=FALSE)
+         sig_AGC=NA, stringsAsFactors=FALSE)
   } else {
     r <- data.frame(AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   }
@@ -1218,8 +1218,8 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
     # If height less than 6.5 use sapling model
     if(height[i] < 5){
       carbon <- sap_seedling2C(heightincm = height[i]*100, type, re_h = re_h, re = re)
-      r$sapC[i] <- carbon$carbon
-      r$sig_sapC[i] <- carbon$sd
+      r$AGC_t[i] <- carbon$carbon
+      r$sig_AGC[i] <- carbon$sd
     } else {
       # Get tariff number depending on broadleaf or conifer
       tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], re_h = re_h, re_dbh = re_dbh, re_a = re)
@@ -1334,6 +1334,8 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @export
 #'
 bunce <- function(spcode, dbh) {
+  # Todo test
+  # Todo sd?
   # Ensure all DBH values are numeric and non-negative
   if (any(!is.numeric(dbh) | dbh < 0))
     stop("Argument 'dbh' must be numeric and non-negative")
