@@ -1,5 +1,5 @@
-Package: WoodlandCarbonCode
-Title: Calculate Carbon Estimates Using Allometry from the Woodland Carbon Code 2021
+Package: TreeCarbon
+Title: Calculate Carbon Estimates Using Allometries from the Woodland Carbon Code 2021, Bunce, allodb, BIOMASS and propagate error estiamtes
 Version: 0.0.0.9002
 Authors@R: 
     c(
@@ -19,9 +19,9 @@ Authors@R:
       )
     )
 Description: This package inputs diameter at breast height (DBH) and species name,
-    and estimates the total carbon stored by the tree using methodology from the Woodland Carbon Code (2021).
+    and estimates the total carbon stored by the tree using methodology from the Woodland Carbon Code (2021), allodb.R, BIOMASS.R, Bunce (1968). Error propagations are also included for precision of estimates. 
 License: GPL-3
-URL: https://github.com/izaopenshaw/WoodlandCarbonCode
+URL: https://github.com/izaopenshaw/TreeCarbon
 BugReports: https://github.com/iopenshaw/WoodlandCarbonCode/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

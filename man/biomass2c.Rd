@@ -4,7 +4,7 @@
 \alias{biomass2c}
 \title{Calculates biomass conversion to carbon}
 \usage{
-biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NA)
+biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NULL)
 }
 \arguments{
 \item{biomass}{(usually kg or metric tonnes)}
@@ -23,7 +23,7 @@ biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NA)
 \item{biome}{tropical, subtropical, mediterranean, temperate or boreal.
 Only needed for 'IPCC2' and 'Thomas' methods.}
 
-\item{sig_biomass}{biomass uncertainty (optional, only avaliable with 'IPCC2'
+\item{sig_biomass}{biomass uncertainty (optional, only available with 'IPCC2'
 and 'Thomas' methods)}
 }
 \value{
@@ -44,9 +44,8 @@ Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 @examples
-biomass2c(4, method="IPCC2", c("conifer"), "temperate")
-biomass2c(c(3,4), method="IPCC2", c("conifer","conifer"), "temperate",
-c(0.7,1))
+biomass2c(1, method="IPCC2", c("conifer"), "temperate")
+
 @importFrom utils globalVariables
 }
 \author{
