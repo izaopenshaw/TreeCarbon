@@ -1334,11 +1334,14 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @export
 #'
 bunce <- function(spcode, dbh) {
-  # Todo test
   # Todo sd?
+  # Convert dbh to numeric, coercing invalid values to NA
+  dbh <- as.numeric(dbh)
+
   # Ensure all DBH values are numeric and non-negative
-  if (any(!is.numeric(dbh) | dbh < 0))
-    stop("Argument 'dbh' must be numeric and non-negative")
+  if (any(is.na(dbh) | dbh < 0)) {
+    warning("Some DBH values are non-numeric or negative. Skipping these entries.")
+  }
 
   # Ensure spcode and dbh are of the same length or allow recycling
   if (length(spcode) != length(dbh)) {
@@ -1347,11 +1350,17 @@ bunce <- function(spcode, dbh) {
     } else if (length(dbh) == 1) {
       dbh <- rep(dbh, length(spcode))
     } else {
-      stop("'spcode' and 'dbh' must be of the same length or one of them must have length 1")
+      stop("'spcode' and 'dbh' must be of the same length or length 1 for recycling inputs")
     }
   }
 
-  calculate_biomass <- function(spcodes, dbh_value) {
+  calculate_biomass <- function(spcodes, DBH) {
+    # Check if DBH is NA or invalid (non-numeric or negative) and return NA with a warning
+    if (is.na(DBH) | DBH < 0) {
+      warning("DBH is invalid for species code: ", spcodes, ". Skipping biomass calculation.")
+      return(list(biomass = NA, spcode = spcodes))
+    }
+
     # Extract coefficients for the given species code
     coeffs <- buncedf[buncedf$spcode == spcodes,]
     used_spcode <- spcodes  # Default to the input spcode
@@ -1364,7 +1373,7 @@ bunce <- function(spcode, dbh) {
     }
 
     # Calculate biomass
-    biomass <- coeffs$a + coeffs$b * log(pi * dbh_value)
+    biomass <- coeffs$a + coeffs$b * log(pi * DBH)
     return(list(biomass = exp(biomass), spcode = used_spcode))
   }
 
