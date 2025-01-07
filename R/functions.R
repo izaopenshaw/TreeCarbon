@@ -7,8 +7,6 @@
 
 # species specific sd for nsg?
 
-# fall back species code: MX :: lookup_df[lookup_df$short == "MX", ]
-
 ############# FC Tariff number from volume and tree basal area (WCC Eq 1) ############
 #'
 #' @title Tariff number from volume and basal area
@@ -954,7 +952,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 lookspcode <- function(name, type = NA, returnv = "all") {
   # Validate inputs
   if (!is.character(name)) stop("'name' must be a character vector or list")
-  if (length(type) != length(name)) stop("'type' and 'name' must have the same length.")
+  if (!is.na(type) & length(type) != length(name)) stop("'type' and 'name' must have the same length.")
   if (!is.character(returnv) || !returnv %in% c("short", "single", "stand", "root", "all")) {
     stop("'returnv' must be a character, either 'short', 'single', 'stand', 'root', or 'all'.")
   }
@@ -973,38 +971,27 @@ lookspcode <- function(name, type = NA, returnv = "all") {
     rec <- lookup_df[tolower(lookup_df$General.genus) == stringr::word(search_name, 1), ]
     if (nrow(rec) == 1) return(cbind(rec, matchtype = "Genus"))
 
-    # Fallback to type classification
+    # Fallback to type broadleaf/conifer
     if (!is.na(search_type) && search_type != "") {
       rec <- lookup_df[lookup_df$General.type == search_type, ]
       if (nrow(rec) == 1) return(cbind(rec, matchtype = search_type))
     }
 
-    # Fallback to mixed type when classification is NA or no match found
+    # Fallback to mixed species code
     rec <- lookup_df[lookup_df$General.type == "mixed", ]
     if (nrow(rec) > 0) return(cbind(rec[1, ], matchtype = "Mixed"))
 
     # If no match found, return NA row
-    return(data.frame(
-      spname = NA,
-      spcode = NA,
-      General.genus = NA,
-      General.type = NA,
-      short = NA,
-      single = NA,
-      stand = NA,
-      Root = NA,
-      matchtype = NA,
-      stringsAsFactors = FALSE
-    ))
+    return(data.frame(spname = NA, spcode = NA, General.genus = NA,
+                      General.type = NA, short = NA, single = NA, stand = NA,
+                      Root = NA, matchtype = NA, stringsAsFactors = FALSE))
   }
 
   # Apply helper function over all inputs
-  results <- mapply(
-    match_species,
+  results <- mapply(match_species,
     search_name = stringr::str_trim(tolower(name)),
     search_type = ifelse(is.na(type), "mixed", type), # Replace NA with "mixed"
-    SIMPLIFY = FALSE
-  )
+    SIMPLIFY = FALSE)
 
   # Combine results into a dataframe
   result_df <- do.call(rbind, results)
@@ -1013,14 +1000,10 @@ lookspcode <- function(name, type = NA, returnv = "all") {
   if (returnv != "all") {
     result_df <- data.frame(
       spname = name,
-      spcode = switch(returnv,
-                      short = result_df$short,
-                      single = result_df$single,
-                      stand = result_df$stand,
-                      root = result_df$Root),
-      matchtype = result_df$matchtype,
-      stringsAsFactors = FALSE
-    )
+      spcode = switch(returnv, short = result_df$short,
+                      single = result_df$single, stand = result_df$stand,
+                      root = result_df$Root), matchtype = result_df$matchtype,
+      stringsAsFactors = FALSE)
   }
 
   return(result_df)
