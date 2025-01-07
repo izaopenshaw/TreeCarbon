@@ -577,11 +577,11 @@ crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
   if (!is.numeric(dbh) || any(dbh < 0)){
     stop("Argument 'dbh' must be numeric and non-negative")
   }
-  if (!is.numeric(re_d) || re_d < 0 || re_d > 1){
-    stop("Argument 're_d' is a probability so must be between 0 and 1")
+  if (is.na(re_d) || !is.numeric(re_d)){
+    stop("Argument 're_d' must be numeric")
   }
-  if (!is.numeric(re) || re < 0 || re > 1){
-    stop("Argument 're' is a probability so must be between 0 and 1")
+  if (is.na(re) || !is.numeric(re)){
+    stop("Argument 're' must be numeric")
   }
   results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA, sigma = NA)
 
@@ -1210,13 +1210,15 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
       if (length(tariff) == 0) {
         warning("Error in", type, "_tariff function at index: ", i)
       }
+      # If nsg not specified lookup from rec
+      if(is.na(nsg)){ nsg <- rec$NSG }
 
       # Calculate volumes and biomass
       mercvol <- merchtreevol(dbh[i], tariff$tariff, re_dbh,
                          as.numeric(tariff[2]),  re)             # Tree volume
       stemvol <- treevol(as.numeric(mercvol[1]), dbh = dbh[i],
                          as.numeric(mercvol[2]), re)             # Stem volume
-      woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG,
+      woodbio <- woodbiomass(stemvol$stemvolume, nsg,
                              stemvol$sigma, sig_nsg = sig_nsg)   # Stem  Biomass
       crownbio <- crownbiomass(rec$Crown, dbh[i], re_dbh, re)    # Crown Biomass
       AGB <- woodbio$woodbiomass + crownbio$biomass       # Above ground Biomass
