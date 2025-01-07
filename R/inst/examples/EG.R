@@ -1,8 +1,8 @@
 # Install package
-devtools::install_github("izaopenshaw/WoodlandCarbonCode", force = TRUE) # force = TRUE to install updates.
+devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE) # force = TRUE to install updates.
 
 # Load package
-library(WoodlandCarbonCode)
+library(TreeCarbon)
 source('R/functions.R')
 
 # Example tree metrics

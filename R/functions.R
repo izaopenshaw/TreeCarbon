@@ -1077,7 +1077,7 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
                   stembiomass=NA, crownbiomass=NA, rootbiomass=NA, AGC=NA, stringsAsFactors=FALSE)
   r <- r[1:n,]
   #utils::data(lookup_df, envir = environment())
-  #    data("lookup_df", package = "WoodlandCarbonCode")
+  #    data("lookup_df", package = "TreeCarbon")
 
   # Loop over all trees
   for (i in 1:n) {
