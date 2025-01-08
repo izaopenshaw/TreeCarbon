@@ -952,9 +952,11 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 lookspcode <- function(name, type = NA, returnv = "all") {
   # Validate inputs
   if (!is.character(name)) stop("'name' must be a character vector or list")
-  if (!is.na(type) & length(type) != length(name)) stop("'type' and 'name' must have the same length.")
-  if (!is.character(returnv) || !returnv %in% c("short", "single", "stand", "root", "all")) {
-    stop("'returnv' must be a character, either 'short', 'single', 'stand', 'root', or 'all'.")
+  if (!all(is.na(type)) | length(type) != length(name))
+    stop("'type' and 'name' must have the same length.")
+  code = c("short", "single", "stand", "root", "all")
+  if (!is.character(returnv) || !returnv %in% code) {
+    stop("'returnv' must be a character, either ", paste(code, collapse = ", "))
   }
 
   # Define a helper function for matching
