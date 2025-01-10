@@ -1058,10 +1058,10 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All")
+#' fc_agc(spcode='OK', dbh=74, height=24, returnv ="AGC")
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
-#' fc_agc('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+#' fc_agc('OK', 72, 24, nsg = wd$meanWD)
 #' @export
 #'
 fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
@@ -1269,8 +1269,8 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
                          as.numeric(tariff[2]),  re)             # Tree volume
       stemvol <- treevol(as.numeric(mercvol[1]), dbh = dbh[i],
                          as.numeric(mercvol[2]), re)             # Stem volume
-      woodbio <- woodbiomass(stemvol$stemvolume, nsg,
-                             stemvol$sigma, sig_nsg = sig_nsg)   # Stem  Biomass
+      woodbio <- woodbiomass(as.numeric(stemvol)[1], nsg,
+                             as.numeric(stemvol)[2], sig_nsg = sig_nsg)   # Stem  Biomass
       crownbio <- crownbiomass(rec$Crown, dbh[i], re_dbh, re)    # Crown Biomass
       AGB <- woodbio$woodbiomass + crownbio$biomass       # Above ground Biomass
       sig_AGB <- sqrt(woodbio$sigma^2 + as.numeric(crownbio[4])^2)   # tocheck

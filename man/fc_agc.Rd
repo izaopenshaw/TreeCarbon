@@ -41,10 +41,10 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All")
+fc_agc(spcode='OK', dbh=74, height=24, returnv ="AGC")
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
-fc_agc('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+fc_agc('OK', 72, 24, nsg = wd$meanWD)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
