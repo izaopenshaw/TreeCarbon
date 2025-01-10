@@ -2,7 +2,7 @@
 #devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE) # force = TRUE to install updates.
 
 # Load package
-#library(TreeCarbon)
+library(TreeCarbon)
 
 # Example tree metrics
 dbh    <- 74 # cm

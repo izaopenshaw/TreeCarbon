@@ -26,6 +26,7 @@ tree volume by the appropriate species multiplication factor from stemvol.rda
 \examples{
 treevol(mtreevol = 10, dbh = 24)
 treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
+treevol(mtreevol = c(10,10), dbh = c(20,24), sig_mtreevol = c(1,1))
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

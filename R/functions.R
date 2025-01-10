@@ -414,40 +414,63 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
 #' @examples
 #' treevol(mtreevol = 10, dbh = 24)
 #' treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
+#' treevol(mtreevol = c(10,10), dbh = c(20,24), sig_mtreevol = c(1,1))
 #' @export
 #'
-treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re=0.025) {
+treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re = 0.025) {
+  # Error handling for inputs
+  if (!is.numeric(dbh) || any(dbh <= 0)) stop("dbh must be numeric and positive")
+  if (!is.numeric(mtreevol)) stop("mtreevol must be numeric")
 
-  if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric and positive")
-#  if(!is.numeric(mtreevol) || any(mtreevol<=0))stop("mtreevol must be numeric and positive") # todo
-
-  dbh <- round(dbh)
-  if (dbh < 500 & dbh > 6.5) {
-    utils::data(stemvol, envir = environment())
-    cf <- stemvol$X[stemvol$dbh..cm. == dbh]
-
-  } else if (dbh < 6.5){
-    warning(paste(dbh, "dbh is less than 6.5 cm, multiplication factor is not specified"))
-    cf <- 1
-  } else if (dbh > 500){
-    warning("dbh is above 5 m")
-    cf <- 1
+  if (length(dbh) != length(mtreevol)) {
+    stop("dbh and mtreevol must have the same length")
   }
-  stemvol <- cf * mtreevol
 
-  if(anyNA(sig_mtreevol)){
-    return(stemvol)
+  # Ensure relative error is valid
+  if (!is.numeric(re) || re < 0) stop("'re' must be positive & numeric")
+  if (re > 1) warning("Relative errors indicate high uncertainty to measured value")
+
+  # Load stemvol data
+  utils::data(stemvol, envir = environment())
+
+  # Define a helper function to process individual values
+  process_tree <- function(mtreevol, dbh, sig_mtreevol) {
+    dbh <- round(dbh)
+    if (dbh < 500 & dbh > 6.5) {
+      cf <- stemvol$X[stemvol$dbh..cm. == dbh]
+    } else if (dbh < 6.5) {
+      warning(paste(dbh, "dbh is less than 6.5 cm, multiplication factor is not specified"))
+      cf <- 1
+    } else if (dbh > 500) {
+      warning("dbh is above 5 m")
+      cf <- 1
+    }
+
+    stemvol <- cf * mtreevol
+
+    if (is.na(sig_mtreevol)) {
+      return(stemvol)
+    } else {
+      if (!is.numeric(sig_mtreevol) || sig_mtreevol <= 0) stop("sig_mtreevol must be numeric and positive")
+      sigma <- error_product(cf, cf * re, mtreevol, sig_mtreevol, returnv = "sigma")
+      return(c(stemvolume = stemvol, sigma = sigma))
+    }
+  }
+
+  # Apply the function to each pair of inputs
+  if (all(is.na(sig_mtreevol))) {
+    # Return only volumes if sig_mtreevol is not provided
+    result <- mapply(process_tree, mtreevol, dbh,
+                     MoreArgs = list(sig_mtreevol = NA),
+                     SIMPLIFY = TRUE)
   } else {
-    if(!is.numeric(sig_mtreevol) || any(sig_mtreevol<=0))stop("sig_mtreevol must be numeric and positive")
-    if(!is.numeric(re)||re<0){stop("'re' must be positive & numeric")}
-    if(re > 1 || re > 1)
-      warning("Relative errors indicate high uncertainty to measured value")
-
-    sigma <- error_product(cf, cf*re, mtreevol, sig_mtreevol, returnv = "sigma")
-
-    result <- list(stemvolume = stemvol, sigma = sigma)
-    return(result)
+    # Return a single list with volumes and sigmas if sig_mtreevol is provided
+    result <- mapply(process_tree, mtreevol, dbh, sig_mtreevol,
+                     SIMPLIFY = FALSE)
+    result <- do.call(rbind, result) # Combine into a single matrix
   }
+
+  return(result)
 }
 
 ############# Propagation of error for a product ################
@@ -544,8 +567,11 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
     if(!is.numeric(sig_nsg)||sig_nsg<0){stop("'sig_nsg' must be positive & numeric")}
 
     sigma <- error_product(treevol, sig_treevol, nsg, sig_nsg, returnv = "sigma")
+    return(list(woodbiomass = woodbio, sigma = sigma))
+  } else {
+    return(woodbio)
   }
-  return(list(woodbiomass = woodbio, sigma = sigma))
+
 }
 
 ############# FC crown biomass (WCC Eq 6 & 7) ################
@@ -1019,102 +1045,118 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' @param spcode species code (single)
 #' @param dbh diameter at breast height in centimetres
 #' @param height in metres
-#' @param type conifer or broadleaf tree
-#' @param method method of converting biomass to carbon. See biomass2c function
-#' @param biome tropical, Subtropical, Mediterranean,Temperate, Boreal or all
+#' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
+#' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param returnv To return either 'AGC' (default) or 'All'
-#' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
+#' @param nsg nominal specific gravity. Optionally specified, else will use that
+#'  given by the WCC
+#' @returns either Above ground carbon (AGC) in tonnes, or a list with tariff
 #' number, merchantable volume (metres cubed), stem volume (metres cubed),
-#' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
-#' root carbon (tonnes)
+#' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes),
+#' root carbon (tonnes) and AGC.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
+#' @examples
+#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All")
+#' # Input wood density and sd from BIOMASS package
+#' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
+#' fc_agc('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 #' @export
 #'
-fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
-                   returnv = "AGC"){
+fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
+                           "temperate", returnv = "All", nsg = NA){
 
   # Check arguments
   if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
      length(height) != length(dbh))stop("input lengths must be the same")
   if(!is.character(spcode))stop("spcode must be a character")
-  if(!is.numeric(dbh) || any(dbh<=0))stop("dbh must be numeric & positive")
-  if(!is.numeric(height)||any(height<=0))stop("height must be numeric & positive")
 
-  if (!(method %in% c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas"))) {
-    stop("Invalid method. Choose from: 'Matthews1', 'Matthews2', 'IPCC1',
-         'IPCC2', 'Thomas'. See R helpfile.")
+  if (!(method %in% c("IPCC2", "Thomas"))) {
+    stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
   }
-  if ((method %in% c("IPCC2", "Thomas")) && !missing(biome) &&
-      !(biome %in% c("tropical", "subtropical", "mediterranean",
-                     "temperate", "boreal"))) {
-    stop("Invalid biome. Choose from: 'tropical', 'subtropical','mediterranean',
-         'temperate', 'boreal'")
+  biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
+  if (!missing(biome) && !(biome %in% biomes)) {
+    stop("Invalid biome. Choose from: ", paste(biomes, collapse = ", "))
   }
   n = length(spcode)
-  #if(n != length(dbh) || n != length(height) || length(dbh) != length(height)) {
-  #  stop("spcode, dbh, and height must be of the same length")}
 
   # Create results table
-  r <- data.frame(spcode=NA, dbh=NA, height=NA, tariff=NA, mercvol=NA, stemvol=NA,
-                  stembiomass=NA, crownbiomass=NA, rootbiomass=NA, AGC=NA, stringsAsFactors=FALSE)
+  r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA,
+           mercvol_m.3=NA, stemvol_m.3=NA, stembiomass_t=NA, crownbiomass_t=NA,
+           rootbiomass_t=NA, AGC_t=NA, stringsAsFactors=FALSE)
   r <- r[1:n,]
-  #utils::data(lookup_df, envir = environment())
-  #    data("lookup_df", package = "TreeCarbon")
 
   # Loop over all trees
   for (i in 1:n) {
-    if(dbh[i]<=0)warning("dbh must be numeric & positive for index:", i)
+    if (dbh[i]<=0 || !is.numeric(dbh[i]) || is.na(dbh[i])) {
+      warning("dbh is not numeric or positive for index:", i)
+      next
+    }
 
-#    # Lookup species data from code
+    # Lookup species data from code
     rec <- lookup_df[lookup_df$short == spcode[i], ]
     tarifflokupcode <- rec$single
     type <- rec$type
 
     # Check if the species code was found
     if (nrow(rec) == 0) {
-      warning("The spcode value was not found: ", spcode[i])
+      warning("The spcode value was not found: ", spcode[i], "Index:", i)
       next
     }
 
-    # Get tariff number depending on broadleaf or conifer
-    if (type[i] == "broadleaf") {
-      broad <- broadleaf_tariff(spcode[i], height[i], dbh[i])
-      if (length(broad) == 0) {
-        stop("Error in broadleaf_tariff at index: ", i)
+    # If height less than 6.5 use sapling model
+    if(height[i] < 5){
+      carbon <- sap_seedling2C(heightincm = height[i]*100, type)
+      r$AGC_t[i] <- carbon$carbon
+    } else {
+      # Get tariff number depending on broadleaf or conifer
+      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i])
+
+      if (length(tariff) == 0) {
+        warning("Error in", type, "_tariff function at index: ", i)
       }
-      r$tariff[i] <- broad
-    } else if (type[i] == "conifer") {
-      conifer <- conifer_tariff(spcode[i], height[i], dbh[i])
-      if (length(conifer) == 0) {
-        stop("Error in conifer_tariff at index: ", i)
-      }
-      r$tariff[i] <- conifer
+      # If nsg not specified lookup from rec
+      if(is.na(nsg)){ nsg <- rec$NSG }
+
+      # Calculate volumes and biomass
+      mercvol <- merchtreevol(dbh[i], tariff)             # Tree volume
+      stemvol <- treevol(mercvol, dbh = dbh[i])           # Stem volume
+      woodbio <- woodbiomass(stemvol, nsg)                # Stem  Biomass
+      crownbio <- crownbiomass(rec$Crown, dbh[i])         # Crown Biomass
+      AGB <- woodbio + crownbio$biomass                   # Above ground Biomass
+      AGC <- biomass2c(AGB, method=method, type, biome=biome)  # Carbon
+      r$AGC_t[i] <- AGC
     }
 
-    # Calculate volumes and biomass
-    r$mercvol[i] <- merchtreevol(dbh[i], r$tariff[i])      # Merchantable tree volume
-    r$stemvol[i] <- treevol(r$mercvol[i], dbh[i])          # Stem volume
-    r$stembiomass[i] <- woodbiomass(r$stemvol[i], rec$NSG) # Stem Biomass
-    r$crownbiomass[i] <- crownbiomass(rec$Crown, dbh[i])   # Crown Biomass
-    AGB <- r$stembiomass[i] + r$crownbiomass[i]               # Above ground Biomass
-    r$AGC[i] <- biomass2c(AGB,method=method,type,biome=biome) # Above ground Carbon
-
-    if(returnv != "AGC"){
-      r$rootbiomass <- rootbiomass(rec$Root, dbh[i])       # Root Biomass
+    if(returnv == "All"){
       r$spcode[i] <- spcode[i]
+      r$spname[i] <- rec$latin_name
       r$dbh[i]    <- dbh[i]
       r$height[i] <- height[i]
+      r$NSG[i] <- rec$NSG
+
+      if(height[i] >= 5){
+        r$tariff[i] <- tariff
+        r$mercvol_m.3[i] <- mercvol
+        r$stemvol_m.3[i] <- stemvol
+        r$stembiomass_t[i] <- woodbio
+        r$crownbiomass_t[i] <- crownbio$biomass
+
+        # Root Biomass
+        rootbio <- rootbiomass(rec$Root, dbh[i])
+        r$rootbiomass_t[i] <- rootbio$rootbiomass
+      }
     }
   }
-  if (returnv == "AGC") {
-    return(r$AGC)
-  } else {
+  if(returnv == "All"){
     return(r)
+  } else {
+    return(r$AGC_t)
   }
 }
 
+############# FC Above Ground Carbon with error ################
 #'
 #' @title Calculate above ground carbon
 #' @description  Function that inputs tree species code, dbh, height and method

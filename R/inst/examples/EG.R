@@ -10,6 +10,9 @@ dbh    <- 74 # cm
 height <- 24 # m
 vol <- 50    # m^3
 
+# If height is < 6.5 cm, use sapling model
+sap_seedling2C(heightincm = height[i]*100, type, re_h = re_h, re = re)
+
 #==========Tariff Number===========
 #==Method A: felled tree
 tariff_vol_area(vol, dbh)
@@ -27,6 +30,21 @@ mercvol <- merchtreevol(dbh, tariff = btariff$tariff, sigma_dbh = 1, sigma_tarif
 mercvol
 stemvolume <-  treevol(mtreevol = mercvol$volume, dbh, sigma_mtreevol = mercvol$error)
 stemvolume
+
+
+# Conifer tariff
+conifer_tariff('SP', height, dbh)
+conifer_tariff('SP', height, dbh, sigma_h = 1, sigma_dbh = 10)
+
+# Broadleaf tariff
+tariff <- broadleaf_tariff(spcode, height, dbh)
+broadleaf_tariff(spcode, height, dbh, sigma_h = sigma_h, sigma_dbh = sigma_dbh)
+
+# Merchantable tree volume
+mercvol <- merchtreevol(tariff, dbh)
+merchtreevol(tariff, dbh, sigma_dbh = sigma_dbh, sigma_tariff = NA)
+
+
 
 #==Stem Biomass
 stembiomass <-  woodbiomass(stemvolume$stemvolume, rec$NSG, sigma_treevol = stemvolume$error)
@@ -81,6 +99,12 @@ spcodes <- lookspcode(df$Name, name_type="botanical", df$Classification, returnv
 df$spcode <- spcodes$spcodes
 df$match_type <- spcodes$match_types
 
+
+
+# Input wood density and sd from BIOMASS package
+library(BIOMASS)
+wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
+fc_agc_error(spcode, dbh, height, method = "IPCC2", biome = "temperate", returnv = "All", nsg = wd$meanWD, sig_nsg = wd$sdWD)
 
 
 

@@ -4,7 +4,15 @@
 \alias{fc_agc}
 \title{Calculate above ground carbon}
 \usage{
-fc_agc(spcode, dbh, height, type, method = "Matthews1", biome, returnv = "AGC")
+fc_agc(
+  spcode,
+  dbh,
+  height,
+  method = "IPCC2",
+  biome = "temperate",
+  returnv = "All",
+  nsg = NA
+)
 }
 \arguments{
 \item{spcode}{species code (single)}
@@ -13,23 +21,30 @@ fc_agc(spcode, dbh, height, type, method = "Matthews1", biome, returnv = "AGC")
 
 \item{height}{in metres}
 
-\item{type}{conifer or broadleaf tree}
+\item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
 
-\item{method}{method of converting biomass to carbon. See biomass2c function}
-
-\item{biome}{tropical, Subtropical, Mediterranean,Temperate, Boreal or all}
+\item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
 \item{returnv}{To return either 'AGC' (default) or 'All'}
+
+\item{nsg}{nominal specific gravity. Optionally specified, else will use that
+given by the WCC}
 }
 \value{
-either Above ground carbon, AGC in tonnes, or a list of tariff
+either Above ground carbon (AGC) in tonnes, or a list with tariff
 number, merchantable volume (metres cubed), stem volume (metres cubed),
-stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
-root carbon (tonnes)
+stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes),
+root carbon (tonnes) and AGC.
 }
 \description{
 Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
+}
+\examples{
+fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All")
+# Input wood density and sd from BIOMASS package
+wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
+fc_agc('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
