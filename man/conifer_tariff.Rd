@@ -2,7 +2,9 @@
 % Please edit documentation in R/functions.R
 \name{conifer_tariff}
 \alias{conifer_tariff}
-\title{Conifer tree tariff number}
+\title{Conifer tree tariff number
+sample tree. Species-specific estimates of a1 – a3 are found in the
+R data file, 'tariff_coniferdf'.}
 \usage{
 conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025)
 }
@@ -24,7 +26,7 @@ tariff number or if relative errors are provided returns a list of
 tariff number and an estimate for sigma
 }
 \description{
-Use dbh and tree height to calculate the tariff number of each
+Conifer tree tariff number
 sample tree. Species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.
 }

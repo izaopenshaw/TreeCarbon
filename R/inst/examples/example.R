@@ -1,8 +1,8 @@
 # Install package
-#devtools::install_github("izaopenshaw/WoodlandCarbonCode", force = TRUE) # force = TRUE to install updates.
+#devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE) # force = TRUE to install updates.
 
 # Load package
-#library(WoodlandCarbonCode)
+#library(TreeCarbon)
 
 # Example tree metrics
 dbh    <- 74 # cm
@@ -90,4 +90,9 @@ summary$check <- as.factor(summary$check)
 spcode = sp_codes$spcode ; dbh = df$DBH ; height = df$Height
 method = "IPCC2"; biome = "temperate"
 returnv = "All"; sigma_dbh = 20; sigma_h = 8
+
+####
+
+
+
 

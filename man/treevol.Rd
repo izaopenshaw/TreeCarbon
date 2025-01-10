@@ -13,7 +13,7 @@ treevol(mtreevol, dbh, sig_mtreevol = NA, re = 0.025)
 
 \item{sig_mtreevol}{sigma for mtreevol (optional)}
 
-\item{re_cf}{relative error of conversion factor (default = 2.5\%)}
+\item{re}{relative error of conversion factor (default = 2.5\%)}
 }
 \value{
 volume metres cubed or if sig_mtreevol is provided then additionally

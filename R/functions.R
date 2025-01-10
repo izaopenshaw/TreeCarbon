@@ -68,7 +68,6 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = 0.025, re_c = 0.025
 ############# FC conifer tree tariff number (WCC Eq 3) ############################
 #'
 #' @title Conifer tree tariff number
-#' @description Use dbh and tree height to calculate the tariff number of each
 #'  sample tree. Species-specific estimates of a1 – a3 are found in the
 #'  R data file, 'tariff_coniferdf'.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
@@ -407,7 +406,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param sig_mtreevol sigma for mtreevol (optional)
-#' @param re_cf relative error of conversion factor (default = 2.5%)
+#' @param re relative error of conversion factor (default = 2.5%)
 #' @returns  volume metres cubed or if sig_mtreevol is provided then additionally
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -1131,6 +1130,8 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' @param re_h relative error of height measurement, single value
 #' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
 #' @param re relative error of coefficients (default = 2.5%)
+#' @param nsg nominal specific gravity. Optionally specified, else will use that
+#'  given by the WCC
 #' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
 #' number, merchantable volume (metres cubed), stem volume (metres cubed),
 #' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
@@ -1139,8 +1140,10 @@ fc_agc <- function(spcode, dbh, height, type, method = "Matthews1", biome,
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10, re_h=0.05)
-#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
+#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10,
+#' re_h=0.05)
+#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2",
+#' biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc_error('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
@@ -1154,16 +1157,18 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
   if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
      length(height) != length(dbh))stop("input lengths must be the same")
   if(!is.character(spcode))stop("spcode must be a character")
-#  if(!is.numeric(height)||any(height<=0))stop("height must be numeric & positive") not sure if i need this if checks are within functions
-  if(!is.numeric(re_dbh)||any(re_dbh<=0))stop("re_dbh must be numeric & positive")
+#  if(!is.numeric(height)||any(height<=0))stop("height must be numeric
+  #& positive") not sure if i need this if checks are within functions
+  if(!is.numeric(re_dbh)||any(re_dbh<=0))
+                                    stop("re_dbh must be numeric & positive")
   if(!is.numeric(re_h)||any(re_h<0))stop("re_h must be numeric & positive")
 
   if (!(method %in% c("IPCC2", "Thomas"))) {
     stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
   }
-  if (!missing(biome) && !(biome %in% c("tropical", "subtropical", "mediterranean", "temperate", "boreal"))) {
-    stop("Invalid biome. Choose from: 'tropical', 'subtropical','mediterranean',
-         'temperate', 'boreal'")
+  biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
+  if (!missing(biome) && !(biome %in% biomes)) {
+    stop("Invalid biome. Choose from: ", paste(biomes, collapse = ", "))
   }
   n = length(spcode)
   #if(n != length(dbh) || n != length(height) || length(dbh) != length(height)) {
@@ -1202,12 +1207,14 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
 
     # If height less than 6.5 use sapling model
     if(height[i] < 5){
-      carbon <- sap_seedling2C(heightincm = height[i]*100, type, re_h = re_h, re = re)
+      carbon <- sap_seedling2C(heightincm = height[i]*100, type,
+                               re_h = re_h, re = re)
       r$AGC_t[i] <- carbon$carbon
       r$sig_AGC[i] <- carbon$sd
     } else {
       # Get tariff number depending on broadleaf or conifer
-      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i], re_h = re_h, re_dbh = re_dbh, re_a = re)
+      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i],
+                        re_h = re_h, re_dbh = re_dbh, re_a = re)
 
       if (length(tariff) == 0) {
         warning("Error in", type, "_tariff function at index: ", i)
@@ -1327,7 +1334,7 @@ bunce <- function(spcode, dbh) {
 
   # Ensure all DBH values are numeric and non-negative
   if (any(is.na(dbh) | dbh < 0)) {
-    warning("Some DBH values are non-numeric or negative. Skipping these entries.")
+    warning("Skipping DBH values which are non-numeric or negative.")
   }
 
   # Ensure spcode and dbh are of the same length or allow recycling
@@ -1337,12 +1344,11 @@ bunce <- function(spcode, dbh) {
     } else if (length(dbh) == 1) {
       dbh <- rep(dbh, length(spcode))
     } else {
-      stop("'spcode' and 'dbh' must be of the same length or length 1 for recycling inputs")
+      stop("'spcode' and 'dbh' must be of the same length")
     }
   }
 
   calculate_biomass <- function(spcodes, DBH) {
-    # Check if DBH is NA or invalid (non-numeric or negative) and return NA with a warning
     if (is.na(DBH) | DBH < 0) {
       warning("DBH is invalid for species code: ", spcodes, ". Skipping biomass calculation.")
       return(list(biomass = NA, spcode = spcodes))
@@ -1467,8 +1473,8 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 # output.all: if TRUE outputs the coefficients of the model, a*DBH^b+e {e ~ N(0,sigma^2}
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
-#' @param df dataframe containing columns; Genus, Species, DBH (in cm),
-#' Height (in m). Height is optional, but df must include this column.
+#' @param df dataframe containing columns; Genus_corrected, Species_corrected,
+#' DBH (in cm)
 #' @param new.eqtable a subset or extension of the allometric equation table. Create with allodb::new_equations
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
@@ -1483,9 +1489,31 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 #'
 allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
 
-  # Call allodb package
-  if(nchar(system.file(package='allodb')) == 0 ){
-    remotes::install_github("ropensci/allodb")}
+  # Check Inputs
+  required_columns <- c("DBH", "Genus_corrected", "Species_corrected")
+  missing_columns <- setdiff(required_columns, names(df))
+  if (length(missing_columns) > 0) {
+    stop("The input dataframe 'df' is missing the following required columns: ",
+         paste(missing_columns, collapse = ", "))
+  }
+  if (!(is.numeric(coords) && length(coords) == 2) &&
+      !(is.matrix(coords)  && ncol(coords) == 2)) {
+    stop("'coords' must be either a numeric vector of length 2
+         (longitude and latitude) or a matrix with two columns.")
+  }
+  if (!is.logical(output.all) || length(output.all) != 1) {
+    stop("'output.all' must be a single logical value (TRUE or FALSE).")
+  }
+  if (!is.null(new.eqtable) && !is.data.frame(new.eqtable)) {
+    stop("'new.eqtable' must be a data frame or NULL.")
+  }
+  if (!is.numeric(df$DBH)) {stop("The 'DBH' column in 'df' must be numeric.")}
+
+  # Ensure the allodb package is installed
+  if (nchar(system.file(package = 'allodb')) == 0) {
+    warning("The 'allodb' package is not installed. Installing it now...")
+    remotes::install_github("ropensci/allodb")
+  }
 
   # Biomass for all data. By default all equations will be used
   df$AGB_allodb_kg <- allodb::get_biomass(dbh = as.numeric(df$DBH),
@@ -1497,7 +1525,7 @@ allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
   if(output.all == TRUE){
     df$allodb_a <- df$allodb_b <- df$allodb_sigma <- NA
 
-    # Get parameters and sigma: AGB= a*DBH^b+e {e ~ N(0,sigma^2}
+    # Get parameters and sigma: AGB = a*DBH^b+e {e ~ N(0,sigma^2}
     params <- allodb::est_params(genus = df$Genus_corrected,
                          species = df$Species_corrected,
                          coords = coords)

@@ -37,6 +37,9 @@ fc_agc_error(
 
 \item{re}{relative error of coefficients (default = 2.5\%)}
 
+\item{nsg}{nominal specific gravity. Optionally specified, else will use that
+given by the WCC}
+
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
 }
 \value{
@@ -50,8 +53,10 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10, re_h=0.05)
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2", biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
+fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10,
+re_h=0.05)
+fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2",
+biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc_error('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)

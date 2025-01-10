@@ -7,8 +7,8 @@
 allodb(df, coords, output.all = TRUE, new.eqtable = NULL)
 }
 \arguments{
-\item{df}{dataframe containing columns; Genus, Species, DBH (in cm),
-Height (in m). Height is optional, but df must include this column.}
+\item{df}{dataframe containing columns; Genus_corrected, Species_corrected,
+DBH (in cm)}
 
 \item{coords}{either a vector of coordinates of the site or a matrix of
 coordinates for each tree of longitude and latitude}
