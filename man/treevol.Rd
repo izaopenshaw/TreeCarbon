@@ -20,8 +20,8 @@ volume metres cubed or if sig_mtreevol is provided then additionally
 returns the error as a list
 }
 \description{
-Calculate the stem volume by multiplying the merchantable
-tree volume by the appropriate species multiplication factor from stemvol.rda
+Calculate the stem volume by multiplying the merchantable tree
+volume by the appropriate species multiplication factor from stemvoldf.rda
 }
 \examples{
 treevol(mtreevol = 10, dbh = 24)

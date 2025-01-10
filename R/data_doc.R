@@ -132,7 +132,7 @@
 #' }
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: #' Carbon
 #' Assessment Protocol (v2. 0)." (2018). (Equation 1)
-"stemvol"
+"stemvoldf"
 
 #' Tarif to Height Conversion Data
 #'

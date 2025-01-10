@@ -400,14 +400,14 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
 ############# FC stem tree volume ################
 #'
 #' @title Forestry commission tree wood volume
-#' @description Calculate the stem volume by multiplying the merchantable
-#' tree volume by the appropriate species multiplication factor from stemvol.rda
+#' @description Calculate the stem volume by multiplying the merchantable tree
+#' volume by the appropriate species multiplication factor from stemvoldf.rda
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param sig_mtreevol sigma for mtreevol (optional)
 #' @param re relative error of conversion factor (default = 2.5%)
-#' @returns  volume metres cubed or if sig_mtreevol is provided then additionally
+#' @returns volume metres cubed or if sig_mtreevol is provided then additionally
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -419,7 +419,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
 #'
 treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re = 0.025) {
   # Error handling for inputs
-  if (!is.numeric(dbh) || any(dbh <= 0)) stop("dbh must be numeric and positive")
+  if (!is.numeric(dbh) || any(dbh <= 0))stop("dbh must be numeric and positive")
   if (!is.numeric(mtreevol)) stop("mtreevol must be numeric")
 
   if (length(dbh) != length(mtreevol)) {
@@ -430,14 +430,14 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NA, re = 0.025) {
   if (!is.numeric(re) || re < 0) stop("'re' must be positive & numeric")
   if (re > 1) warning("Relative errors indicate high uncertainty to measured value")
 
-  # Load stemvol data
-  utils::data(stemvol, envir = environment())
+  # Load stemvoldf data
+  utils::data(stemvoldf, envir = environment())
 
   # Define a helper function to process individual values
   process_tree <- function(mtreevol, dbh, sig_mtreevol) {
     dbh <- round(dbh)
     if (dbh < 500 & dbh > 6.5) {
-      cf <- stemvol$X[stemvol$dbh..cm. == dbh]
+      cf <- stemvoldf$X[stemvoldf$dbh..cm. == dbh]
     } else if (dbh < 6.5) {
       warning(paste(dbh, "dbh is less than 6.5 cm, multiplication factor is not specified"))
       cf <- 1
