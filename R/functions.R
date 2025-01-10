@@ -1248,7 +1248,10 @@ fc_agc_error <- function(spcode, dbh, height, method = "IPCC2", biome =
     }
 
     # If height less than 6.5 use sapling model
-    if(height[i] < 5){
+    if (is.na(height[i])) {
+      warning("Height is missing for spcode ", spcode[i], ", skipping record ", i)
+      next
+    } else if(height[i] < 5){
       carbon <- sap_seedling2C(heightincm = height[i]*100, type,
                                re_h = re_h, re = re)
       r$AGC_t[i] <- carbon$carbon
