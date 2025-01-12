@@ -790,8 +790,7 @@ ctoco2e <- function(carbon) {
 #' "Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
 #' "IPCC1": CVF = 47.7%
 #' "IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
-#' "Thomas1": CVF = 48.3% and 95% CI of 0.3%
-#' "Thomas2": Lookup by type and biome  (Thomas and Martin, 2012)
+#' "Thomas": Lookup by type and biome  (Thomas and Martin, 2012)
 #' @param type broadleaf or conifer. Only required for method = 'Matthews2',
 #' 'IPCC2' or 'Thomas'
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
@@ -1431,8 +1430,10 @@ bunce <- function(spcode, dbh) {
 #'
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
-#' @param df dataframe containing columns; Genus, Species, DBH (in cm),
-#' Height (in m). Height is optional, but df must include this column.
+#' @param DBH Diameter at breast height
+#' @param Height Height of tree (optional, if not specified will estimate height)
+#' @param Genus First part of Species binomial
+#' @param Species Second part of Species binomial
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
 #' @param region of the World. See ?getWoodDensity for the list of regions
@@ -1446,67 +1447,69 @@ bunce <- function(spcode, dbh) {
 #' @importFrom utils install.packages
 #' @export
 #'
-biomass <- function(df, coords, region = "World", output.all = TRUE){
-
-  if(nchar(system.file(package='BIOMASS')) == 0 ){
-    utils::install.packages("BIOMASS",dependencies = TRUE)}
-
-  if (!is.data.frame(df)) {stop("'df' must be a data frame.")}
-
-  if (!all(c("Genus", "Species", "DBH") %in% names(df))) {
-    stop("'df' must contain columns 'Genus', 'Species', and 'DBH'.")}
-
-  if (!is.numeric(coords) || length(coords) != 2) {
-    stop("'coords' must be a vector of latitude and longitude.")
+biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World", output.all = TRUE) {
+  # Ensure the required package is installed
+  if (nchar(system.file(package = 'BIOMASS')) == 0) {
+    utils::install.packages("BIOMASS", dependencies = TRUE)
   }
 
+  # Input validation
+  if (!is.numeric(DBH)) stop("'DBH' must be numeric.")
+  if (!is.character(Genus) || !is.character(Species)) {
+    stop("'Genus' and 'Species' must be character vectors.")
+  }
+  if (!is.null(Height) && !is.numeric(Height)) {
+    stop("'Height' must be numeric or NULL.")
+  }
+  if (!is.numeric(coords) || length(coords) != 2) {
+    stop("'coords' must be a numeric vector of latitude and longitude.")
+  }
   if (!is.character(region) || length(region) != 1) {
     stop("'region' must be a single character string.")
   }
-
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
+  if (length(DBH) != length(Genus) || length(DBH) != length(Species)) {
+    stop("Lengths of 'DBH', 'Genus', and 'Species' must be equal.")
+  }
 
+  df <- data.frame(DBH = DBH, Height = Height, Genus = Genus, Species = Species,
+    stringsAsFactors = FALSE)
 
-  # Correct name
+  # Correct taxonomic names
   correct <- BIOMASS::correctTaxo(genus = df$Genus, species = df$Species)
-  df$Genus_corrected   <- correct$genusCorrected
+  df$Genus_corrected <- correct$genusCorrected
   df$Species_corrected <- correct$speciesCorrected
-  df$Modified          <- correct$nameModified
+  df$Modified <- correct$nameModified
 
-  # Get Wood Density
-  # data("wdData") # Global wd database
-  wd <- BIOMASS::getWoodDensity(df$Genus_corrected, df$Species_corrected, region=region)
-  df$Wood_Density    <- wd$meanWD
+  # Get wood density
+  wd <- BIOMASS::getWoodDensity(df$Genus_corrected, df$Species_corrected, region = region)
+  df$Wood_Density <- wd$meanWD
   df$Wood_Density_sd <- wd$sdWD
-  df$Family          <- wd$family
+  df$Family <- wd$family
 
-  # Get height estimates using Chave E
+  # Get height estimates (if Height is not provided)
   h <- BIOMASS::retrieveH(D = as.numeric(df$DBH), coord = coords)
-  df$RSE        <- h$RSE
+  df$RSE <- h$RSE
   df$Height_est <- h[["H"]]
 
   # Combine height data with height estimates
-  df$Height_1 <- NA
-  h.data <- df[!is.na(df$Height),]
-  h.est  <- df[is.na(df$Height),]
-  h.data$Height_1  <- h.data$Height
-  h.est$Height_1   <- h.est$Height_est
+  df$Height_1 <- ifelse(is.na(df$Height), df$Height_est, df$Height)
 
-  df <- rbind(h.data, h.est)
+  # Calculate Above-Ground Biomass (AGB)
+  df$AGB_Biomass_kg <- BIOMASS::computeAGB(
+    D = as.numeric(df$DBH),
+    WD = as.numeric(df$Wood_Density),
+    H = df$Height_1
+  ) * 1000
 
-  # Calculate Carbon using Biomass package
-  df$AGB_Biomass_kg <- BIOMASS::computeAGB(D=as.numeric(df$DBH),
-                                  WD=as.numeric(df$Wood_Density),
-                                  H=df$Height_1)*1000
-
-  if(output.all == FALSE){
-    df <- df[c('Genus_corrected','Species_corrected','Family','Latitude',
-               'Longitude','DBH','AGB_Biomass_kg')]
-    }
-
-  return(df)
+  # Output results
+  if (output.all) {
+    return(df)
+  } else {
+    return(df$AGB_Biomass_kg)
+  }
 }
 
 ############# allodb Package carbon calculation ==========================
@@ -1518,8 +1521,10 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 # output.all: if TRUE outputs the coefficients of the model, a*DBH^b+e {e ~ N(0,sigma^2}
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
-#' @param df dataframe containing columns; Genus_corrected, Species_corrected,
-#' DBH (in cm)
+#' @param DBH Diameter at breast height (cm)
+#' @param Height Height of tree (m)
+#' @param Genus First part of Species binomial
+#' @param Species Second part of Species binomial
 #' @param new.eqtable a subset or extension of the allometric equation table. Create with allodb::new_equations
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
@@ -1532,19 +1537,17 @@ biomass <- function(df, coords, region = "World", output.all = TRUE){
 #' is inputed height filled in with Height estimate where missing)
 #' @export
 #'
-allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
-
-  # Check Inputs
-  required_columns <- c("DBH", "Genus_corrected", "Species_corrected")
-  missing_columns <- setdiff(required_columns, names(df))
-  if (length(missing_columns) > 0) {
-    stop("The input dataframe 'df' is missing the following required columns: ",
-         paste(missing_columns, collapse = ", "))
+allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable = NULL) {
+  # Input validation
+  if (!is.numeric(DBH)) stop("'DBH' must be numeric.")
+  if (!is.character(Genus)) stop("'Genus' must be a character vector.")
+  if (!is.character(Species)) stop("'Species' must be a character vector.")
+  if (length(DBH) != length(Genus) || length(DBH) != length(Species)) {
+    stop("Lengths of 'DBH', 'Genus', and 'Species' must be equal.")
   }
   if (!(is.numeric(coords) && length(coords) == 2) &&
-      !(is.matrix(coords)  && ncol(coords) == 2)) {
-    stop("'coords' must be either a numeric vector of length 2
-         (longitude and latitude) or a matrix with two columns.")
+      !(is.matrix(coords) && ncol(coords) == 2)) {
+    stop("'coords' must be either a numeric vector of length 2 (longitude and latitude) or a matrix with two columns.")
   }
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
@@ -1552,7 +1555,6 @@ allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
   if (!is.null(new.eqtable) && !is.data.frame(new.eqtable)) {
     stop("'new.eqtable' must be a data frame or NULL.")
   }
-  if (!is.numeric(df$DBH)) {stop("The 'DBH' column in 'df' must be numeric.")}
 
   # Ensure the allodb package is installed
   if (nchar(system.file(package = 'allodb')) == 0) {
@@ -1560,39 +1562,51 @@ allodb <- function(df, coords, output.all = TRUE, new.eqtable = NULL){
     remotes::install_github("ropensci/allodb")
   }
 
-  # Biomass for all data. By default all equations will be used
-  df$AGB_allodb_kg <- allodb::get_biomass(dbh = as.numeric(df$DBH),
-                                  genus = df$Genus_corrected,
-                                  species = df$Species_corrected,
-                                  coords = coords,
-                                  new_eqtable = new.eqtable)
+  # Create a data frame from the inputs
+  df <- data.frame(
+    DBH = DBH,
+    Genus_corrected = Genus,
+    Species_corrected = Species,
+    stringsAsFactors = FALSE
+  )
 
-  if(output.all == TRUE){
+  # Biomass calculation for all data
+  df$AGB_allodb_kg <- allodb::get_biomass(
+    dbh = as.numeric(df$DBH),
+    genus = df$Genus_corrected,
+    species = df$Species_corrected,
+    coords = coords,
+    new_eqtable = new.eqtable
+  )
+
+  if (output.all == TRUE) {
     df$allodb_a <- df$allodb_b <- df$allodb_sigma <- NA
 
-    # Get parameters and sigma: AGB = a*DBH^b+e {e ~ N(0,sigma^2}
-    params <- allodb::est_params(genus = df$Genus_corrected,
-                         species = df$Species_corrected,
-                         coords = coords)
-    # Create a name column in params and df
+    # Get parameters and sigma: AGB = a * DBH^b + e {e ~ N(0, sigma^2)}
+    params <- allodb::est_params(
+      genus = df$Genus_corrected,
+      species = df$Species_corrected,
+      coords = coords
+    )
+
+    # Create a name column in params and df for matching
     params$name <- paste(params$genus, params$species)
     df$Name <- paste(df$Genus_corrected, df$Species_corrected)
-    df$Name <- as.factor(df$Name)
-    # Create an empty df with same columns
-    df.p <- df[-c(1:nrow(df)),]
-    for(i in 1:length(levels(df$Name))){
-      name <- levels(df$Name)[i]
-      trees <- df[df$Name == name,]
-      trees$allodb_a <- params$a[params$name == name]
-      trees$allodb_b <- params$b[params$name == name]
-      trees$allodb_sigma <-  params$sigma[params$name == name]
-      df.p <- rbind(df.p, trees)
-    }
-    df <- df.p
+
+    # Update parameters in the data frame
+    df <- merge(df, params, by.x = "Name", by.y = "name", all.x = TRUE)
+    df$allodb_a <- df$a
+    df$allodb_b <- df$b
+    df$allodb_sigma <- df$sigma
+    df <- df[, !names(df) %in% c("a", "b", "sigma", "Name")]
   }
 
-  return(df)
+  # Return results
+  if (output.all) {
+    return(df)
+  } else {
+    return(df$AGB_allodb_kg)
+  }
 }
-
 
 

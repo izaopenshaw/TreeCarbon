@@ -4,11 +4,24 @@
 \alias{biomass}
 \title{Estimate Tree Carbon using Biomass package functions}
 \usage{
-biomass(df, coords, region = "World", output.all = TRUE)
+biomass(
+  DBH,
+  Height = NULL,
+  Genus,
+  Species,
+  coords,
+  region = "World",
+  output.all = TRUE
+)
 }
 \arguments{
-\item{df}{dataframe containing columns; Genus, Species, DBH (in cm),
-Height (in m). Height is optional, but df must include this column.}
+\item{DBH}{Diameter at breast height}
+
+\item{Height}{Height of tree (optional, if not specified will estimate height)}
+
+\item{Genus}{First part of Species binomial}
+
+\item{Species}{Second part of Species binomial}
 
 \item{coords}{either a vector of coordinates of the site or a matrix of
 coordinates for each tree of longitude and latitude}

@@ -14,8 +14,7 @@ biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NULL)
 "Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
 "IPCC1": CVF = 47.7\%
 "IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
-"Thomas1": CVF = 48.3\% and 95\% CI of 0.3\%
-"Thomas2": Lookup by type and biome  (Thomas and Martin, 2012)}
+"Thomas": Lookup by type and biome  (Thomas and Martin, 2012)}
 
 \item{type}{broadleaf or conifer. Only required for method = 'Matthews2',
 'IPCC2' or 'Thomas'}
