@@ -1565,16 +1565,16 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
   # Create a data frame from the inputs
   df <- data.frame(
     DBH = DBH,
-    Genus_corrected = Genus,
-    Species_corrected = Species,
+    Genus = Genus,
+    Species = Species,
     stringsAsFactors = FALSE
   )
 
   # Biomass calculation for all data
   df$AGB_allodb_kg <- allodb::get_biomass(
     dbh = as.numeric(df$DBH),
-    genus = df$Genus_corrected,
-    species = df$Species_corrected,
+    genus = df$Genus,
+    species = df$Species,
     coords = coords,
     new_eqtable = new.eqtable
   )
@@ -1584,14 +1584,14 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 
     # Get parameters and sigma: AGB = a * DBH^b + e {e ~ N(0, sigma^2)}
     params <- allodb::est_params(
-      genus = df$Genus_corrected,
-      species = df$Species_corrected,
+      genus = df$Genus,
+      species = df$Species,
       coords = coords
     )
 
     # Create a name column in params and df for matching
     params$name <- paste(params$genus, params$species)
-    df$Name <- paste(df$Genus_corrected, df$Species_corrected)
+    df$Name <- paste(df$Genus, df$Species)
 
     # Update parameters in the data frame
     df <- merge(df, params, by.x = "Name", by.y = "name", all.x = TRUE)
