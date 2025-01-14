@@ -24,8 +24,12 @@ df$AGC_WCC <- fc_agc(spcode = df$spcode, dbh = df$DBH, height = df$Height, metho
 
 #======= Get AGC using BIOMASS and allodb =======
 coords <- c(-0.088837,51.071610)
-df$AGB_Biomass_kg <- biomass(df$DBH, df$Height, df$Genus, df$Species, coords, region="Europe", output.all = FALSE)
-df$AGB_allodb_kg  <- allodb(df$DBH, df$Genus, df$Species, coords, output.all = FALSE)
+bio <- biomass(df$DBH, df$Height, df$Genus, df$Species, coords, region="Europe", output.all = TRUE)
+df$AGB_Biomass_kg <- bio$AGB_Biomass_kg
+
+allo <- allodb(df$DBH, df$Genus, df$Species, coords, output.all = TRUE)
+df$AGB_allodb_kg <- allo$AGB_allodb_kg
+df$allodb_sigma <- allo$allodb_sigma
 
 df$AGB_Bunce_kg <- bunce(df$spcode, df$DBH)
 
@@ -80,5 +84,7 @@ df$AGB <- df$woodbio + df$crownbio
 df$AGC <- biomass2c(df$AGB, method='Thomas', df$type)
 
 
+# Run shiny app
+TreeCarbon::run_shiny_app()
 
 

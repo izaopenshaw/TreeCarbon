@@ -5,7 +5,8 @@
 \title{Calculate above ground carbon}
 \usage{
 fc_agc_error(
-  spcode,
+  name,
+  type = NA,
   dbh,
   height,
   method = "IPCC2",
@@ -19,7 +20,9 @@ fc_agc_error(
 )
 }
 \arguments{
-\item{spcode}{species code (single)}
+\item{name}{species name, either binomial or common}
+
+\item{type}{either 'broadleaf' or 'conifer'}
 
 \item{dbh}{diameter at breast height in centimetres}
 

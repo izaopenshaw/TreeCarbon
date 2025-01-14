@@ -24,7 +24,7 @@ coordinates for each tree of longitude and latitude}
 }
 \value{
 your dataframe back with added columns of carbon estimates. If
-output.all = FALSE, then returns columns 'Genus_corrected','Species_corrected',
+output.all = FALSE, then returns columns 'Genus_corrected','Species',
 'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
 then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
