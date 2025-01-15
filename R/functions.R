@@ -1046,7 +1046,7 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' @param height in metres
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
-#' @param returnv To return either 'AGC' (default) or 'All'
+#' @param output.all if TRUE (default) outputs all data from processing, else outputs carbon estimate
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
 #' @returns either Above ground carbon (AGC) in tonnes, or a list with tariff
@@ -1057,20 +1057,22 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc(spcode='OK', dbh=74, height=24, returnv ="AGC")
+#' fc_agc(spcode='OK', dbh=74, height=24, output.all = FALSE)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc('OK', 72, 24, nsg = wd$meanWD)
 #' @export
 #'
 fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
-                           "temperate", returnv = "All", nsg = NA){
+                           "temperate", output.all = TRUE, nsg = NA){
 
   # Check arguments
   if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
      length(height) != length(dbh))stop("input lengths must be the same")
   if(!is.character(spcode))stop("spcode must be a character")
-
+  if (!is.logical(output.all) || length(output.all) != 1) {
+    stop("'output.all' must be a single logical value (TRUE or FALSE).")
+  }
   if (!(method %in% c("IPCC2", "Thomas"))) {
     stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
   }
@@ -1127,7 +1129,7 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
       r$AGC_t[i] <- AGC
     }
 
-    if(returnv == "All"){
+    if(output.all){
       r$spcode[i] <- spcode[i]
       r$spname[i] <- rec$latin_name
       r$dbh[i]    <- dbh[i]
@@ -1147,7 +1149,7 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
       }
     }
   }
-  if(returnv == "All"){
+  if(output.all){
     return(r)
   } else {
     return(r$AGC_t)
@@ -1166,36 +1168,39 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
 #' @param height in metres
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
-#' @param returnv To return either 'AGC' (default) or 'All'
+#' @param output.all if TRUE outputs all data from processing, else just outputs carbon estimates
 #' @param re_dbh relative measurement error for diameter at breast height, single value
 #' @param re_h relative error of height measurement, single value
 #' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
 #' @param re relative error of coefficients (default = 2.5%)
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @returns either Above ground carbon, AGC in tonnes, or a list of tariff
-#' number, merchantable volume (metres cubed), stem volume (metres cubed),
-#' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
-#' root carbon (tonnes)
+#' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
+#' a list of tariff number, merchantable volume (metres cubed), stem volume
+#' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
+#' (tonnes) and root carbon (tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10,
+#' fc_agc_error('Quercus robur', dbh=74, height=24, re_dbh=0.10,
 #' re_h=0.05)
-#' fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2",
-#' biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
+#' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
+#' biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
-#' fc_agc_error('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+#' fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 #' @export
 #'
-fc_agc_error <- function(name, type = NA, dbh, height, method = "IPCC2", biome =
-                           "temperate", returnv = "All", re_dbh = 0.05, re_h =
+fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
+                           "temperate", output.all = TRUE, re_dbh = 0.05, re_h =
                            0.1, re = 0.025, nsg = NA, sig_nsg = 0.09413391){
 
   # Check arguments
   if(!is.character(name)) stop ("name must be a character")
+  if (!is.logical(output.all) || length(output.all) != 1) {
+    stop("'output.all' must be a single logical value (TRUE or FALSE).")
+  }
   if(length(name) != length(dbh) || length(name) != length(height) ||
      length(height) != length(dbh) || length(name) != length(type))
     stop("input lengths must be the same")
@@ -1218,7 +1223,7 @@ fc_agc_error <- function(name, type = NA, dbh, height, method = "IPCC2", biome =
   n = length(name)
 
   # Create results table
-  if(returnv == 'All'){
+  if(output.all){
     r <- data.frame(name=name, type=type, spcode=spcodes$spcode,
                     matchtype=spcodes$matchtype, dbh=dbh, height=height, NSG=NA,
                     tariff=NA, sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA,
@@ -1227,7 +1232,7 @@ fc_agc_error <- function(name, type = NA, dbh, height, method = "IPCC2", biome =
                     rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA, sig_AGC=NA,
                     stringsAsFactors=FALSE)
   } else {
-    r <- data.frame(AGC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
+    r <- data.frame(name=name, AGC_t=NA, sig_AGC=NA, spcode=spcodes$spcode, stringsAsFactors=FALSE)
   }
   r <- r[1:n,]
   #utils::data(lookup_df, envir = environment())
@@ -1285,7 +1290,7 @@ fc_agc_error <- function(name, type = NA, dbh, height, method = "IPCC2", biome =
       r$sig_AGC[i] <- AGC$sig_AGC
     }
 
-    if(returnv == "All"){
+    if(output.all){
       r$NSG[i] <- nsg
 
       if(height[i] >= 5){
