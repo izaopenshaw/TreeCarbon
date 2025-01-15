@@ -4,10 +4,9 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
 if (!requireNamespace("TreeCarbon", quietly = TRUE)) {
-  remotes::install_github("izaopenshaw/TreeCarbon", force = TRUE)
+  remotes::install_github("izaopenshaw/TreeCarbon")
 }
 library(TreeCarbon)
-library(devtools)
 
 # Define UI
 ui <- fluidPage(

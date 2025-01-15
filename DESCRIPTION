@@ -31,7 +31,8 @@ Suggests:
     rmarkdown,
     testthat,
     allodb,
-    BIOMASS
+    BIOMASS,
+    shiny
     (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
