@@ -31,8 +31,8 @@ Suggests:
     rmarkdown,
     testthat,
     allodb,
-    BIOMASS,
-    shiny (>= 3.0.0)
+    BIOMASS
+    (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Depends: 
@@ -40,5 +40,6 @@ Depends:
 Imports:
     stringr,
     utils,
-    stats
+    stats,
+    shiny
 LazyData: true
