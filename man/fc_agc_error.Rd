@@ -6,12 +6,12 @@
 \usage{
 fc_agc_error(
   name,
-  type = NA,
   dbh,
   height,
+  type = NA,
   method = "IPCC2",
   biome = "temperate",
-  returnv = "All",
+  output.all = TRUE,
   re_dbh = 0.05,
   re_h = 0.1,
   re = 0.025,
@@ -22,17 +22,17 @@ fc_agc_error(
 \arguments{
 \item{name}{species name, either binomial or common}
 
-\item{type}{either 'broadleaf' or 'conifer'}
-
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{in metres}
+
+\item{type}{either 'broadleaf' or 'conifer'}
 
 \item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
-\item{returnv}{To return either 'AGC' (default) or 'All'}
+\item{output.all}{if TRUE outputs all data from processing, else just outputs carbon estimates}
 
 \item{re_dbh}{relative measurement error for diameter at breast height, single value}
 
@@ -46,23 +46,23 @@ given by the WCC}
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
 }
 \value{
-either Above ground carbon, AGC in tonnes, or a list of tariff
-number, merchantable volume (metres cubed), stem volume (metres cubed),
-stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes) and
-root carbon (tonnes)
+either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
+a list of tariff number, merchantable volume (metres cubed), stem volume
+(metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
+(tonnes) and root carbon (tonnes)
 }
 \description{
 Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error(spcode='OK', dbh=74, height=24, returnv ="All", re_dbh=0.10,
+fc_agc_error('Quercus robur', dbh=74, height=24, re_dbh=0.10,
 re_h=0.05)
-fc_agc_error(spcode='OK', dbh=74, height=24, method="IPCC2",
-biome="temperate", returnv ="AGC", re_dbh=10, re_h=1)
+fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
+biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
-fc_agc_error('OK', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

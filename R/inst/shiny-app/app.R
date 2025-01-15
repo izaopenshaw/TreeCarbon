@@ -9,11 +9,6 @@ if (!requireNamespace("TreeCarbon", quietly = TRUE)) {
 library(TreeCarbon)
 library(devtools)
 
-rsconnect::deployApp(appDir = "C:/Users/ipr10kg/Documents/TreeCarbon/R/inst/shiny-app",
-                     appDependencies = list(
-                       remotes = "izaopenshaw/TreeCarbon"
-                     ))
-
 # Define UI
 ui <- fluidPage(
   titlePanel("Tree Above Ground Carbon and Error Calculator"),

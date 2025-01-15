@@ -10,7 +10,7 @@ fc_agc(
   height,
   method = "IPCC2",
   biome = "temperate",
-  returnv = "All",
+  output.all = TRUE,
   nsg = NA
 )
 }
@@ -25,7 +25,7 @@ fc_agc(
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
-\item{returnv}{To return either 'AGC' (default) or 'All'}
+\item{output.all}{if TRUE (default) outputs all data from processing, else outputs carbon estimate}
 
 \item{nsg}{nominal specific gravity. Optionally specified, else will use that
 given by the WCC}
@@ -41,7 +41,7 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc(spcode='OK', dbh=74, height=24, returnv ="AGC")
+fc_agc(spcode='OK', dbh=74, height=24, output.all = FALSE)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc('OK', 72, 24, nsg = wd$meanWD)
