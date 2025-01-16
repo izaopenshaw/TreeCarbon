@@ -1232,7 +1232,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     rootbiomass_t=NA, sig_rootbiomass=NA, AGC_t=NA, sig_AGC=NA,
                     stringsAsFactors=FALSE)
   } else {
-    r <- data.frame(name=name, AGC_t=NA, sig_AGC=NA, spcode=spcodes$spcode, stringsAsFactors=FALSE)
+    r <- data.frame(name=name, AGC_t=NA, sig_AGC=NA, spcode=spcodes$spcode,
+                    matchtype=spcodes$matchtype, stringsAsFactors=FALSE)
   }
   r <- r[1:n,]
   #utils::data(lookup_df, envir = environment())
@@ -1246,7 +1247,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 
     # Lookup species data from code
     rec <- lookup_df[lookup_df$short == r$spcode[i], ]
-    if(is.na(r$type[i])) { type <- rec$type } else { type <- r$type[i] }
+    if(is.na(type[i])) { type <- rec$type } else { type <- type[i] }
 
     # If height less than 6.5 use sapling model
     if (is.na(height[i])) {

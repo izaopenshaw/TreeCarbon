@@ -64,7 +64,7 @@ server <- function(input, output, session) {
         height = tree_data$height,
         method = input$method,
         biome = input$biome,
-        returnv = "All"
+        output.all = TRUE
       )
     } else {
       # Single tree calculation
@@ -74,7 +74,7 @@ server <- function(input, output, session) {
         height = input$height,
         method = input$method,
         biome = input$biome,
-        returnv = "All"
+        output.all= TRUE
       )
     }
 
