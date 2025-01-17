@@ -309,8 +309,7 @@ tariffs <- function(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.0
               broadleaf_tariff("XB", height[i],dbh[i],re_h, re_dbh, re_a)[2]^2 +
               conifer_tariff("XC", height[i],dbh[i], re_h, re_dbh, re_a)[2]^2)))
           }
-          warning("Species code ", spcode[i], " not found, averaging broadleaf
-                  & conifer tariff numbers")
+          warning("Species not found, using mixed species numbers")
 
         } else {
           warning("Unrecognized species type for spcode ", spcode[i], ".")
@@ -1229,7 +1228,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
   if(length(name) != length(dbh) || length(name) != length(height) ||
-     length(height) != length(dbh) || length(name) != length(type))
+     length(height) != length(dbh))
     stop("input lengths must be the same")
   if(any(!type %in% c("broadleaf", "conifer", NA, "NA")))
     stop("type must equal either conifer, broadleaf or NA")

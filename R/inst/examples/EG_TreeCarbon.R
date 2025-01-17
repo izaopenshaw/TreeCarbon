@@ -85,6 +85,6 @@ df$AGC <- biomass2c(df$AGB, method='Thomas', df$type)
 
 
 # Run shiny app
-TreeCarbon::run_shiny_app()
+TreeCarbo::run_shiny_app()
 
 
