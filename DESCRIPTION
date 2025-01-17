@@ -41,6 +41,5 @@ Depends:
 Imports:
     stringr,
     utils,
-    stats,
-    shiny
+    stats
 LazyData: true

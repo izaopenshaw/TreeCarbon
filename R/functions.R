@@ -291,7 +291,7 @@ tariffs <- function(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.0
     } else {
       # Determine tree type
       type <- lookup_df$type[lookup_df$short == spcode[i]]
-      if (length(type) == 0) {
+      if (anyNA(type) || length(type) == 0) {
         warning("Species code ", spcode[i], " not found, skipping record ", i)
       } else {
         # Call the appropriate tariff function
@@ -301,6 +301,16 @@ tariffs <- function(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.0
           result <- conifer_tariff(spcode[i], height[i], dbh[i], re_h, re_dbh, re_a)
         } else if (type == "broadleaf") {
           result <- broadleaf_tariff(spcode[i], height[i], dbh[i], re_h, re_dbh, re_a)
+        } else if (type == "any") {
+          result <- mean(c(broadleaf_tariff("XB", height[i], dbh[i]),
+                           conifer_tariff("XC", height[i], dbh[i])))
+          if(!is.na(re_dbh) | !is.na(re_h)){
+            result <- list(tariff = result, sigma = as.numeric(sqrt(
+              broadleaf_tariff("XB", height[i],dbh[i],re_h, re_dbh, re_a)[2]^2 +
+              conifer_tariff("XC", height[i],dbh[i], re_h, re_dbh, re_a)[2]^2)))
+          }
+          warning("General broadleaf and conifer values averaged for mixed species index", i, ".")
+
         } else {
           warning("Unrecognized species type for spcode ", spcode[i], ".")
         }
@@ -1183,8 +1193,7 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error('Quercus robur', dbh=74, height=24, re_dbh=0.10,
-#' re_h=0.05)
+#' fc_agc_error('Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
 #' biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
 #' # Input wood density and sd from BIOMASS package
@@ -1527,7 +1536,6 @@ biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World"
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
 #' @param DBH Diameter at breast height (cm)
-#' @param Height Height of tree (m)
 #' @param Genus First part of Species binomial
 #' @param Species Second part of Species binomial
 #' @param new.eqtable a subset or extension of the allometric equation table. Create with allodb::new_equations
