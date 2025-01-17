@@ -5,9 +5,10 @@
 \title{Calculate above ground carbon}
 \usage{
 fc_agc(
-  spcode,
+  name,
   dbh,
   height,
+  type = NA,
   method = "IPCC2",
   biome = "temperate",
   output.all = TRUE,
@@ -15,11 +16,13 @@ fc_agc(
 )
 }
 \arguments{
-\item{spcode}{species code (single)}
+\item{name}{species name, either binomial or common}
 
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{in metres}
+
+\item{type}{either 'broadleaf' or 'conifer'}
 
 \item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
 

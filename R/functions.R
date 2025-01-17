@@ -309,7 +309,8 @@ tariffs <- function(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.0
               broadleaf_tariff("XB", height[i],dbh[i],re_h, re_dbh, re_a)[2]^2 +
               conifer_tariff("XC", height[i],dbh[i], re_h, re_dbh, re_a)[2]^2)))
           }
-          warning("General broadleaf and conifer values averaged for mixed species index", i, ".")
+          warning("Species code ", spcode[i], " not found, averaging broadleaf
+                  & conifer tariff numbers")
 
         } else {
           warning("Unrecognized species type for spcode ", spcode[i], ".")
@@ -1051,7 +1052,8 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' @description  Function that inputs tree species code, dbh, height and method
 #' for converting biomass to carbon, and returns the carbon estimate
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
-#' @param spcode species code (single)
+#' @param name species name, either binomial or common
+#' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
 #' @param height in metres
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
@@ -1073,29 +1075,37 @@ lookspcode <- function(name, type = NA, returnv = "all") {
 #' fc_agc('OK', 72, 24, nsg = wd$meanWD)
 #' @export
 #'
-fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
+fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                            "temperate", output.all = TRUE, nsg = NA){
 
   # Check arguments
-  if(length(spcode) != length(dbh) || length(spcode) != length(height) ||
+  if(length(name) != length(dbh) || length(name) != length(height) ||
      length(height) != length(dbh))stop("input lengths must be the same")
-  if(!is.character(spcode))stop("spcode must be a character")
+  if(!is.character(name))stop("name must be a character")
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
-  if (!(method %in% c("IPCC2", "Thomas"))) {
-    stop("Invalid method. Choose from: 'IPCC2', 'Thomas'")
+  methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
+  if (!(method %in% methods)) {
+    stop("Invalid method. Choose from: ", paste(methods, collapse = ", "))
   }
   biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
   if (!missing(biome) && !(biome %in% biomes)) {
     stop("Invalid biome. Choose from: ", paste(biomes, collapse = ", "))
   }
-  n = length(spcode)
+  n = length(name)
+  spcodes <- lookspcode(name, type, returnv = 'short')
 
   # Create results table
-  r <- data.frame(spcode=NA, spname=NA, dbh=NA, height=NA, NSG=NA, tariff=NA,
-           mercvol_m.3=NA, stemvol_m.3=NA, stembiomass_t=NA, crownbiomass_t=NA,
-           rootbiomass_t=NA, AGC_t=NA, stringsAsFactors=FALSE)
+  if(output.all){
+    r <- data.frame(name=name, type=type, dbh=dbh, height=height, spcode=spcodes$spcode,
+                    matchtype=spcodes$matchtype, NSG=NA, tariff=NA,
+                    mercvol_m.3=NA, stemvol_m.3=NA, stembiomass_t=NA, crownbiomass_t=NA,
+                    rootbiomass_t=NA, AGC_t=NA, stringsAsFactors=FALSE)
+  } else {
+    r <- data.frame(name=name, spcode=spcodes$spcode,
+                    matchtype=spcodes$matchtype, AGC_t=NA, stringsAsFactors=FALSE)
+  }
   r <- r[1:n,]
 
   # Loop over all trees
@@ -1106,25 +1116,30 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
     }
 
     # Lookup species data from code
-    rec <- lookup_df[lookup_df$short == spcode[i], ]
-    type <- rec$type
+    rec <- lookup_df[lookup_df$short == r$spcode[i], ]
 
-    # Check if the species code was found
-    if (nrow(rec) == 0) {
-      warning("The spcode value was not found: ", spcode[i], "Index:", i)
-      next
-    }
+    # Get current type if not provided
+    if(is.na(type[i]) | type[i] == "NA") {
+      type_i <- rec$type } else { type_i <- type[i] }
+
 
     # If height less than 6.5 use sapling model
-    if(height[i] < 5){
-      carbon <- sap_seedling2C(heightincm = height[i]*100, type)
-      r$AGC_t[i] <- carbon$carbon
+    if (is.na( height[i]) | height[i] < 0.01 ) {
+      warning("Height is missing or less than 1cm minimum, skipping record ", i)
+      next
+      } else if( height[i] < 6.5 ){
+      if(!type_i %in% c("broadleaf", "conifer")){
+        next("Type must be specified as 'broadleaf' or 'conifer' for
+             sap_seedling2C function for height < 6.5 m for index ", i)
+      }
+      carbon <- sap_seedling2C(heightincm = height[i]*100, type_i)
+      r$AGC_t[i] <- carbon
     } else {
       # Get tariff number depending on broadleaf or conifer
-      tariff <- tariffs(spcode[i], height[i], dbh = dbh[i])
+      tariff <- tariffs(r$spcode[i], height[i], dbh = dbh[i])
 
       if (length(tariff) == 0) {
-        warning("Error in", type, "_tariff function at index: ", i)
+        warning("Error in", type_i, "_tariff function at index: ", i)
       }
       # If nsg not specified lookup from rec
       if(is.na(nsg)){ nsg <- rec$NSG }
@@ -1135,18 +1150,21 @@ fc_agc <- function(spcode, dbh, height, method = "IPCC2", biome =
       woodbio <- woodbiomass(stemvol, nsg)                # Stem  Biomass
       crownbio <- crownbiomass(rec$Crown, dbh[i])         # Crown Biomass
       AGB <- woodbio + crownbio$biomass                   # Above ground Biomass
-      AGC <- biomass2c(AGB, method=method, type, biome=biome)  # Carbon
-      r$AGC_t[i] <- AGC
+
+      if(method  %in% c("IPCC2", "Thomas") &
+         !type_i %in% c("broadleaf", "conifer")){
+        warning("Type must be specified as 'broadleaf' or 'conifer' for the
+        chosen method to convert biomass to carbon for index ", i)
+      } else {
+        AGC <- biomass2c(AGB, method=method, type_i, biome=biome)  # Carbon
+        r$AGC_t[i] <- AGC
+      }
     }
 
     if(output.all){
-      r$spcode[i] <- spcode[i]
-      r$spname[i] <- rec$latin_name
-      r$dbh[i]    <- dbh[i]
-      r$height[i] <- height[i]
       r$NSG[i] <- rec$NSG
 
-      if(height[i] >= 5){
+      if(height[i] >= 6.5){
         r$tariff[i] <- tariff
         r$mercvol_m.3[i] <- mercvol
         r$stemvol_m.3[i] <- stemvol
@@ -1253,17 +1271,23 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
       warning("dbh is not numeric or positive for index:", i)
       next
     }
-
     # Lookup species data from code
     rec <- lookup_df[lookup_df$short == r$spcode[i], ]
-    if(is.na(type[i])) { type <- rec$type } else { type <- type[i] }
+
+    # Get current type if not provided
+    if(is.na(type[i]) | type[i] == "NA") {
+      type_i <- rec$type } else { type_i <- type[i] }
 
     # If height less than 6.5 use sapling model
-    if (is.na(height[i])) {
-      warning("Height is missing skipping record ", i)
+    if (is.na(height[i]) | height[i] < 0.01) {
+      warning("Height is missing or less than 1cm minimum, skipping record ", i)
       next
-    } else if(height[i] < 5){
-      carbon <- sap_seedling2C(heightincm = height[i]*100, type,
+    } else if(height[i] < 6.5){
+      if(!type_i %in% c("broadleaf", "conifer")){
+        next("Type must be specified as 'broadleaf' or 'conifer' for
+             sap_seedling2C function for height < 6.5 m for index ", i)
+      }
+      carbon <- sap_seedling2C(heightincm = height[i]*100, type_i,
                                re_h = re_h, re = re)
       r$AGC_t[i] <- carbon$carbon
       r$sig_AGC[i] <- carbon$sd
@@ -1273,7 +1297,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                         re_h = re_h, re_dbh = re_dbh, re_a = re)
 
       if (length(tariff) == 0) {
-        warning("Error in", type, "_tariff function at index: ", i)
+        warning("Error in", type_i, "_tariff function at index: ", i)
       }
       # If nsg not specified lookup from rec
       if(is.na(nsg)){ nsg <- rec$NSG }
@@ -1293,17 +1317,22 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
       # Above ground Biomass
       AGB <- woodbio$woodbiomass + crownbio$biomass
       sig_AGB <- sqrt(woodbio$sigma^2 + as.numeric(crownbio[4])^2)   # tocheck
-      # Above ground Carbon
-      AGC <- biomass2c(AGB, method=method, type, biome=biome,
-                       sig_biomass = sig_AGB)
-      r$AGC_t[i] <- AGC$AGC
-      r$sig_AGC[i] <- AGC$sig_AGC
+
+      if(!type_i %in% c("broadleaf", "conifer")){
+        warning("Type must be specified as 'broadleaf' or 'conifer' for the method
+        to convert biomass to carbon for index ", i)
+      } else {
+        # Above ground Carbon
+        AGC <- biomass2c(AGB, method, type_i, biome, sig_biomass=sig_AGB)
+        r$AGC_t[i] <- AGC$AGC
+        r$sig_AGC[i] <- AGC$sig_AGC
+      }
     }
 
     if(output.all){
       r$NSG[i] <- nsg
 
-      if(height[i] >= 5){
+      if(height[i] >= 6.5){
         r$tariff[i] <- tariff$tariff
         r$sig_tariff[i] <- tariff$sigma
         r$mercvol_m.3[i] <- mercvol$volume
