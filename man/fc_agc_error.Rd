@@ -62,6 +62,7 @@ biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+fc_agc_error(c('Quercus robur','beech'), c(74,23), c(24,24), output.all = FALSE)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

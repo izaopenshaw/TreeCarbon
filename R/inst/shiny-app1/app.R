@@ -1,7 +1,7 @@
+# App1 to compare different trees carbon calculation using WCC
+
 library(shiny)
 library(ggplot2)
-
-# errors: graph not appearing with output all False, cant get re inputs to work
 
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
@@ -11,7 +11,7 @@ if (!requireNamespace("TreeCarbon", quietly = TRUE)) {
 }
 library(TreeCarbon)
 
-lookup_latin_names <- c("", "Abies", "Abies alba", "Abies grandis", "Abies nordmanniana", "Abies procera",
+lookup_latin_names <- c(" ", "Abies", "Abies alba", "Abies grandis", "Abies nordmanniana", "Abies procera",
                         "Abies sibirica", "Acer campestre", "Acer platanoides", "Acer pseudoplatanus",
                         "Aesculus hippocastanum", "Alnus", "Alnus cordata", "Alnus glutinosa", "Alnus incana",
                         "Betula", "Callitropsis nootkatensis", "Carpinus betulus", "Castanea sativa",
@@ -29,7 +29,7 @@ lookup_latin_names <- c("", "Abies", "Abies alba", "Abies grandis", "Abies nordm
 
 # Define UI
 ui <- fluidPage(
-  titlePanel("Tree Above Ground Carbon and Error Calculator"),
+  titlePanel("Tree Above Ground Carbon Calculator using WCC"),
 
   sidebarLayout(
     sidebarPanel(
@@ -37,15 +37,16 @@ ui <- fluidPage(
                 accept = c(".csv")),
       selectInput("botanical_name", "Select Botanical Name:",
                   choices = c("", lookup_latin_names), selected = NULL),
-      textInput("common_name", "Or enter a common name", value = ""),
-      selectInput("type", "Type", choices = c("broadleaf", "conifer", "NA"), selected = "NA"),
+      textInput("common_name", "Or enter a name to search:", value = ""),
+      selectInput("type", "Type (optional):", choices = c("broadleaf", "conifer", "NA"), selected = "NA"),
       sliderInput("dbh", "DBH (cm):", min = 0, max = 150, value = 20, step = 1),
       sliderInput("height", "Height (m):", min = 0, max = 60, value = 15, step = 1),
-      selectInput("method", "Carbon to Biomass Method:", choices = c("Thomas", "IPCC2")),
+      selectInput("method", "Carbon to Biomass Conversion Method:", choices = c("Thomas", "IPCC2")),
       #textInput("re_dbh", "Relative error for dbh (%)", value = "0.05"),
       #textInput("re_h", "Relative error for height (%)", value = "0.1"),
       #textInput("re", "Relative error for coefficients (%)", value = "0.025"),
-      checkboxInput("output_all", "Output all data", value = TRUE), # Updated to toggle button
+      checkboxInput("output_all", "Output all data", value = TRUE),
+      checkboxInput("plot_carbon", "Plot Carbon", value = TRUE),
       actionButton("calculate", "Calculate"),
       downloadButton("download", "Download Results")
     ),
@@ -55,9 +56,9 @@ ui <- fluidPage(
         tabPanel("Results and Plot", plotOutput("dbhPlot"), tableOutput("results")),
         tabPanel("Instructions",
                  p("To use the app:"),
-                 p("1a. Upload a CSV file with columns for `name` (either botanical or common), `dbh` (cm), and `height` (m)."),
+                 p("1a. Either upload a csv file with columns for `name` (either botanical or common), `dbh` (cm), `height` (m) and type (broadleaf or confier. This is optional as it is a fall back if the species name is not found)."),
                  p("b. Or input single tree data in the fields and click Calculate."),
-                 p("2. Use the 'Output Type' checkbox to toggle all output data or just carbon estimates."))
+                 p("2. Use the 'Output all data' checkbox to toggle all output data or just carbon estimates. Above-ground carbon (AGC) is outputted in tonnes, along with the propagated error estimate, sig_AGC which is an estimate for sigma of AGC. The plotted error bars represent AGC + or - sig_AGC."))
       )
     )
   )
@@ -76,8 +77,10 @@ server <- function(input, output, session) {
     }
   })
 
-  # Reactive to calculate results
-  calculate_results <- reactive({
+  appData <- reactiveValues(results = data.frame())
+
+  observeEvent(input$calculate, {
+
     req(input$calculate)
 
     # Initialize warnings
@@ -90,20 +93,20 @@ server <- function(input, output, session) {
     }
 
     # Run fc_agc_error
-    results <- tryCatch({
+    newResult <- tryCatch({
       withCallingHandlers({
+
         if (!is.null(input$datafile)) {
           # Load data from file
           tree_data <- read.csv(input$datafile$datapath)
 
-          # Ensure required columns are present
           if (!all(c("name", "dbh", "height") %in% colnames(tree_data))) {
-            showNotification("Uploaded file must have columns: name, dbh, and height.", type = "error")
-            return(NULL)
+            stop("CSV file must contain columns: name, dbh, height")
           }
 
           # Assign default values for optional columns if missing
-          if (!"type" %in% colnames(tree_data)) tree_data$type <- "NA"
+          if (!"type" %in% colnames(tree_data)) tree_data$type <- NA
+          tree_data$type[!tree_data$type %in% c("broadleaf", "conifer")] <- NA
           #if (!"nsg" %in% colnames(tree_data)) tree_data$nsg <- NA
           #if (!"sig_nsg" %in% colnames(tree_data)) tree_data$sig_nsg <- NA
           #if (!"re_dbh" %in% colnames(tree_data)) tree_data$re_dbh <- 0.05
@@ -115,15 +118,13 @@ server <- function(input, output, session) {
             name = tree_data$name,
             dbh = tree_data$dbh,
             height = tree_data$height,
-            type = tree_data$type,
-            method = input$method,
-            #biome = input$biome,
+            type = ifelse("type" %in% colnames(tree_data), tree_data$type, NA),
+            method = input$method
             #nsg = tree_data$nsg,
             #sig_nsg = tree_data$sig_nsg,
             #re_dbh = as.numeric(input$re_dbh),
             #re_h = as.numeric(input$re_h),
-            #re = as.numeric(input$re),
-            output.all = input$output_all
+            #re = as.numeric(input$re)
           )
         } else {
           # Single tree calculation
@@ -131,71 +132,78 @@ server <- function(input, output, session) {
             name = selected_name(),
             dbh = input$dbh,
             height = input$height,
-            method = input$method,
-            #biome = input$biome,
-            #re_dbh = input$re_dbh,
-            #re_h = input$re_h,
-            #re = input$re,
-            output.all = input$output_all
+            type = input$type,
+            method = input$method
           )
         }
       }, warning = capture_warning)
     }, error = function(e) {
-      showNotification(paste("Error:", conditionMessage(e)), type = "error")
+      showNotification("An error occurred while calculating results", type = "error")    # paste("Error:", conditionMessage(e)), type = "error")
       return(NULL)
+      req(!is.null(newResult))
+      newResult
     })
+
+    # Append the new result to the existing results
+    if (!is.null(newResult)) {
+      appData$results <- rbind(appData$results, newResult)
+    }
 
     # Display all warnings as notifications
     for (warning_msg in warnings) {
       showNotification(paste("Warning:", warning_msg), type = "warning")
     }
 
-    return(results)
+    return(newResult)
   })
 
   # Render DBH bar plot
   output$dbhPlot <- renderPlot({
-    results <- req(calculate_results())
 
-    # Filter rows with missing values
-    plot_data <- results[!is.na(results$dbh) & !is.na(results$AGC_t), ]
+    req(nrow(appData$results) > 0)
+    plot_data <- appData$results
+    #plot_data <- appData$results[!is.na(appData$results$dbh) & !is.na(appData$results$AGC_t), ]
+    plot_data <- data.frame(ID = seq_len(nrow(plot_data)), plot_data)
 
-    # Conditional plotting
-    if (input$output_all) {
-      ggplot(plot_data, aes(x = dbh, y = AGC_t)) +
+    if(input$plot_carbon){
+      ggplot(plot_data, aes(x = ID, y = AGC_t)) +
         geom_bar(stat = "identity", fill = "skyblue") +
-        geom_errorbar(
-          aes(ymin = AGC_t - sig_AGC, ymax = AGC_t + sig_AGC),
-          width = 0.5
-        ) +
-        labs(
-          title = "Above Ground Carbon (AGC) with DBH on X-Axis",
-          x = "DBH (cm)",
-          y = "AGC (t)"
-        ) +
+        geom_errorbar(aes(ymin = AGC_t - sig_AGC, ymax = AGC_t + sig_AGC), width = 0.5) +
+        labs(title = "Above Ground Carbon (AGC)", x = "Tree Index", y = "AGC (t)") +
         theme_minimal() +
-        theme(
-          axis.text.x = element_text(angle = 45, hjust = 1)
-        )
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
     } else {
-      ggplot(plot_data, aes(x = dbh, y = AGC_t)) +
-        geom_bar(stat = "identity", fill = "skyblue") +
-        labs(
-          title = "Above Ground Carbon (AGC) with DBH on X-Axis",
-          x = "DBH (cm)",
-          y = "AGC (t)"
-        ) +
-        theme_minimal() +
-        theme(
-          axis.text.x = element_text(angle = 45, hjust = 1)
+      plot_data$total_biomass_sigma <- sqrt(plot_data$sig_stembiomass^2 + plot_data$sig_crownbiomass^2 + plot_data$sig_rootbiomass^2)
+
+      library(tidyr)
+      plot_data_long <- plot_data %>%
+        pivot_longer(
+          cols = c(crownbiomass_t, stembiomass_t, rootbiomass_t),
+          names_to = "component",
+          values_to = "biomass"
         )
+
+      ggplot(plot_data_long, aes(x = ID, y = biomass, fill = component)) +
+        geom_bar(stat = "identity", position = "stack") +
+        geom_errorbar(data = plot_data, aes(x = ID, ymin = crownbiomass_t + stembiomass_t + rootbiomass_t - total_biomass_sigma,
+                                            ymax = crownbiomass_t + stembiomass_t + rootbiomass_t + total_biomass_sigma),
+                      width = 0.2, inherit.aes = FALSE) +
+        labs(x = "Index", y = "Biomass (t)", fill = "Component") +
+        theme_minimal()
+
+
     }
   })
 
   # Render results table
   output$results <- renderTable({
-    req(calculate_results())
-    calculate_results()
+    req(nrow(appData$results) > 0)
+
+    if (input$output_all) {
+      appData$results
+    } else {
+      appData$results[, c("name", "AGC_t", "sig_AGC", "matchtype"), drop = FALSE]
+    }
   })
 
   # Handle file download
@@ -211,7 +219,5 @@ server <- function(input, output, session) {
 
 # Run the app
 shinyApp(ui, server)
-
-
 
 

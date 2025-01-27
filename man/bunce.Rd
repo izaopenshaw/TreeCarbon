@@ -4,10 +4,12 @@
 \alias{bunce}
 \title{Bunce biomass equation}
 \usage{
-bunce(spcode, dbh)
+bunce(name, type = NA, dbh)
 }
 \arguments{
-\item{spcode}{species code}
+\item{name}{species name (common or binomial)}
+
+\item{type}{'broadleaf' or 'conifer' (optional)}
 
 \item{dbh}{diameter at breast height}
 }
@@ -18,8 +20,8 @@ biomass in kg
 Calculates dry weight based on species and dbh
 }
 \examples{
-bunce("OK", 24)
-bunce(c("OK","OK"), c(24,20))
+bunce("Oak", 24)
+bunce(name = c("Oak","Oak"), dbh = c(24,20))
 }
 \references{
 Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
