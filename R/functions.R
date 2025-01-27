@@ -856,7 +856,7 @@ biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
   # Retrieve CVF and re values using the lookup table
   for (i in seq_len(n)) {
     filter_conditions <- !is.na(CVF_df$method) & CVF_df$method == method &
-      (is.na(CVF_df$type) | CVF_df$type == r$type[i]) &
+      (is.na(CVF_df$type) | CVF_df$type == type[i]) &
       (is.na(CVF_df$biome) | CVF_df$biome == biome)
     matching_row <- subset(CVF_df, filter_conditions)
 
@@ -1508,6 +1508,10 @@ bunce <- function(name, type = NA, dbh) {
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
 #' @importFrom utils install.packages
+#' @examples
+#' coords <- c(-0.088837,51.071610)
+#' biomass(12, 12, 'Quercus', 'robus', coords)
+#'
 #' @export
 #'
 biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World", output.all = TRUE) {
