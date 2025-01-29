@@ -1414,10 +1414,10 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @importFrom utils data
 #' @examples
 #' bunce("Oak", 24)
-#' bunce(name = c("Oak","Oak"), dbh = c(24,20))
+#' bunce(c("Oak", "Beech"), c(24,23))
 #' @export
 #'
-bunce <- function(name, type = NA, dbh) {
+bunce <- function(name, dbh, type = NA) {
   # Convert DBH to numeric, coercing invalid values to NA
   dbh <- as.numeric(dbh)
 
@@ -1432,61 +1432,52 @@ bunce <- function(name, type = NA, dbh) {
     }
   }
 
+  # Pre-compute combined coefficients
+  combined_coeffs <- buncedf[buncedf$spcode == "XB",]
+
   # Helper function to calculate biomass for each name and DBH
   calculate_biomass <- function(species_name, DBH) {
     if (is.na(species_name) || species_name == "NA" || is.na(DBH) || DBH <= 0) {
-      warning("Skipping invalid input: species_name = ", species_name, ", DBH = ", DBH)
-      return(list(biomass = NA, species_name = species_name))
+      return(list(biomass = NA, spcode = NA, species_name = species_name))
     }
 
     # Lookup species code from the name
     lookup <- lookspcode(species_name, type = type, returnv = "short")
     if (nrow(lookup) == 0) {
-      warning("Species name not found: ", species_name, ". Skipping.")
-      return(list(biomass = NA, species_name = species_name))
+      return(list(biomass = NA, spcode = NA, species_name = species_name))
     }
     spcode <- lookup$spcode[1]
 
-    # Extract coefficients for th e given species code
+    # Extract coefficients for the given species code
     coeffs <- buncedf[buncedf$spcode == spcode,]
-    used_spcode <- spcode  # Default to the found species code
-
-    # Use combined coefficients if species code is not found
     if (nrow(coeffs) == 0) {
-      warning("Coefficients not found for: ", species_name, ". Using combined coefficients.")
-      coeffs <- buncedf[buncedf$spcode == "XB",]
-      used_spcode <- "XB"  # Indicate fallback code
+      coeffs <- combined_coeffs
+      spcode <- "XB"  # Indicate fallback code
     }
 
     # Calculate biomass
     biomass <- coeffs$a + coeffs$b * log(pi * DBH)
-    return(list(biomass = exp(biomass), species_name = species_name, spcode = used_spcode))
+    return(list(biomass = exp(biomass), spcode = spcode, species_name = species_name))
   }
 
   # Apply the calculation over all inputs
   results <- mapply(calculate_biomass, name, dbh, SIMPLIFY = FALSE)
 
-  # Separate the biomass and species names into named lists
+  # Extract the biomass, species names, and spcodes
   biomass <- sapply(results, function(x) x$biomass)
+  spcodes <- sapply(results, function(x) x$spcode)
   species_names <- sapply(results, function(x) x$species_name)
 
-  # Fill in NA for invalid inputs
-  full_results <- vector("list", length(name))
-  for (i in seq_along(name)) {
-    if (is.na(name[i]) || name[i] == "NA" || is.na(dbh[i]) || dbh[i] <= 0) {
-      full_results[[i]] <- list(biomass = NA, species_name = name[i])
-    } else {
-      full_results[[i]] <- results[[i]]
-    }
-  }
+  # Return as a data frame
+  output <- data.frame(
+    species_name = species_names,
+    dbh = dbh,
+    biomass = biomass,
+    spcode = spcodes,
+    stringsAsFactors = FALSE
+  )
 
-  # Extract the biomass values and names for output
-  biomass <- sapply(full_results, function(x) x$biomass)
-  species_names <- sapply(full_results, function(x) x$species_name)
-
-  # Return biomass with species names as names
-  names(biomass) <- species_names
-  return(biomass)
+  return(output)
 }
 
 ############# BIOMASS Package carbon calculation ==========================
