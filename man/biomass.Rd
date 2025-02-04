@@ -41,3 +41,11 @@ is inputed height filled in with Height estimate where missing)
 \description{
 Using the Biomass package to calculate carbon
 }
+\examples{
+coords <- c(-0.088837,51.071610)
+biomass(12, 12, 'Quercus', 'robus', coords)
+
+}
+\references{
+TODO
+}

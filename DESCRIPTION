@@ -32,7 +32,8 @@ Suggests:
     testthat,
     allodb,
     BIOMASS,
-    shiny
+    shiny,
+    httr2
     (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr

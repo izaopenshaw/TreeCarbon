@@ -31,3 +31,6 @@ is inputed height filled in with Height estimate where missing)
 \description{
 Using the Biomass package to calculate carbon
 }
+\references{
+Gonzalez-Akre et al, 2021
+}

@@ -32,7 +32,7 @@ R data file, 'tariff_coniferdf'.
 }
 \examples{
 conifer_tariff("SP", 74, 24)
-conifer_tariff("SP", 74, 24, 5, 5)
+conifer_tariff("SP", 74, 24, 1, 1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

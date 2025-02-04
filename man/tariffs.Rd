@@ -4,7 +4,15 @@
 \alias{tariffs}
 \title{Tariff number by stand height}
 \usage{
-tariffs(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.025)
+tariffs(
+  spcode,
+  height,
+  dbh = NULL,
+  type = NA,
+  re_h = NA,
+  re_dbh = NA,
+  re_a = 0.025
+)
 }
 \arguments{
 \item{spcode}{species code (short)}
@@ -12,6 +20,8 @@ tariffs(spcode, height, dbh = NA, re_h = NA, re_dbh = NA, re_a = 0.025)
 \item{height}{tree height in metres}
 
 \item{dbh}{diameter at breast height in centimetres}
+
+\item{type}{conifer or broadleaf}
 
 \item{re_h}{relative error of height measurement (optional)}
 
@@ -30,7 +40,8 @@ tariff number.
 \examples{
 tariffs("OK", height= 10, dbh = 20)
 tariffs("OK", 10, 20, re_h = 0.1, re_dbh = 0.05)
-tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA), re_h = 0.01, re_dbh = 0.05)
+tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA),
+ re_h = 0.01, re_dbh = 0.05)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
