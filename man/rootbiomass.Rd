@@ -4,7 +4,7 @@
 \alias{rootbiomass}
 \title{Forestry commission root biomass estimates}
 \usage{
-rootbiomass(spcode, dbh, re_dbh = NA, re = 0.025)
+rootbiomass(spcode, dbh, re_dbh = NULL, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code}

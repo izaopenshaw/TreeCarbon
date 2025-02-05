@@ -4,7 +4,7 @@
 \alias{merchtreevol}
 \title{Forestry merchantable volume}
 \usage{
-merchtreevol(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025)
+merchtreevol(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.025)
 }
 \arguments{
 \item{dbh}{diameter at breast height in centimetres}

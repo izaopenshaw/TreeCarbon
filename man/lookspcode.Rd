@@ -7,7 +7,7 @@
 lookspcode(name, type = NA, spcode = "short")
 }
 \arguments{
-\item{name}{name of species (common or botanical). See lookup_df.Rda}
+\item{name}{name of species (common or botanical). See lookup_data.Rda}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 

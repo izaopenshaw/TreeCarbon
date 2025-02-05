@@ -4,7 +4,7 @@
 \alias{treevol}
 \title{Forestry commission tree wood volume}
 \usage{
-treevol(mtreevol, dbh, sig_mtreevol = NA, re = 0.025)
+treevol(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025)
 }
 \arguments{
 \item{mtreevol}{merchantable tree volume}

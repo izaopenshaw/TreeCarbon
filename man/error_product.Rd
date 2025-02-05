@@ -4,7 +4,15 @@
 \alias{error_product}
 \title{Analytical error progression for a product}
 \usage{
-error_product(a, sig_a, b, sig_b, c = NA, sig_c = NA, returnv = "sigmasquared")
+error_product(
+  a,
+  sig_a,
+  b,
+  sig_b,
+  c = NULL,
+  sig_c = NULL,
+  returnv = "sigmasquared"
+)
 }
 \arguments{
 \item{a}{first variable in product}

@@ -2,7 +2,7 @@
 # TODO:
 # error for ctoco2e ?
 # todo error for nsg
-# search not found and check that intermediate species are found in lookup_df
+# search not found and check that intermediate species are found in lookup_data
 # check biomass2c that error is confidence percentage by checking references
 # single crown root dont have a code for Mixed species
 # species specific sd for nsg?
@@ -109,7 +109,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0
   if (any(missing_species)) {
 
     # Find substitute species
-    subcode <- lookup_df$single[match(spcode[missing_species], lookup_df$short)]
+    subcode <- lookup_data$single[match(spcode[missing_species], lookup_data$short)]
     sub_index <- match(subcode, tariff_coniferdf$abbreviation)
     tc[missing_species, ] <- tariff_coniferdf[sub_index, ]
 
@@ -186,7 +186,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a =
 
   if (any(missing_species)) {
     # Find substitute species
-    subcode <- lookup_df$single[match(spcode[missing_species], lookup_df$short)]
+    subcode <- lookup_data$single[match(spcode[missing_species], lookup_data$short)]
     sub_index <- match(subcode, tariff_broaddf$abbreviation)
     tb[missing_species, ] <- tariff_broaddf[sub_index, ]
 
@@ -257,7 +257,7 @@ stand_tariff <- function(spcode, height, re_h = NA, re_a=0.025) {
 
   if(any(missing_species)) {
     # Find substitute species using lookup table
-    subcode <- lookup_df$stand[match(spcode[missing_species], lookup_df$short)]
+    subcode <- lookup_data$stand[match(spcode[missing_species], lookup_data$short)]
     sub_index <- match(subcode, tarif2heightdf$abbreviation)
     rec[missing_species, ] <- tarif2heightdf[sub_index, ]
 
@@ -324,8 +324,8 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = N
 
   # Lookup missing type values
   if (anyNA(type)) {
-    lookup_index <- match(spcode, lookup_df$short)
-    lookup_type <- lookup_df$type[lookup_index]
+    lookup_index <- match(spcode, lookup_data$short)
+    lookup_type <- lookup_data$type[lookup_index]
     use_original <- is.na(lookup_type) | lookup_type == "any"
     type <- ifelse(use_original, type, lookup_type)
   }
@@ -660,7 +660,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode Crown biomass species code, crown_biomasdf$Code or if not
-#' defined for species, lookup_df$short to find relating lookup_df$Crown
+#' defined for species, lookup_data$short to find relating lookup_data$Crown
 #' @param re_d relative error for diameter at breast height measurement (default = 5%)
 #' @param re relative error of coefficients (default = 2.5%)
 #' @returns  biomass (oven dry tonnes) and estimated sigma
@@ -698,7 +698,7 @@ crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
     # Find the record in the data for the species code
     rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
     if (nrow(rec) == 0) {
-      spcode_match <- lookup_df$Crown[lookup_df$short == spcode[i]]
+      spcode_match <- lookup_data$Crown[lookup_data$short == spcode[i]]
       rec <- crown_biomasdf[crown_biomasdf$Code == spcode_match, ]
       if (nrow(rec) == 0) warning(paste("The species code", spcode[i], "is not found"))
     }
@@ -789,11 +789,11 @@ rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
 
     if (nrow(rec) == 0) {
 
-      spcode <- lookup_df$Root[lookup_df$short == spcode[i]]
+      spcode <- lookup_data$Root[lookup_data$short == spcode[i]]
       rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
 
       if (nrow(rec) == 0) {
-        warning(paste("The species code", spcode[i], "is not found in lookup_df$Root"))
+        warning(paste("The species code", spcode[i], "is not found in lookup_data$Root"))
       }
     }
 
@@ -1029,7 +1029,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 #' @title Lookup species code
 #' @description  Function that looks up species codes for Woodland Carbon Code
 #' @author Isabel Openshaw I.Openshaw@kew.org
-#' @param name name of species (common or botanical). See lookup_df.Rda
+#' @param name name of species (common or botanical). See lookup_data.Rda
 #' @param type either 'broadleaf' or 'conifer'
 #' @param spcode either 'short', 'single', 'stand', 'root' or 'crown'
 #' @returns Species code
@@ -1048,7 +1048,7 @@ lookspcode <- function(name, type = NA, spcode = "short") {
   if (!is.character(name)) stop("'name' must be a character vector.")
 
   # Identify the column index for the selected 'spcode'
-  col_index <- which(names(lookup_df) == spcode)
+  col_index <- which(names(lookup_data) == spcode)
   if (length(col_index) == 0) stop("Invalid 'spcode' column selected.")
 
   # Clean Inputs
@@ -1056,10 +1056,10 @@ lookspcode <- function(name, type = NA, spcode = "short") {
   # search_type <- ifelse(is.na(type), "mixed", type) # Replace NA with "mixed"
 
   # Vectorized Matching
-  match_binomial <- match(clean_name, tolower(lookup_df$latin_name))
-  match_common <- match(clean_name, tolower(lookup_df$common_name))
-  match_genus  <- match(stringr::word(clean_name, 1), tolower(lookup_df$General.genus))
-  match_genus2 <- match(stringr::word(clean_name, 1), tolower(lookup_df$Genus))
+  match_binomial <- match(clean_name, tolower(lookup_data$latin_name))
+  match_common <- match(clean_name, tolower(lookup_data$common_name))
+  match_genus  <- match(stringr::word(clean_name, 1), tolower(lookup_data$General.genus))
+  match_genus2 <- match(stringr::word(clean_name, 1), tolower(lookup_data$Genus))
 
   # Create Result DataFrame
   result_df <- data.frame(spname = name, spcode = NA,
@@ -1068,38 +1068,38 @@ lookspcode <- function(name, type = NA, spcode = "short") {
   # Species Binomial Matches
   valid_binomial <- !is.na(match_binomial)
   if (any(valid_binomial)) {
-    result_df$spcode[valid_binomial] <- lookup_df[match_binomial[valid_binomial], col_index]
+    result_df$spcode[valid_binomial] <- lookup_data[match_binomial[valid_binomial], col_index]
     result_df$matchtype[valid_binomial] <- "binomial"
   }
 
   # Common Name Matches
   valid_common <- !is.na(match_common) & is.na(result_df$spcode)
   if (any(valid_common)) {
-    result_df$spcode[valid_common] <- lookup_df[match_common[valid_common], col_index]
+    result_df$spcode[valid_common] <- lookup_data[match_common[valid_common], col_index]
     result_df$matchtype[valid_common] <- "common"
   }
 
   # Genus Matches
   valid_genus <- !is.na(match_genus) & is.na(result_df$spcode)
   if (any(valid_genus)) {
-    result_df$spcode[valid_genus] <- lookup_df[match_genus[valid_genus], col_index]
+    result_df$spcode[valid_genus] <- lookup_data[match_genus[valid_genus], col_index]
     result_df$matchtype[valid_genus] <- "genus"
   }
   valid_genus2 <- !is.na(match_genus2) & is.na(result_df$spcode)
   if (any(valid_genus2)) {
-    result_df$spcode[valid_genus2] <- lookup_df[match_genus2[valid_genus2], col_index]
+    result_df$spcode[valid_genus2] <- lookup_data[match_genus2[valid_genus2], col_index]
     result_df$matchtype[valid_genus2] <- "genus"
   }
 
   unmatched <- c()
 
   # Type Matches
-  type_match <- match(search_type, lookup_df$General.type)
+  type_match <- match(search_type, lookup_data$General.type)
   valid_type <- !is.na(type_match) & is.na(result_df$spcode)
   if (any(valid_type)) {
     unmatched <- unique(result_df$spname[valid_type])
 
-    result_df$spcode[valid_type] <- lookup_df[type_match[valid_type], col_index]
+    result_df$spcode[valid_type] <- lookup_data[type_match[valid_type], col_index]
     result_df$matchtype[valid_type] <- search_type[valid_type]
 
   }
@@ -1109,7 +1109,7 @@ lookspcode <- function(name, type = NA, spcode = "short") {
   if (any(valid_mixed)) {
     unmatched <- c(unmatched, unique(result_df$spname[valid_mixed]))
 
-    result_df$spcode[valid_mixed] <- lookup_df[33, col_index]  # Assumes row 33 is "mixed"
+    result_df$spcode[valid_mixed] <- lookup_data[33, col_index]  # Assumes row 33 is "mixed"
     result_df$matchtype[valid_mixed] <- "mixed"
 
   }
@@ -1190,7 +1190,7 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
     }
 
     # Lookup species data from code
-    rec <- lookup_df[lookup_df$short == r$spcode[i], ]
+    rec <- lookup_data[lookup_data$short == r$spcode[i], ]
 
     # Get current type if not provided
     if(is.na(type[i]) | type[i] == "NA") {
@@ -1322,7 +1322,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 
   # Lookup species codes
   spcodes <- lookspcode(name, type, spcode = 'short')
-  rec <- lookup_df[match(spcodes$spcode, lookup_df$short), ]
+  rec <- lookup_data[match(spcodes$spcode, lookup_data$short), ]
 
   # Get conifer/broadleaf type
   type <- rec$type
@@ -1409,7 +1409,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
   for (i in 1:n) {
 
     # Lookup species data from code
-    rec <- lookup_df[lookup_df$short == r$spcode[i], ]
+    rec <- lookup_data[lookup_data$short == r$spcode[i], ]
 
     # Get current type if not provided
     if(is.na(type[i]) | type[i] == "NA") {
