@@ -26,7 +26,8 @@
 #' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, re_dbh = 0.05)
 #' @export
 #'
-tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = 0.025, re_c = 0.025){
+tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re_c = 0.025){
+
   if (!is.numeric(vol) || !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
     stop("vol and dbh must be non-negative numeric values")
   }
@@ -41,8 +42,9 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NA, re_dbh = 0.025, re_c = 0.025
   a1 <- (vol - const_vol) / (ba - const_ba)
   tariff <- (coef_a1 * a1) + const_tariff
 
-  if(!anyNA(sig_vol)){
-    if (any(sig_vol < 0) || !is.numeric(sig_vol)) {stop("sigm_vol must be non-negative numeric")}
+  if(!is.null(sig_vol)){
+    if (any(sig_vol < 0, na.rm = TRUE) || !is.numeric(sig_vol)) {
+      stop("sigm_vol must be non-negative numeric")}
     if (!is.numeric(re_dbh) || re_dbh < 0)
       stop("Argument 're_dbh' must be positive and numeric")
     if (!is.numeric(re_c) || re_c < 0)
@@ -406,10 +408,11 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = N
 #' merchtreevol(dbh = 24, tariff = 24, re_dbh = 0.05, sig_tariff = 1)
 #' @export
 #'
-merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025) {
+merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.025) {
   if( !is.numeric(tariff)) stop("tariff must be numeric")
-  if( !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE))
+  if( !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)){
     warning("dbh must be numeric and positive")
+  }
 
   # Constants
   k1 <- 0.315049301
@@ -422,7 +425,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NA, re = 0.025
   a1 <- (k3 * tariff) - (a2 * k4)
   vol <- a1 + (a2 * ba)
 
-  if(anyNA(sig_tariff)) {
+  if(is.null(sig_tariff)) {
     return(vol)
   } else {
     if(anyNA(tariff) || !is.numeric(tariff))
@@ -566,7 +569,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' error_product(5, 0.01, 10, 0.1, 5, 0.01)
 #' @export
 #'
-error_product <- function(a, sig_a, b, sig_b, c = NA, sig_c = NA,
+error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
                           returnv = "sigmasquared")
 {
   if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
@@ -577,7 +580,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NA, sig_c = NA,
     stop("returnv must be either 'sigma' or 'sigmasquared' (default)")
   }
 
-  if (anyNA(c)) {
+  if (is.null(c)) {
 
     if(returnv == "sigma") {
       # sigma for a*b
@@ -625,9 +628,9 @@ error_product <- function(a, sig_a, b, sig_b, c = NA, sig_c = NA,
 #' woodbiomass(10, 0.56, 5)
 #' @export
 #'
-woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
+woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) {
 
-  if(!is.numeric(treevol))stop("treevol must be numeric") #todo and positive??
+  if(!is.numeric(treevol))stop("treevol must be numeric")
   if(!is.numeric(nsg) || any(nsg<0)){
     sig_nsg = 0.09413391
   }
@@ -635,9 +638,11 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NA, sig_nsg = 0.09413391) {
   woodbio <- treevol * nsg
   sigma <- NA
 
-  if(!anyNA(sig_treevol)){
-    if(!is.numeric(sig_treevol)||sig_treevol<0){stop("'sig_treevol' must be positive & numeric")}
-    if(!is.numeric(sig_nsg)||sig_nsg<0){stop("'sig_nsg' must be positive & numeric")}
+  if(!is.null(sig_treevol)) {
+    if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
+      stop("'sig_treevol' must be positive & numeric")}
+    if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
+      stop("'sig_nsg' must be positive & numeric")}
 
     sigma <- error_product(treevol, sig_treevol, nsg, sig_nsg, returnv = "sigma")
     return(list(woodbiomass = woodbio, sigma = sigma))
@@ -748,7 +753,7 @@ crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
 #' rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 #' @export
 #'
-rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
+rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
 
   # Initialise
   if (length(spcode) != length(dbh)) {
@@ -758,10 +763,7 @@ rootbiomass <- function(spcode, dbh, re_dbh = NA, re = 0.025) {
     stop("All values of 'dbh' must be numeric and non-negative")
   }
   if (length(dbh) > 1){
-    if (!anyNA(re_dbh)) {
-      if (length(re_dbh) != 1 && length(re_dbh) != length(dbh)) {
-        stop("Length of 're_dbh' must be either 1 or match the length of 'dbh'")
-      }
+    if (!is.null(re_dbh)) {
       if (!is.numeric(re) || re < 0) {
         stop("Argument 're' must be numeric and non-negative")
       }
@@ -1051,7 +1053,7 @@ lookspcode <- function(name, type = NA, spcode = "short") {
 
   # Clean Inputs
   clean_name <- tolower(stringr::str_trim(name))
-  search_type <- ifelse(is.na(type), "mixed", type) # Replace NA with "mixed"
+  # search_type <- ifelse(is.na(type), "mixed", type) # Replace NA with "mixed"
 
   # Vectorized Matching
   match_binomial <- match(clean_name, tolower(lookup_df$latin_name))
@@ -1294,17 +1296,18 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                            "temperate", output.all = TRUE, re_dbh = 0.05, re_h =
                            0.1, re = 0.025, nsg = NA, sig_nsg = 0.09413391){
-
   # Check arguments
   if(!is.character(name)) stop ("name must be a character")
   if(!is.character(type)) stop ("type must be a character")
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
-  if(any(!type %in% c("broadleaf", "conifer", NA, "NA")))
+  if(any(!type %in% c("broadleaf", "conifer", NA, "NA"))){
     stop("type must equal either conifer, broadleaf or NA")
-  if(!is.numeric(re_dbh) || any(re_dbh<=0))
+    }
+  if(!is.numeric(re_dbh) || any(re_dbh<=0)){
     stop("re_dbh must be numeric & positive")
+    }
   if(!is.numeric(re_h) || any(re_h<0)) stop ("re_h must be numeric & positive")
 
   if (!(method %in% c("IPCC2", "Thomas"))) {
@@ -1321,14 +1324,15 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
   spcodes <- lookspcode(name, type, spcode = 'short')
   rec <- lookup_df[match(spcodes$spcode, lookup_df$short), ]
 
-  # Get conifer/broadleaf type if missing
-  missing_type <- is.na(type) | type == "NA"
-  type[missing_type] <- rec$type[missing_type]
+  # Get conifer/broadleaf type
+  type <- rec$type
 
   # Create results table
   if(output.all){
     r <- data.frame(name=name, type=type, spcode=spcodes$spcode,
-                    matchtype=spcodes$matchtype, dbh=dbh, height=height, NSG=NA,
+                    matchtype=spcodes$matchtype, dbh=dbh, height=height,
+                    small=NA, large=NA,
+                    NSG=NA,
                     tariff=NA, sig_tariff=NA, mercvol_m.3=NA, sig_mercvol=NA,
                     stemvol_m.3=NA, sig_stemvol=NA,stembiomass_t=NA,
                     sig_stembiomass=NA, crownbiomass_t=NA, sig_crownbiomass=NA,
@@ -1351,6 +1355,10 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 
   # Trees with height >= 6.5m
   large_trees <- height >= 6.5 & !is.na(height)
+
+  #Testing
+  r$small[valid_small_trees] <- TRUE
+  r$large[large_trees] <- TRUE
 
   if (any(large_trees)) {
     tariff <- tariffs(spcodes$spcode[large_trees], height[large_trees], dbh[large_trees], type[large_trees], re_h, re_dbh, re_a = re)
