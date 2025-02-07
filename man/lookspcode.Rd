@@ -20,9 +20,9 @@ Species code
 Function that looks up species codes for Woodland Carbon Code
 }
 \examples{
+lookspcode(name="Pine")
 lookspcode(name='Quercus robur', spcode='single')
-lookspcode(c("Scots pine", "Oak"))
-lookspcode(c('Oak', 'Quercus', 'Quercus rubra', 'Hawthorn', NA) ,
+lookspcode(name=c('Oak', 'Quercus', 'Quercus rubra', 'Hawthorn', NA) ,
  type = c(rep("broadleaf", 4), NA), spcode='short')
 }
 \references{

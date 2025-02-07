@@ -1,10 +1,10 @@
-name: shiny-app
+name: shiny-app1
 title:
 username: isabel-price
 account: isabel-price
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 13724337
+appId: 13915190
 bundleId:
-url: https://isabel-openshaw.shinyapps.io/shiny-app/
+url: https://isabel-openshaw.shinyapps.io/shiny-app1/
 version: 1
