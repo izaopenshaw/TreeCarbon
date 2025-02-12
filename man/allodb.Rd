@@ -32,5 +32,8 @@ is inputed height filled in with Height estimate where missing)
 Using the Biomass package to calculate carbon
 }
 \references{
-Gonzalez-Akre et al, 2021
+Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira,
+K. (2020). allodb: An R package for biomass estimation at globally
+distributed extratropical forest plots. Methods in Ecology and Evolution,
+11(10), 1273-1280
 }

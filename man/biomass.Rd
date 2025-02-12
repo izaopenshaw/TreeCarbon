@@ -44,8 +44,10 @@ Using the Biomass package to calculate carbon
 \examples{
 coords <- c(-0.088837,51.071610)
 biomass(12, 12, 'Quercus', 'robus', coords)
-
 }
 \references{
-TODO
+Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault
+, B. (2017). BIOMASS: an R package for estimating above-ground biomass and
+its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
+1163-1167
 }

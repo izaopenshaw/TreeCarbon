@@ -17,7 +17,7 @@
 #' @param dbh diameter at breast height in centimetres
 #' @param sig_vol sigma for tree volume (optional)
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
-#' @param re_c  relative error of coefficients (default = 2.5%)
+#' @param re  relative error of coefficients (default = 2.5%)
 #' @returns  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -25,8 +25,9 @@
 #' @examples
 #' tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, re_dbh = 0.05)
 #' @export
+#' @aliases tariff_vol_area
 #'
-tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re_c = 0.025){
+tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025){
 
   if (!is.numeric(vol) || !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
     stop("vol and dbh must be non-negative numeric values")
@@ -47,19 +48,19 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re_c = 0.0
       stop("sigm_vol must be non-negative numeric")}
     if (!is.numeric(re_dbh) || re_dbh < 0)
       stop("Argument 're_dbh' must be positive and numeric")
-    if (!is.numeric(re_c) || re_c < 0)
-      stop("Argument 're_c' must be positive and numeric")
-    if (re_dbh > 1 || re_c > 1)
+    if (!is.numeric(re) || re < 0)
+      stop("Argument 're' must be positive and numeric")
+    if (re_dbh > 1 || re > 1)
       warning("Relative error indicates high uncertainty to measured value")
 
     sig_ba <- (pi * 2 * dbh / 40000) * re_dbh*dbh
     sig_a1 <- a1 * sqrt(
       (sig_vol / (vol - const_vol))^2 +         # Error from vol
         (sig_ba / (ba - const_ba))^2 +            # Error from ba
-        (re_c * const_vol / (vol - const_vol))^2 +   # Error from const_vol
-        (re_c * const_ba / (ba - const_ba))^2        # Error from const_ba
+        (re * const_vol / (vol - const_vol))^2 +   # Error from const_vol
+        (re * const_ba / (ba - const_ba))^2        # Error from const_ba
     )
-    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re_c * coef_a1)^2)
+    sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re * coef_a1)^2)
 
     return(list(tariff=tariff, sigma_tariff=sig_t))
   } else {
@@ -88,6 +89,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re_c = 0.0
 #' conifer_tariff("SP", 74, 24)
 #' conifer_tariff("SP", 74, 24, 1, 1)
 #' @export
+#' @aliases conifer_tariff
 #'
 conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025) {
 
@@ -165,6 +167,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0
 #' broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, re_dbh = 0.05, re_h = 0.1)
 #' broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, re_dbh = 0.05, re_h = 0.1)
 #' @export
+#' @aliases broadleaf_tariff
 #'
 broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a = 0.025) {
 
@@ -244,6 +247,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a =
 #' stand_tariff("OK", height = 10, re_h = 0.01)
 #' stand_tariff(spcode = "AH", height = 10, re_h = 0.05)
 #' @export
+#' @aliases stand_tariff
 #'
 stand_tariff <- function(spcode, height, re_h = NA, re_a=0.025) {
   if(!is.numeric(height) || any(height < 0, na.rm = TRUE))
@@ -313,6 +317,7 @@ stand_tariff <- function(spcode, height, re_h = NA, re_a=0.025) {
 #' tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA),
 #'  re_h = 0.01, re_dbh = 0.05)
 #' @export
+#' @aliases tariffs
 #'
 tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = NA, re_a = 0.025) {
   if (!is.character(spcode)) warning("spcode must be characters")
@@ -322,26 +327,24 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = N
     stop("Input vectors (spcode, height, dbh) must have the same length.")
   }
 
-  # Lookup missing type values
-  if (anyNA(type)) {
-    lookup_index <- match(spcode, lookup_data$short)
-    lookup_type <- lookup_data$type[lookup_index]
-    use_original <- is.na(lookup_type) | lookup_type == "any"
-    type <- ifelse(use_original, type, lookup_type)
-  }
+  # Lookup type
+  lookup_index <- match(spcode, lookup_data$short)
+  lookup_type <- lookup_data$type[lookup_index]
+  use_original <- is.na(lookup_type) | lookup_type == "any"
+  type <- ifelse(use_original, type, lookup_type)
 
   # Initialize output
   results <- data.frame(tariff = rep(NA, n), sigma = rep(NA, n))
   error <- !anyNA(re_h) || !anyNA(re_dbh)
 
   # Vectorized Tariff Calculation
-  NA_sp <- !is.na(spcode) & spcode != "NA"
-  NA_dh <- !is.na(dbh) & !is.na(height)
+  NA_sp <- is.na(spcode) | spcode == "NA"
+  inputs <- !is.na(dbh) & !is.na(height)
   if(any(NA_sp)) warning ("NA spcode not found, skipping record")
-  stand_indices <- is.na(dbh) & !is.na(height) & NA_sp
-  conifer_indices   <- !is.na(type) & type == "conifer" & NA_dh & NA_sp
-  broadleaf_indices <- !is.na(type) & type == "broadleaf" & NA_dh & NA_sp
-  mixed_indices <- ((is.na(type) | type == "any" | type == "NA")) & NA_dh
+  stand_indices <- is.na(dbh) & !is.na(height) & !NA_sp
+  conifer_indices   <- type == "conifer" & inputs & !NA_sp
+  broadleaf_indices <- type == "broadleaf" & inputs & !NA_sp
+  mixed_indices <- ((NA_sp | is.na(type) | type == "any" | type == "NA" | spcode == "MX")) & inputs
 
   # Helper Function
   process_result <- function(tariff_output, indices, results, error) {
@@ -351,7 +354,7 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = N
     } else {
       results$tariff[indices] <- ifelse(is.na(tariff_output), NA, tariff_output)
     }
-  return(results)
+    return(results)
   }
 
   # Apply Tariff Functions Using the Helper Function
@@ -407,6 +410,7 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = N
 #' merchtreevol(dbh = 24, tariff = 24)
 #' merchtreevol(dbh = 24, tariff = 24, re_dbh = 0.05, sig_tariff = 1)
 #' @export
+#' @aliases merchtreevol
 #'
 merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.025) {
   if( !is.numeric(tariff)) stop("tariff must be numeric")
@@ -465,6 +469,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
 #' treevol(mtreevol = 10, dbh = 24, sig_mtreevol = 0.07)
 #' treevol(mtreevol = c(10,10), dbh = c(20,24), sig_mtreevol = c(1,1))
 #' @export
+#' @aliases treevol
 #'
 treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
   # Error handling for inputs
@@ -503,7 +508,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 
     result <- data.frame(stemvolume = stemvol, sigma = sigma)
   } else {
-    result <- stemvolume
+    result <- stemvol
   }
   return(result)
 }
@@ -527,6 +532,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' error_product(5, 0.01, 10, 0.1)
 #' error_product(5, 0.01, 10, 0.1, 5, 0.01)
 #' @export
+#' @aliases error_product
 #'
 error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
                           returnv = "sigmasquared")
@@ -586,6 +592,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 #' @examples
 #' woodbiomass(10, 0.56, 5)
 #' @export
+#' @aliases woodbiomass
 #'
 woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) {
 
@@ -630,71 +637,66 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
 #' @examples
 #' crownbiomass("CBSP", 25)
 #' crownbiomass("CBOK", dbh = 25, re_d = 0.01)
-#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), re_d = 0.01)
+#' crownbiomass(c("CBOK","CBOK"), dbh = c(30,50), re_d = 0.05)
 #' @export
+#' @aliases crownbiomass
 #'
-crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
-
+crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
   # Check inputs
   if (length(spcode) != length(dbh)) {
     stop("Length of 'spcode' and 'dbh' must be the same")
   }
-  if (!is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)){
+  if (!is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
     stop("Argument 'dbh' must be numeric and non-negative")
   }
-  if (is.na(re_d) || !is.numeric(re_d)){
-    stop("Argument 're_d' must be numeric")
+  if (any(dbh < 7, na.rm = TRUE)) {
+    warning("Equation is only specified for dbh >= 7")
   }
-  if (is.na(re) || !is.numeric(re)){
-    stop("Argument 're' must be numeric")
+  if (!is.null(re_d) && (is.na(re_d) || !is.numeric(re_d) || re_d < 0)) {
+    stop("Argument 're_d' must be a positive numeric")
   }
-  results <- data.frame(spcode = spcode, dbh = dbh, biomass = NA, sigma = NA)
-
-  # Loop over each entry in spcode
-  for (i in 1:length(spcode)) {
-
-    diam <- dbh[i]
-
-    # Find the record in the data for the species code
-    rec <- crown_biomasdf[crown_biomasdf$Code == spcode[i], ]
-    if (nrow(rec) == 0) {
-      spcode_match <- lookup_data$Crown[lookup_data$short == spcode[i]]
-      rec <- crown_biomasdf[crown_biomasdf$Code == spcode_match, ]
-      if (nrow(rec) == 0) warning(paste("The species code", spcode[i], "is not found"))
-    }
-
-    # Calculate biomass and error
-    if (is.na(diam)){
-      results$biomass[i] <- results$sigma[i] <- NA
-    } else if (diam <= 50) {
-      dp <- diam^rec$p
-      crown_biomass <- rec$b1 * dp
-      results$biomass[i] <- crown_biomass
-
-      sigma_dp <- dp * sqrt((rec$p*re_d)^2 + (log(diam)*rec$p*re)^2)
-      results$sigma[i] <- error_product(rec$b1, rec$b1*re, dp, sigma_dp)
-
-    } else {
-      crown_biomass <- rec$A + rec$b2 * diam
-      results$biomass[i] <- crown_biomass
-
-      # Error calculation for diam > 50
-      if (!is.na(re_d)) {
-        if (!is.numeric(re_d) || re_d < 0)
-          stop("Argument 're_dbh' must be numeric and non-negative")
-
-        results$sigma[i] <- sqrt((rec$A*re)^2 +
-                                   (diam * rec$b2*re)^2 + (rec$b2 * diam * re_d)^2)
-      }
-    }
+  if (is.na(re) || !is.numeric(re) || re < 0) {
+    stop("Argument 're' must be a positive numeric")
   }
 
-  # Warning for dbh < 7
-  if (any(dbh < 7, na.rm = TRUE)){
-    warning(paste("Equation is only specified for dbh >= 7"))
+  # Vectorized lookup for species codes
+  id <- match(spcode, crown_biomasdf$Code)
+
+  # Handle species not found: Lookup alternative match
+  missing_id <- is.na(id)
+  if (any(missing_id)) {
+    spcode_match <- lookup_data$Crown[match(spcode[missing_id], lookup_data$short)]
+    id[missing_id] <- match(spcode_match, crown_biomasdf$Code)
   }
 
-  return(results)
+  # Identify missing species codes
+  if (any(is.na(id))) {
+    warning("Species codes not found: ", paste(spcode[is.na(id)], collapse = ", "))
+  }
+
+  # Extract coefficients for matched species
+  rec_b1 <- crown_biomasdf$b1[id]
+  rec_b2 <- crown_biomasdf$b2[id]
+  rec_A  <- crown_biomasdf$A[id]
+  rec_p  <- crown_biomasdf$p[id]
+
+  # Calculate biomass using vectorized conditions
+  dp <- dbh^rec_p
+  biomass <- ifelse(dbh <= 50, rec_b1 * dp, rec_A + rec_b2 * dbh)
+
+  # Compute error propagation if re_d is provided
+  if (!is.null(re_d)) {
+    sigma_dp <- dp * sqrt((rec_p * re_d)^2 + (log(dbh) * rec_p * re)^2)
+    sigma <- ifelse(dbh <= 50,
+                    error_product(rec_b1, rec_b1 * re, dp, sigma_dp),
+         sqrt((rec_A * re)^2 + (dbh * rec_b2 * re)^2 + (rec_b2 * dbh * re_d)^2))
+
+    return(data.frame(spcode=spcode, dbh=dbh, biomass=biomass, sigma=sigma))
+
+  } else {
+
+    return(biomass)
+   }
 }
 
 ############# FC Root Biomass (WCC Eq 8 & 9) ################
@@ -714,79 +716,59 @@ crownbiomass <- function(spcode, dbh, re_d = 0.05, re = 0.025) {
 #' rootbiomass(spcode = 'RBRAR', dbh = 50, re_dbh = 0.10)
 #' rootbiomass(spcode = c('RBRAR','RBRAR'), dbh = c(50, 70))
 #' @export
+#' @aliases rootbiomass
 #'
 rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
-
-  # Initialise
+  # Check inputs
   if (length(spcode) != length(dbh)) {
     stop("Length of 'spcode' and 'dbh' must be the same")
   }
-  if (!is.numeric(dbh) | any(dbh < 0, na.rm = TRUE)) {
+  if (!is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
     stop("All values of 'dbh' must be numeric and non-negative")
   }
-  if (length(dbh) > 1){
-    if (!is.null(re_dbh)) {
-      if (!is.numeric(re) || re < 0) {
-        stop("Argument 're' must be numeric and non-negative")
-      }
-      if (!is.numeric(re_dbh) || re_dbh < 0) {
-        stop("Argument 're_dbh' must be numeric and non-negative")
-      }
-
-      results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = NA, sigma = NA)
-    } else {
-      results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = NA)
-    }
-  } else {
-    results <- c()
+  if (!is.null(re_dbh) && (!is.numeric(re_dbh) || any(re_dbh < 0, na.rm = TRUE))) {
+    stop("Argument 're_dbh' must be numeric and non-negative")
+  }
+  if (!is.numeric(re) || re < 0) {
+    stop("Argument 're' must be numeric and non-negative")
   }
 
-  # Iterate through each species code and dbh value
-  for (i in seq_along(spcode)) {
-    diam <- dbh[i]
-    sigma <- if (!anyNA(re_dbh) && length(re_dbh) > 1) re_dbh[i] else re_dbh
+  # Vectorized lookup for species codes
+  match_idx <- match(spcode, root_biomassdf$Code)
 
-    # Find the record in the data for the species code
-    rec <- root_biomassdf[root_biomassdf$Code == spcode[i], ]
+  # Handle species not found: Lookup alternative match
+  missing_idx <- is.na(match_idx)
+  if (any(missing_idx)) {
+    spcode_match <- lookup_data$Root[match(spcode[missing_idx], lookup_data$short)]
+    match_idx[missing_idx] <- match(spcode_match, root_biomassdf$Code)
+  }
 
-    if (nrow(rec) == 0) {
+  # Identify missing species codes
+  if (any(is.na(match_idx))) {
+    warning("Some species codes not found: ", paste(spcode[is.na(match_idx)], collapse = ", "))
+  }
 
-      spcode <- lookup_data$Root[lookup_data$short == spcode[i]]
-      rec <- crown_biomasdf[crown_biomasdf$Code == spcode, ]
+  # Extract coefficients for matched species
+  rec_b1 <- root_biomassdf$b1[match_idx]
+  rec_b2 <- root_biomassdf$b2[match_idx]
+  rec_a  <- root_biomassdf$a[match_idx]
 
-      if (nrow(rec) == 0) {
-        warning(paste("The species code", spcode[i], "is not found in lookup_data$Root"))
-      }
-    }
+  # Calculate root biomass using vectorized conditions
+  root_biomass <- ifelse(dbh <= 30, rec_b1 * dbh^2.5, rec_a + rec_b2 * dbh)
 
+  # Compute error propagation if re_dbh is provided
+  if (!is.null(re_dbh)) {
+    sig_diam <- dbh^2.5 * sqrt((2.5 * re_dbh)^2 + (log(dbh) * 2.5 * re)^2)
+    sigma <- ifelse(dbh <= 30,
+                    error_product(rec_b1, rec_b1 * re, dbh^2.5, sig_diam),
+                    sqrt((rec_a * re)^2 + error_product(rec_b2, rec_b2 * re, dbh, re_dbh * dbh))
+    )
 
-    # Calculate root biomass based on dbh value
-    if (is.na(diam)){
-      root_biomass <- sig_root <- NA
-    } else if (diam <= 30) {
-      root_biomass <- rec$b1 * diam^2.5
-
-      # Calculate error if re_dbh is provided
-      if (!anyNA(re_dbh)) {
-        sig_diam <- diam^2.5 * sqrt((2.5*re_dbh)^2 + (log(diam)*re*2.5)^2)
-        sig_root <- error_product(rec$b1, rec$b1*re, diam^2.5, sig_diam, returnv = "sigma")
-
-      }
-    } else {
-      root_biomass <- rec$a + rec$b2 * diam
-
-      # Calculate error if re_dbh is provided
-      if (!anyNA(sigma)) {
-        sig_root <- sqrt((rec$a*re)^2 + error_product(rec$b2, rec$b2*re, diam, re_dbh*diam))
-
-      }
-    }
-
-    # Store results in the results data frame
-    results$rootbiomass[i] <- root_biomass
-    if (!anyNA(sigma)) {
-      results$sigma[i] <- ifelse(exists("sig_root"), sig_root, NA)
-    }
+    # Return full dataframe with errors
+    results <- data.frame(spcode = spcode, dbh = dbh, rootbiomass = root_biomass, sigma = sigma)
+  } else {
+    # Return just the biomass vector if re_dbh is NULL
+    return(root_biomass)
   }
 
   return(results)
@@ -802,6 +784,7 @@ rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
 #' @examples
 #' ctoco2e(448)
 #' ctoco2e(c(448, 450))
+#' @aliases ctoco2e
 #' @export
 #'
 ctoco2e <- function(carbon) {
@@ -850,6 +833,7 @@ ctoco2e <- function(carbon) {
 #'  biomass2c(1, method="IPCC2", c("conifer"), "temperate")
 #'
 #'  @importFrom utils globalVariables
+#' @aliases biomass2c
 #' @export
 #'
 biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
@@ -927,9 +911,11 @@ biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
 #' @importFrom utils data head tail
+#' @import remotes
 #' @examples
 #' sap_seedling2C(50, 'conifer')
 #' sap_seedling2C(heightincm = 900, type = 'broadleaf', re_h = 0.05)
+#' @aliases sap_seedling2C
 #' @export
 #'
 sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
@@ -993,25 +979,27 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 #' @author Isabel Openshaw I.Openshaw@kew.org
 #' @param name name of species (common or botanical). See lookup_data.Rda
 #' @param type either 'broadleaf' or 'conifer'
-#' @param spcode either 'short', 'single', 'stand', 'root' or 'crown'
+#' @param code either 'short', 'single', 'stand', 'root' or 'crown'
 #' @returns Species code
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom stringr word str_trim
 #' @importFrom utils data
+#' @import remotes
 #' @examples
-#' lookspcode(name="Pine")
-#' lookspcode(name='Quercus robur', spcode='single')
-#' lookspcode(name=c('Oak', 'Quercus', 'Quercus rubra', 'Hawthorn', NA) ,
-#'  type = c(rep("broadleaf", 4), NA), spcode='short')
+#' lookupcode(name="Pine")
+#' lookupcode(name='Quercus robur', code='single')
+#' lookupcode(name=c('Oak', 'Quercus', 'Quercus rubra', 'Hawthorn', NA) ,
+#'  type = c(rep("broadleaf", 4), NA), code='short')
 #' @export
+#' @aliases lookupcode
 #'
-lookspcode <- function(name, type = NA, spcode = "short") {
+lookupcode <- function(name, type = NA, code = "short") {
   if (!is.character(name)) stop("'name' must be a character vector.")
 
-  # Identify the column index for the selected 'spcode'
-  col_index <- which(names(lookup_data) == spcode)
-  if (length(col_index) == 0) stop("Invalid 'spcode' column selected.")
+  # Identify the column index for the selected 'code'
+  col_index <- which(names(lookup_data) == code)
+  if (length(col_index) == 0) stop("Invalid 'code' column selected.")
 
   # Clean Inputs
   clean_name <- tolower(stringr::str_trim(name))
@@ -1023,55 +1011,55 @@ lookspcode <- function(name, type = NA, spcode = "short") {
   match_genus2 <- match(stringr::word(clean_name, 1), tolower(lookup_data$Genus))
 
   # Create Result DataFrame
-  result_df <- data.frame(spname = name, spcode = NA,
+  result_df <- data.frame(spname = name, code = NA,
                           matchtype = NA, stringsAsFactors = FALSE)
   unmatched <- c()
 
   # Species Binomial Matches
   valid_binomial <- !is.na(match_binomial)
   if (any(valid_binomial)) {
-    result_df$spcode[valid_binomial] <- lookup_data[match_binomial[valid_binomial], col_index]
+    result_df$code[valid_binomial] <- lookup_data[match_binomial[valid_binomial], col_index]
     result_df$matchtype[valid_binomial] <- "binomial"
   }
 
   # Common Name Matches
-  valid_common <- !is.na(match_common) & is.na(result_df$spcode)
+  valid_common <- !is.na(match_common) & is.na(result_df$code)
   if (any(valid_common)) {
-    result_df$spcode[valid_common] <- lookup_data[match_common[valid_common], col_index]
+    result_df$code[valid_common] <- lookup_data[match_common[valid_common], col_index]
     result_df$matchtype[valid_common] <- "common"
   }
 
   # Genus Matches
-  valid_genus <- !is.na(match_genus) & is.na(result_df$spcode)
+  valid_genus <- !is.na(match_genus) & is.na(result_df$code)
   if (any(valid_genus)) {
-    result_df$spcode[valid_genus] <- lookup_data[match_genus[valid_genus], col_index]
+    result_df$code[valid_genus] <- lookup_data[match_genus[valid_genus], col_index]
     result_df$matchtype[valid_genus] <- "genus"
   }
-  valid_genus2 <- !is.na(match_genus2) & is.na(result_df$spcode)
+  valid_genus2 <- !is.na(match_genus2) & is.na(result_df$code)
   if (any(valid_genus2)) {
-    result_df$spcode[valid_genus2] <- lookup_data[match_genus2[valid_genus2], col_index]
+    result_df$code[valid_genus2] <- lookup_data[match_genus2[valid_genus2], col_index]
     result_df$matchtype[valid_genus2] <- "genus"
   }
 
   # Type Matches
-  valid_type <- is.na(result_df$spcode) & type %in% c('broadleaf', 'conifer')
+  valid_type <- is.na(result_df$code) & type %in% c('broadleaf', 'conifer')
 
   if (any(valid_type)) {
     unmatched <- unique(result_df$spname[valid_type])
 
     match_type <- match(type[valid_type], tolower(lookup_data$General.type))
 
-    result_df$spcode[valid_type] <- lookup_data[match_type, col_index]
+    result_df$code[valid_type] <- lookup_data[match_type, col_index]
     result_df$matchtype[valid_type] <- type[valid_type]
 
   }
 
   # Fallback to Mixed Species
-  valid_mixed <- is.na(result_df$spcode)
+  valid_mixed <- is.na(result_df$code)
   if (any(valid_mixed)) {
     unmatched <- c(unmatched, unique(result_df$spname[valid_mixed]))
 
-    result_df$spcode[valid_mixed] <- lookup_data[33, col_index]
+    result_df$code[valid_mixed] <- lookup_data[33, col_index]
     result_df$matchtype[valid_mixed] <- "mixed"
 
   }
@@ -1104,12 +1092,14 @@ lookspcode <- function(name, type = NA, spcode = "short") {
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
+#' @import remotes
 #' @examples
-#' fc_agc(spcode='OK', dbh=74, height=24, output.all = FALSE)
+#' fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
-#' fc_agc('OK', 72, 24, nsg = wd$meanWD)
+#' fc_agc('beech', 72, 24, nsg = wd$meanWD)
 #' @export
+#' @aliases fc_agc
 #'
 fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                      "temperate", output.all = TRUE, nsg = NA){
@@ -1125,98 +1115,80 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
   if (!(method %in% methods)) {
     stop("Invalid method. Choose from: ", paste(methods, collapse = ", "))
   }
-  biomes <- c("tropical", "subtropical", "mediterranean", "temperate", "boreal")
-  if (!missing(biome) && !(biome %in% biomes)) {
-    stop("Invalid biome. Choose from: ", paste(biomes, collapse = ", "))
-  }
-  n = length(name)
-  spcodes <- lookspcode(name, type, spcode = 'short')
 
-  # Create results table
+  n = length(name)
+  spcodes <- lookupcode(name, type, code = 'short')
+
+  class <- c("broadleaf", "conifer")
+  if(any(!type %in% c(class, NA, "NA"))){
+    stop("type must equal either conifer, broadleaf or NA")
+  }
+  if (any(dbh < 0, na.rm = TRUE) || !is.numeric(dbh) || anyNA(dbh)) {
+    warning("dbh must be numeric and positive")}
+
+  # Lookup species codes and type
+  spcodes <- lookupcode(name, type, code = 'short')
+  rec <- lookup_data[match(spcodes$code, lookup_data$short), ]
+  type <- rec$type
+
   if(output.all){
-    r <- data.frame(name=name, type=type, dbh=dbh, height=height, spcode=spcodes$spcode,
+    r <- data.frame(name=name, type=type, dbh=dbh, height=height, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, NSG=NA, tariff=NA,
                     mercvol_m.3=NA, stemvol_m.3=NA, stembiomass_t=NA, crownbiomass_t=NA,
                     rootbiomass_t=NA, AGC_WCC_t=NA, stringsAsFactors=FALSE)
   } else {
-    r <- data.frame(name=name, spcode=spcodes$spcode,
+    r <- data.frame(name=name, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, AGC_WCC_t=NA, stringsAsFactors=FALSE)
   }
-  r <- r[1:n,]
 
-  # Loop over all trees
-  for (i in 1:n) {
-    if (dbh[i]<=0 || !is.numeric(dbh[i]) || is.na(dbh[i])) {
-      warning("dbh is not numeric or positive for index: ", i)
-      next
-    }
+  # Trees with height < 6.5m
+  small_trees <- !is.na(height) & height < 6.5 & type %in% class
 
-    # Lookup species data from code
-    rec <- lookup_data[lookup_data$short == r$spcode[i], ]
+  if (any(small_trees)) {
+    r$AGC_WCC_t[small_trees] <- sap_seedling2C(heightincm =
+                                height[small_trees] * 100, type[small_trees])
+  }
 
-    # Get current type if not provided
-    if(is.na(type[i]) | type[i] == "NA") {
-      r$type[i] <- rec$type }
+  # Trees with height >= 6.5m
+  tall_trees <- height >= 6.5 & !is.na(height)
 
-    # If height less than 6.5 use sapling model
-    if (is.na( height[i]) | height[i] < 0.01 ) {
-      warning("Height is missing or less than 1cm minimum, skipping record ", i)
-      next
-    } else if( height[i] < 6.5 ){
-      if(!r$type[i] %in% c("broadleaf", "conifer")){
-        next("Type must be specified as 'broadleaf' or 'conifer' for
-             sap_seedling2C function for height < 6.5 m for index ", i)
-      }
-      carbon <- sap_seedling2C(heightincm = height[i]*100, r$type[i])
-      r$AGC_WCC_t[i] <- carbon
+  if (any(tall_trees)) {
+    tariff <- tariffs(spcodes$code[tall_trees], height[tall_trees],
+                      dbh[tall_trees], type[tall_trees])
+
+    # Volume & Biomass
+    mercvol <- merchtreevol(dbh[tall_trees], tariff)
+    stemvol <- treevol(mercvol, dbh = dbh[tall_trees])
+    woodbio <- woodbiomass(stemvol, rec$NSG[tall_trees])
+    crownbio <- crownbiomass(rec$Crown[tall_trees], dbh[tall_trees])
+
+    # Above Ground Biomass
+    AGB <- woodbio + crownbio
+
+    # Carbon Conversion
+    convert <- type[tall_trees] %in% class
+    if (any(convert)) {
+      r$AGC_WCC_t[tall_trees][convert] <- biomass2c(AGB[convert], method, type[tall_trees][convert], biome)
     } else {
-      # Get tariff number depending on broadleaf or conifer
-      tariff <- tariffs(r$spcode[i], height[i], dbh = dbh[i])
-
-      if (length(tariff) == 0) {
-        warning("Error in", r$type[i], "_tariff function at index: ", i)
-      }
-      # If nsg not specified lookup from rec
-      if(is.na(nsg)){ nsg <- rec$NSG }
-
-      # Calculate volumes and biomass
-      mercvol <- merchtreevol(dbh[i], tariff)             # Tree volume
-      stemvol <- treevol(mercvol, dbh = dbh[i])           # Stem volume
-      woodbio <- woodbiomass(stemvol, nsg)                # Stem  Biomass
-      crownbio <- crownbiomass(rec$Crown, dbh[i])         # Crown Biomass
-      AGB <- woodbio + crownbio$biomass                   # Above ground Biomass
-
-      if(method  %in% c("IPCC2", "Thomas") &
-         !r$type[i] %in% c("broadleaf", "conifer")){
-        warning("Type must be specified as 'broadleaf' or 'conifer' for the
-        chosen method to convert biomass to carbon for index ", i)
-      } else {
-        AGC <- biomass2c(AGB, method=method, r$type[i], biome=biome)  # Carbon
-        r$AGC_WCC_t[i] <- AGC
-      }
+      r$AGC_WCC_t[tall_trees] <- AGB * 0.4885
+      warning("Type must be specified as 'broadleaf' or 'conifer' for carbon
+              conversion.")
     }
 
     if(output.all){
-      r$NSG[i] <- rec$NSG
+      # Root Biomass
+      rootbio <- rootbiomass(rec$Root[tall_trees], dbh[tall_trees])
 
-      if(height[i] >= 6.5){
-        r$tariff[i] <- tariff
-        r$mercvol_m.3[i] <- mercvol
-        r$stemvol_m.3[i] <- stemvol
-        r$stembiomass_t[i] <- woodbio
-        r$crownbiomass_t[i] <- crownbio$biomass
-
-        # Root Biomass
-        rootbio <- rootbiomass(rec$Root, dbh[i])
-        r$rootbiomass_t[i] <- rootbio$rootbiomass
-      }
+      r[tall_trees, c("type", "dbh", "height", "NSG", "tariff",
+                      "mercvol_m.3", "stemvol_m.3",
+                      "stembiomass_t", "crownbiomass_t", "rootbiomass_t")] <-
+        list(type, dbh, height, rec$NSG, tariff,
+             mercvol, stemvol,
+             woodbio, crownbio, rootbio)
     }
   }
-  if(output.all){
-    return(r)
-  } else {
-    return(r$AGC_WCC_t)
-  }
+
+  return(r)
 }
 
 ############# FC Above Ground Carbon with error ################
@@ -1254,17 +1226,18 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 #' fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 #' fc_agc_error(c('Quercus robur','beech'), c(74,23), c(24,24), output.all = FALSE)
 #' @export
+#' @aliases fc_agc_error
 #'
 fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                            "temperate", output.all = TRUE, re_dbh = 0.05, re_h =
                            0.1, re = 0.025, nsg = NA, sig_nsg = 0.09413391){
   # Check arguments
   if(!is.character(name)) stop ("name must be a character")
-  if(!is.character(type)) stop ("type must be a character")
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
-  if(any(!type %in% c("broadleaf", "conifer", NA, "NA"))){
+  class <- c("broadleaf", "conifer")
+  if(any(!type %in% c(class, NA, "NA"))){
     stop("type must equal either conifer, broadleaf or NA")
   }
   if(!is.numeric(re_dbh) || any(re_dbh<=0)){
@@ -1282,16 +1255,14 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
   if (any(dbh < 0, na.rm = TRUE) || !is.numeric(dbh) || anyNA(dbh)) {
     warning("dbh must be numeric and positive")}
 
-  # Lookup species codes
-  spcodes <- lookspcode(name, type, spcode = 'short')
-  rec <- lookup_data[match(spcodes$spcode, lookup_data$short), ]
-
-  # Get conifer/broadleaf type
+  # Lookup species codes and type
+  spcodes <- lookupcode(name, type, code = 'short')
+  rec <- lookup_data[match(spcodes$code, lookup_data$short), ]
   type <- rec$type
 
   # Create results table
   if(output.all){
-    r <- data.frame(name=name, type=type, spcode=spcodes$spcode,
+    r <- data.frame(name=name, type=type, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, dbh=dbh, height=height,
                     NSG=rec$NSG, tariff=NA, sig_tariff=NA, mercvol_m.3=NA,
                     sig_mercvol=NA, stemvol_m.3=NA, sig_stemvol=NA,
@@ -1299,70 +1270,66 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     sig_crownbiomass=NA, rootbiomass_t=NA, sig_rootbiomass=NA,
                     AGC_WCC_t=NA, sig_AGC=NA, stringsAsFactors=FALSE)
   } else {
-    r <- data.frame(name=name, AGC_WCC_t=NA, sig_AGC=NA, spcode=spcodes$spcode,
+    r <- data.frame(name=name, AGC_WCC_t=NA, sig_AGC=NA, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, stringsAsFactors=FALSE)
   }
 
   # Trees with height < 6.5m
-  small_trees <- height < 6.5
-  valid_small_trees <- !is.na(height) & small_trees & type %in% c("broadleaf", "conifer")
+  small_trees <- !is.na(height) & height < 6.5 & type %in% class
 
-  if (any(valid_small_trees)) {
-    carbon <- sap_seedling2C(heightincm = height[valid_small_trees] * 100, type[valid_small_trees], re_h, re)
-    r$AGC_WCC_t[valid_small_trees] <- carbon$carbon
-    r$sig_AGC[valid_small_trees] <- carbon$sd
+  if (any(small_trees)) {
+    carbon <- sap_seedling2C(heightincm = height[small_trees] * 100,
+                             type[small_trees], re_h, re)
+    r$AGC_WCC_t[small_trees] <- carbon$carbon
+    r$sig_AGC[small_trees] <- carbon$sd
   }
 
   # Trees with height >= 6.5m
-  large_trees <- height >= 6.5 & !is.na(height)
+  tall_trees <- height >= 6.5 & !is.na(height)
 
-  #Testing
-  r$small[valid_small_trees] <- TRUE
-  r$large[large_trees] <- TRUE
-
-  if (any(large_trees)) {
-    tariff <- tariffs(spcodes$spcode[large_trees], height[large_trees], dbh[large_trees], type[large_trees], re_h, re_dbh, re_a = re)
-
-    # Assign Tariff Results
-    r$tariff[large_trees] <- tariff$tariff
-    r$sig_tariff[large_trees] <- tariff$sigma
+  if (any(tall_trees)) {
+    tariff <- tariffs(spcodes$code[tall_trees], height[tall_trees],
+                      dbh[tall_trees], type[tall_trees], re_h, re_dbh, re_a= re)
 
     # Volume & Biomass
-    mercvol <- merchtreevol(dbh[large_trees], tariff$tariff, re_dbh, tariff$sigma, re)
-    stemvol <- treevol(mercvol$volume, dbh = dbh[large_trees], mercvol$sigma, re)
+    mercvol <- merchtreevol(dbh[tall_trees], tariff$tariff,
+                            re_dbh, tariff$sigma, re)
+    stemvol <- treevol(mercvol$volume, dbh = dbh[tall_trees], mercvol$sigma, re)
 
-    woodbio <- woodbiomass(stemvol$stemvolume, r$NSG[large_trees], stemvol$sigma, sig_nsg)
-    crownbio <- crownbiomass(rec$Crown[large_trees], dbh[large_trees], re_dbh, re)
+    woodbio <- woodbiomass(stemvol$stemvolume, rec$NSG[tall_trees],
+                           stemvol$sigma, sig_nsg)
+    crownbio <- crownbiomass(rec$Crown[tall_trees], dbh[tall_trees], re_dbh, re)
 
     # Above Ground Biomass
     AGB <- woodbio$woodbiomass + crownbio$biomass
     sig_AGB <- sqrt(woodbio$sigma^2 + as.numeric(crownbio$sigma)^2)
 
     # Carbon Conversion
-    valid_carbon <- type[large_trees] %in% c("broadleaf", "conifer")
-    if (any(valid_carbon)) {
-      AGC <- biomass2c(AGB[valid_carbon], method, type[large_trees][valid_carbon], biome, sig_AGB[valid_carbon])
-      r$AGC_WCC_t[large_trees][valid_carbon] <- AGC$AGC
-      r$sig_AGC[large_trees][valid_carbon] <- AGC$sig_AGC
+    convert <- type[tall_trees] %in% class
+    if (any(convert)) {
+      AGC <- biomass2c(AGB[convert], method, type[tall_trees][convert],
+                       biome, sig_AGB[convert])
+      r$AGC_WCC_t[tall_trees][convert] <- AGC$AGC
+      r$sig_AGC[tall_trees][convert] <- AGC$sig_AGC
     } else {
-      r$AGC_WCC_t[large_trees] <- AGB * 0.4885
-      warning("Type must be specified as 'broadleaf' or 'conifer' for carbon conversion.")
+      r$AGC_WCC_t[tall_trees] <- AGB * 0.4885
+      warning("Type must be specified as 'broadleaf' or 'conifer' for carbon
+              conversion.")
     }
 
-    # Assigning Remaining Values
-    r$mercvol_m.3[large_trees] <- mercvol$volume
-    r$sig_mercvol[large_trees] <- mercvol$sigma
-    r$stemvol_m.3[large_trees] <- stemvol$stemvolume
-    r$sig_stemvol[large_trees] <- stemvol$sigma
-    r$stembiomass_t[large_trees] <- woodbio$woodbiomass
-    r$sig_stembiomass[large_trees] <- woodbio$sigma
-    r$crownbiomass_t[large_trees] <- crownbio$biomass
-    r$sig_crownbiomass[large_trees] <- crownbio$sigma
+    if(output.all){
+      # Root Biomass
+      rootbio <- rootbiomass(rec$Root[tall_trees], dbh[tall_trees], re_dbh)
 
-    # Root Biomass
-    rootbio <- rootbiomass(rec$Root[large_trees], dbh[large_trees], re_dbh)
-    r$rootbiomass_t[large_trees] <- rootbio$rootbiomass
-    r$sig_rootbiomass[large_trees] <- rootbio$sigma
+      r[tall_trees, c("type", "dbh", "height", "NSG", "tariff", "sig_tariff",
+        "mercvol_m.3", "sig_mercvol", "stemvol_m.3", "sig_stemvol",
+        "stembiomass_t", "sig_stembiomass", "crownbiomass_t", "sig_crown",
+        "rootbiomass_t", "sig_root")] <-
+        list(type, dbh, height, rec$NSG, tariff$tariff, tariff$sigma,
+             mercvol$volume, mercvol$sigma, stemvol$stemvolume, stemvol$sigma,
+             woodbio$woodbiomass, woodbio$sigma, crownbio$biomass,
+             crownbio$sigma, rootbio$rootbiomass, rootbio$sigma)
+    }
   }
 
   return(r)
@@ -1386,6 +1353,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 #' @references todo** and to write at export
 #' @importFrom stats quantile rnorm sd
 #' @export
+#' @aliases pro_error_carbon
 #'
 #vol <- 100
 #volsd <- 10
@@ -1419,6 +1387,8 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @param name species name (common or binomial)
 #' @param type 'broadleaf' or 'conifer' (optional)
 #' @param dbh diameter at breast height
+#' @param re_dbh relative measurement error for diameter at breast height (optional)
+#' @param re  relative error of coefficients (default = 2.5%)
 #' @returns  biomass in kg
 #' @references Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
@@ -1428,18 +1398,19 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' bunce("Oak", 24)
 #' bunce(c("Oak", "Beech"), c(24,23))
 #' @export
+#' @aliases bunce
 #'
-bunce <- function(name, dbh, type = NA) {
+bunce <- function(name, dbh, type = NA, re_dbh = NULL, re = 0.025) {
   # Check inputs
   if (missing(name) || missing(dbh)) stop("Both 'name' and 'dbh' are required.")
   if (!is.character(name)) stop("'name' must be a character vector.")
   if (!is.numeric(dbh)) stop("'dbh' must be numeric.")
   if (length(name) != length(dbh)) stop("'name' and 'dbh' must have the same length.")
 
-  lookup <- lookspcode(name, type = type, spcode = "short")
+  lookup <- lookupcode(name, type = type, code = "short")
 
   r <- data.frame(species_name = name, dbh = as.numeric(dbh), biomass = NA,
-                  spcode = lookup$spcode, a = NA, b = NA, stringsAsFactors = FALSE, row.names = NULL)
+                  spcode = lookup$code, a = NA, b = NA, stringsAsFactors = FALSE, row.names = NULL)
 
   r$spcode[r$spcode == "MX"] <- "XB"
 
@@ -1454,6 +1425,10 @@ bunce <- function(name, dbh, type = NA) {
 
   # Calculate Biomass
   r$biomass <- exp(r$a + r$b * log(pi * r$dbh))
+
+  if(!is.null(re_dbh)){
+    r$sigma <- r$biomass * sqrt((r$a*re / r$biomass)^2 + (log(pi * dbh) * r$b * re)^2 + (r$b * re_dbh)^2)
+  }
 
   # Remove coefficients from dataframe
   r <- r[ , !(names(r) %in% c("a", "b"))]
@@ -1480,11 +1455,15 @@ bunce <- function(name, dbh, type = NA) {
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
 #' @importFrom utils install.packages
-#' @references TODO
+#' @import remotes
+#' @references Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault
+#' , B. (2017). BIOMASS: an R package for estimating above-ground biomass and
+#' its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
+#' 1163-1167
 #' @examples
 #' coords <- c(-0.088837,51.071610)
 #' biomass(12, 12, 'Quercus', 'robus', coords)
-#'
+#' @aliases biomass
 #' @export
 #'
 biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World", output.all = TRUE) {
@@ -1568,14 +1547,19 @@ biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World"
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
 #' @param output.all if TRUE outputs all data from processing, else just outputs carbon figures
-#' @references Gonzalez-Akre et al, 2021
+#' @references Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira,
+#' K. (2020). allodb: An R package for biomass estimation at globally
+#' distributed extratropical forest plots. Methods in Ecology and Evolution,
+#' 11(10), 1273-1280
 #' @returns  your dataframe back with added columns of carbon estimates. If
 #' output.all = FALSE, then returns columns 'Genus_corrected','Species',
 #' 'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
 #' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
 #' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
 #' is inputed height filled in with Height estimate where missing)
+#' @import remotes
 #' @export
+#' @aliases allodb
 #'
 allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable = NULL){
 

@@ -4,7 +4,7 @@
 \alias{bunce}
 \title{Bunce biomass equation}
 \usage{
-bunce(name, dbh, type = NA)
+bunce(name, dbh, type = NA, re_dbh = NULL, re = 0.025)
 }
 \arguments{
 \item{name}{species name (common or binomial)}
@@ -12,6 +12,10 @@ bunce(name, dbh, type = NA)
 \item{dbh}{diameter at breast height}
 
 \item{type}{'broadleaf' or 'conifer' (optional)}
+
+\item{re_dbh}{relative measurement error for diameter at breast height (optional)}
+
+\item{re}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
 biomass in kg
