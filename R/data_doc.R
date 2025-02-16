@@ -102,7 +102,7 @@
 #'   \item{sdWD}{Wood density standard deviation from the BIOMASS package}
 #' }
 #' @source Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
-"lookup_data"
+"lookup_df"
 
 #' Coefficient of Variation lookup table
 #'

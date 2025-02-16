@@ -7,7 +7,7 @@
 lookupcode(name, type = NA, code = "short")
 }
 \arguments{
-\item{name}{name of species (common or botanical). See lookup_data.Rda}
+\item{name}{name of species (common or botanical). See lookup_df.Rda}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 

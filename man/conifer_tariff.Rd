@@ -6,7 +6,7 @@
 sample tree. Species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.}
 \usage{
-conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025)
+conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}
@@ -19,7 +19,7 @@ conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = NA, re_a = 0.025)
 
 \item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{re_a}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
 tariff number or if relative errors are provided returns a list of

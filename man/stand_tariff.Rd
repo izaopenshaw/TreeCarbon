@@ -4,7 +4,7 @@
 \alias{stand_tariff}
 \title{Tariff number by stand height}
 \usage{
-stand_tariff(spcode, height, re_h = NA, re_a = 0.025)
+stand_tariff(spcode, height, re_h = NA, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code}
@@ -13,7 +13,7 @@ stand_tariff(spcode, height, re_h = NA, re_a = 0.025)
 
 \item{re_h}{relative error of height measurement (optional)}
 
-\item{re_a}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
 either tariff number or if re_h is provided, then returns a list

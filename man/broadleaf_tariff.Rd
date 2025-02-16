@@ -4,7 +4,7 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a = 0.025)
+broadleaf_tariff(spcode, height, dbh, re_dbh = NA, re_h = 0.1, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}
@@ -17,7 +17,7 @@ broadleaf_tariff(spcode, height, dbh, re_dbh = NA, re_h = NA, re_a = 0.025)
 
 \item{re_h}{relative error of height measurement (optional)}
 
-\item{re_a}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 2.5\%)}
 }
 \value{
 tariff number or if relative errors are provided returns a list of
