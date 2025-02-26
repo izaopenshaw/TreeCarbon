@@ -531,8 +531,9 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @param returnv return value, either 'sigma' (standard deviation) or
 #' 'sigma squared' (variance)
 #' @returns either an estimate for sigma or sigma squared of a product
-#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The Study of Uncertainties in Physical Measurements (2nd ed.). University Science Books.
-#' OR Bevington, P. R., & Robinson, D. K. (2003). Data Reduction and Error Analysis for the Physical Sciences (3rd ed.). McGraw-Hill.
+#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
+#' Study of Uncertainties in Physical Measurements (2nd ed.). University
+#' Science Books.
 #' @examples
 #' error_product(5, 0.01, 10, 0.1)
 #' error_product(5, 0.01, 10, 0.1, 5, 0.01)
@@ -574,6 +575,48 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
     }
 
   }
+
+  return(result)
+}
+
+
+############# Propagation of error for a quotient ################
+#' @title Analytical error progression for a quotient
+#' @description Calculates sigma squared for x when x = a / b
+#' @author Isabel Openshaw. I.Openshaw@kew.org
+#' @param a numerator
+#' @param sig_a sigma for a
+#' @param b denominator
+#' @param sig_b sigma for b
+#' @param returnv return value, either 'sigma' (standard deviation) or
+#' 'sigma squared' (variance)
+#' @returns either an estimate for sigma or sigma squared of a quotient
+#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
+#' Study of Uncertainties in Physical Measurements (2nd ed.). University
+#' Science Books.
+#' @examples
+#' error_division(50, 10, 100, 2)
+#' error_division(5, 0.5, 10, 0.1)
+#' @export
+#' @aliases error_division
+#'
+error_division <- function(a, sig_a, b, sig_b, returnv = "sigmasquared")
+{
+  if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
+      !is.numeric(sig_b)) {
+    stop("inputs must be numeric")
+  }
+  if (!is.character(returnv) || !(returnv %in% c("sigma", "sigmasquared"))) {
+    stop("returnv must be either 'sigma' or 'sigmasquared' (default)")
+  }
+
+  if(returnv == "sigma") {
+      # sigma for a / b
+      result <- abs(a / b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
+    } else {
+      # sigma_squared for a / b
+      result <- (a / b)^2 * (sig_a / a)^2 + (sig_b / b)^2
+    }
 
   return(result)
 }
@@ -812,90 +855,82 @@ ctoco2e <- function(carbon) {
 #'  fraction from chosen method/citation.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param biomass (usually kg or metric tonnes)
-#' @param method Method of calculating the carbon volatile fraction.
-#' "Matthews1": Simplest with the carbon volatile fraction, CVF = 50%
-#' "Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
-#' "IPCC1": CVF = 47.7%
-#' "IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
-#' "Thomas": Lookup by type and biome  (Thomas and Martin, 2012)
-#' @param type broadleaf or conifer. Only required for method = 'Matthews2',
-#' 'IPCC2' or 'Thomas'
+#' @param method Method defining carbon volatile fraction (CVF) see CVF_df.RData
+#' [1: Matthews, 1993] "Matthews1": Simplest, CVF = 50%.
+#' "Matthews2": CVF based on type (broadleaf or conifer)
+#' [2: IPCC, 2006] "IPCC1": CVF = 47.7%
+#' "IPCC2": Lookup CVF by type and biome
+#' [3: Thomas and Martin, 2012] "Thomas": Lookup by type and biome
+#' @param type broadleaf or conifer. Required for method = 'Matthews2',
+#' 'IPCC2' or 'Thomas', only.
 #' @param biome tropical, subtropical, mediterranean, temperate or boreal.
-#' Only needed for 'IPCC2' and 'Thomas' methods.
+#' Required for 'IPCC2' and 'Thomas' only.
 #' @param sig_biomass biomass uncertainty (optional, only available with 'IPCC2'
-#'  and 'Thomas' methods)
+#'  and 'Thomas')
 #' @returns either carbon or if 'sig_biomass' is provided, returns a list of
 #' carbon value and error. Errors only given with method = 'IPCC2' or 'Thomas'.
-#' @references (1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
+#' @references [1] Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
 #' tissues: a synthesis." Forests 3.2 (2012): 332-352.
 #'  https://www.mdpi.com/1999-4907/3/2/332.
-#' (2) IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
+#' [2] IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
 #'  for National Greenhouse Gas Inventories; Institute for Global Environmental
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
-#' (3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
+#' [3] Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 #'  @examples
 #'  biomass2c(1, method="IPCC2", c("conifer"), "temperate")
-#'
+#'  biomass2c(c(0.5, 0.75, 2, 7), "IPCC2", rep("broadleaf",4), sig_biomass = rep(0.2, 4))
 #'  @importFrom utils globalVariables
 #' @aliases biomass2c
 #' @export
 #'
-biomass2c <- function(biomass, method, type = NA, biome = 'temperate',
-                      sig_biomass = NULL) {
-  if (length(type) != length(biomass)) {
-    stop("'type' and 'biomass' must have the same length.")}
+#'
+biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 'temperate') {
 
-  # Check arguments
-  if (anyNA(biomass) | any(!is.numeric(biomass) | any(biomass < 0, na.rm = TRUE))) {
-    warning("Biomass values must be numeric and positive")
-  }
-
+  # Input validation
   valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
   if (!(method %in% valid_methods)) stop("Invalid method. Choose from:",
                                          paste(valid_methods, collapse = ", "))
 
-  I2_T <- c("IPCC2", "Thomas")
-  valid_types <- c("broadleaf", "conifer")
-  if (method %in% c("Matthews2",I2_T) & !all(type %in% valid_types)){
-    warning("Type = 'broadleaf' or 'conifer' required for the chosen method as a
-         list of same length of biomass and sig_biomass.")
+  if (length(type) != length(biomass)) {
+    stop("'type' and 'biomass' must have the same length.")}
+
+  if (any(!is.numeric(biomass))){
+    stop("Biomass values must be numeric and positive")
   }
 
-  valid_biomes <- c("tropical", "subtropical", "mediterranean",
-                    "temperate", "boreal")
-  if (method %in% I2_T && !all(biome %in% valid_biomes)){
-    stop("Invalid biome.")}
+  # Subset conversion factor table
+  CVF_data <- CVF_df[CVF_df$method == method, ]
 
-  n <- length(biomass)
-  CVF <- re <- rep(NA, n)
-
-  # Retrieve CVF and re values using the lookup table
-  CVF_data <- CVF_df[CVF_df$method == method,]
-
-  if(method %in% c('IPCC1', 'Matthews1')){
-    CVF <- rep(CVF_data$CVF, n)
-  } else {
-    if(method %in% I2_T){CVF_data <- CVF_data[CVF_data$biome == biome,]}
-    c_index <- !is.na(type) & type == "conifer"
-    b_index <- !is.na(type) & type == "broadleaf"
-    CVF[c_index] <- CVF_data$CVF[CVF_data$type == "conifer"]
-    CVF[b_index] <- CVF_data$CVF[CVF_data$type == "broadleaf"]
+  # Handle type & biome filtering
+  if (method %in% c("Matthews2", "IPCC2", "Thomas")) {
+    if (!all(type %in% c("broadleaf", "conifer"))) {
+      stop("Type must be 'broadleaf' or 'conifer'.")
+      }
+    if (method %in% c("IPCC2", "Thomas") ){
+      if(!all(biome %in% CVF_data$biome)) {
+        stop("Invalid biome for the chosen method. Choose from: ",
+             paste(unique(CVF_data$biome), collapse = ", "))
+      }
+      CVF_data <- CVF_data[CVF_data$biome == biome, ]
+    }
   }
 
-  # Carbon Calculation
+  # Match CVF and confidence values
+  CVF <- CVF_data$CVF[match(type, CVF_data$type)]
+  re <- ifelse(!is.null(CVF_data$confidence),
+               CVF_data$confidence[match(type, CVF_data$type)], 0)
+
+  # Calculate AGC (carbon)
   AGC <- biomass * CVF / 100
 
-  # Uncertainty Calculation
-  if (!is.null(sig_biomass) && method %in% c("IPCC2", "Thomas")) {
-    if (length(sig_biomass) != n) stop("Length of sig_biomass must match length of biomass")
-    if (!is.numeric(sig_biomass) || any(sig_biomass < 0, na.rm = TRUE)) warning("sig_biomass must be numeric and positive.")
-
-    re[c_index] <- CVF_data$confidence[CVF_data$type == "conifer"]
-    re[b_index] <- CVF_data$confidence[CVF_data$type == "broadleaf"]
-
-    sigma <- sqrt((sig_biomass / biomass)^2 + (re / 100)^2) * AGC
-    return(data.frame(AGC = AGC, sig_AGC = sigma))
+  # Propagate error if sig_biomass is provided
+  if (!is.null(sig_biomass)) {
+    if (length(sig_biomass) != length(biomass)){
+      stop("Length of sig_biomass must match biomass length.")
+      }
+    sigma_AGC <- AGC * sqrt((sig_biomass / biomass)^2 + (re / 100)^2)
+    return(data.frame(AGC = AGC, sig_AGC = sigma_AGC))
   } else {
     return(AGC)
   }
@@ -1169,8 +1204,9 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 
     # Carbon Conversion
     convert <- type[tall_id] %in% class
+
     if (any(convert, na.rm = TRUE)) {
-      r$AGC_WCC_t[tall_id][convert] <- biomass2c(AGB[convert], method, type[tall_id][convert], biome)
+      r$AGC_WCC_t[tall_id][convert] <- biomass2c(AGB[convert], method, type[tall_id][convert], biome = biome)
     } else {
       r$AGC_WCC_t[tall_id] <- AGB * 0.4885
       warning("Type must be specified as 'broadleaf' or 'conifer' for carbon
@@ -1219,9 +1255,9 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
 #' @examples
-#' fc_agc_error('Quercus robur', dbh=74, height=24, output.all = FALSE)
+#' fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
-#' biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
+#' biome="temperate", output.all = FALSE, re_dbh=1, re_h=1)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
@@ -1309,7 +1345,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
     convert <- type[tall_id] %in% class
     if (any(convert, na.rm = TRUE)) {
       AGC <- biomass2c(AGB[convert], method, type[tall_id][convert],
-                       biome, sig_AGB[convert])
+                        sig_AGB[convert], biome)
       r$AGC_WCC_t[tall_id][convert] <- AGC$AGC
       r$sig_AGC[tall_id][convert] <- AGC$sig_AGC
     } else {
@@ -1629,4 +1665,111 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
                                    new_eqtable = new.eqtable)
     return(biomass)
   }
+}
+
+############# Summarise totals per unit area with errors =========================
+
+#' @title Calculate Total per unit area with Error for Biomass or Carbon
+#' @description This function calculates the total carbon or biomass per unit
+#' area with propagated error.
+#' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
+#' @param input Vector of tree-level above-ground biomass or carbon or a list of
+#'  multiple areas to be summarised separately.
+#' @param sigma_input Vector of standard deviations associated with input or a
+#' list of multiple areas to be summarised separately.
+#' @param area Total area sampled (whole habitat or sampled plots) or a vector
+#' of multiple areas.
+#' @param sigma_area Standard deviation of plot area measurement or a vector.
+#' @returns A list containing the estimated total per unit area and its
+#' propagated standard deviation.
+#' @examples
+#' AGB <- c(2.3, 1.8, 3.2)  # Biomass estimates for trees
+#' SD_AGB <- c(0.2, 0.15, 0.3)  # Standard deviations of biomass estimates
+#' summary_per_hectare(AGB, SD_AGB, 0.5, 0.05)
+#'
+#' AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for trees
+#' SD_AGB_2 <- c(0.7, 1.02, 0.3)  # Standard deviations of biomass estimates
+#'
+#' summary_by_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
+#' SD_AGB_2), area = c(0.5, 0.7), sigma_area = c(0.05, 0.09))
+#'
+#' summary_by_area(AGB, SD_AGB, 0.5, 0.09)
+#'
+#' Carbon <- AGB * 0.5  # Convert biomass to carbon
+#' SD_Carbon <- SD_AGB * 0.5  # Approximate error scaling
+#' summary_by_area(Carbon, SD_Carbon, 2.5, 0.09)
+#'
+#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
+#' Study of Uncertainties in Physical Measurements (2nd ed.). University
+#' Science Books.
+#' @export
+#'
+summary_by_area <- function(input, sigma_input, area, sigma_area) {
+
+  # Ensure input is a list of vectors if multiple areas are provided
+  if (!is.list(input)) input <- as.list(as.data.frame(input))
+  if (!is.list(sigma_input)) sigma_input <- as.list(as.data.frame(sigma_input))
+
+  # Check for dimension consistency
+  if (length(input) != length(area) || length(sigma_input) != length(sigma_area)) {
+    stop("Mismatch in number of habitats/areas provided.")
+  }
+
+  # Apply calculations to each habitat
+  total_per_ha <- numeric(length(input))
+  sigma_per_ha <- numeric(length(input))
+
+  for (i in seq_along(input)) {
+    total <- sum(input[[i]], na.rm = TRUE)
+    sigma_total <- sqrt(sum(sigma_input[[i]]^2, na.rm = TRUE))
+    total_per_ha[i] <- total / area[i]
+    sigma_per_ha[i] <- total_per_ha[i] * sqrt((sigma_total / total)^2 +
+                                                (sigma_area[i] / area[i])^2)
+  }
+
+  return(list(total_per_ha = total_per_ha, sigma_per_ha = sigma_per_ha))
+}
+
+#############  Standard Deviation for Area Measurement =========================
+
+#' @title Standard Deviation for Measurement of the total Area
+#' @description This function calculates the standard deviation of the area
+#' based on the perimeter and Root Mean Square Error (RMSE).
+#' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
+#' @param perimeter A numeric vector of perimeters (in meters).
+#' @param RMSE A numeric value representing the Root Mean Square Error (RMSE)
+#' of the perimeter measurement (in meters).
+#' @param sum_plots if equal to TRUE then sum all of the standard deviations of
+#' the plots. If false then outputs the standard deviation of each input.
+#' @return A numeric vector representing the standard deviation of the area for
+#' each corresponding perimeter (in hectares).
+#' @examples
+#' # Example with multiple perimeters of 200m, 300m, and 400m.
+#' # If measured to the nearest 50cm within 100m plot, the RMSE = 0.5m
+#' sd_area(c(200, 300, 400), 0.5)
+#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
+#' Study of Uncertainties in Physical Measurements (2nd ed.). University
+#' Science Books.
+#' @references Goodchild, M. F., & Hunter, G. J. (1997). "A simple positional
+#' accuracy measure for linear features." International Journal of Geographical
+#' Information Science, 11(3), 299-306.
+#' @export
+#'
+sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
+  # Input validation
+  if (!is.numeric(perimeter) || any(perimeter <= 0)) {
+    stop("perimeter must be a numeric vector of positive values.")
+  }
+  if (!is.numeric(RMSE) || RMSE <= 0) {
+    stop("RMSE must be a positive numeric value.")
+  }
+
+  # Calculate standard deviation of the area for each perimeter value
+  result <- (2 * RMSE * perimeter) / 10000
+
+  if(sum_plots){
+    result <- sqrt(sum(result^2))
+  }
+
+  return(result)
 }

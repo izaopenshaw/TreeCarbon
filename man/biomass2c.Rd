@@ -4,26 +4,26 @@
 \alias{biomass2c}
 \title{Calculates biomass conversion to carbon}
 \usage{
-biomass2c(biomass, method, type = NA, biome = "temperate", sig_biomass = NULL)
+biomass2c(biomass, method, type = NA, sig_biomass = NULL, biome = "temperate")
 }
 \arguments{
 \item{biomass}{(usually kg or metric tonnes)}
 
-\item{method}{Method of calculating the carbon volatile fraction.
-"Matthews1": Simplest with the carbon volatile fraction, CVF = 50\%
-"Matthews2": CVF based on type (broadleaf or conifer) (Matthews, 1993)
-"IPCC1": CVF = 47.7\%
-"IPCC2": Lookup CVF by type and biome  (IPCC, 2006)
-"Thomas": Lookup by type and biome  (Thomas and Martin, 2012)}
+\item{method}{Method defining carbon volatile fraction (CVF) see CVF_df.RData
+\link{1: Matthews, 1993} "Matthews1": Simplest, CVF = 50\%.
+"Matthews2": CVF based on type (broadleaf or conifer)
+\link{2: IPCC, 2006} "IPCC1": CVF = 47.7\%
+"IPCC2": Lookup CVF by type and biome
+\link{3: Thomas and Martin, 2012} "Thomas": Lookup by type and biome}
 
-\item{type}{broadleaf or conifer. Only required for method = 'Matthews2',
-'IPCC2' or 'Thomas'}
-
-\item{biome}{tropical, subtropical, mediterranean, temperate or boreal.
-Only needed for 'IPCC2' and 'Thomas' methods.}
+\item{type}{broadleaf or conifer. Required for method = 'Matthews2',
+'IPCC2' or 'Thomas', only.}
 
 \item{sig_biomass}{biomass uncertainty (optional, only available with 'IPCC2'
-and 'Thomas' methods)}
+and 'Thomas')}
+
+\item{biome}{tropical, subtropical, mediterranean, temperate or boreal.
+Required for 'IPCC2' and 'Thomas' only.}
 }
 \value{
 either carbon or if 'sig_biomass' is provided, returns a list of
@@ -34,17 +34,17 @@ Converts biomass to carbon values using the carbon volatile
 fraction from chosen method/citation.
 }
 \references{
-(1) Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
+\link{1} Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
 tissues: a synthesis." Forests 3.2 (2012): 332-352.
 https://www.mdpi.com/1999-4907/3/2/332.
-(2) IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
+\link{2} IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
 for National Greenhouse Gas Inventories; Institute for Global Environmental
 Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
-(3) Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
+\link{3} Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 @examples
 biomass2c(1, method="IPCC2", c("conifer"), "temperate")
-
+biomass2c(c(0.5, 0.75, 2, 7), "IPCC2", rep("broadleaf",4), sig_biomass = rep(0.2, 4))
 @importFrom utils globalVariables
 }
 \author{

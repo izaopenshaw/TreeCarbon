@@ -41,8 +41,9 @@ error_product(5, 0.01, 10, 0.1)
 error_product(5, 0.01, 10, 0.1, 5, 0.01)
 }
 \references{
-Taylor, J. R. (1997). An Introduction to Error Analysis: The Study of Uncertainties in Physical Measurements (2nd ed.). University Science Books.
-OR Bevington, P. R., & Robinson, D. K. (2003). Data Reduction and Error Analysis for the Physical Sciences (3rd ed.). McGraw-Hill.
+Taylor, J. R. (1997). An Introduction to Error Analysis: The
+Study of Uncertainties in Physical Measurements (2nd ed.). University
+Science Books.
 }
 \author{
 Isabel Openshaw. I.Openshaw@kew.org

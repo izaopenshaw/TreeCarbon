@@ -42,5 +42,6 @@ Depends:
 Imports:
     stringr,
     utils,
-    stats
+    stats,
+    remotes
 LazyData: true

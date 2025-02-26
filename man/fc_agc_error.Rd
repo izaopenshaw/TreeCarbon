@@ -56,9 +56,9 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc_error('Quercus robur', dbh=74, height=24, output.all = FALSE)
+fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
-biome="temperate", output.all = FALSE, re_dbh=10, re_h=1)
+biome="temperate", output.all = FALSE, re_dbh=1, re_h=1)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
