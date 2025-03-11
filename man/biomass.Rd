@@ -31,18 +31,18 @@ coordinates for each tree of longitude and latitude}
 \item{output.all}{if TRUE outputs all data from processing, else just outputs carbon figures}
 }
 \value{
-your dataframe back with added columns of carbon estimates. If
-output.all = FALSE, then returns columns 'Genus_corrected','Species',
-'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
-then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
-'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
-is inputed height filled in with Height estimate where missing)
+Above-ground Biomass in kg. If output.all = FALSE, then returns
+columns 'Genus_corrected','Species', 'Family', 'Latitude', 'Longitude',
+'DBH', 'AGB_Biomass_kg'. If output.all = TRUE then additionally returns
+columns 'Wood_Density', 'Wood_Density_sd', 'Height_est', 'RSE'
+(Residual Standard Error of the model), 'Height_1' (which is inputed height
+filled in with Height estimate where missing).
 }
 \description{
 Using the Biomass package to calculate carbon
 }
 \examples{
-coords <- c(-0.088837,51.071610)
+coords <- c(-0.088837, 51.071610)
 biomass(12, 12, 'Quercus', 'robus', coords)
 }
 \references{

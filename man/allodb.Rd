@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{allodb}
 \alias{allodb}
-\title{Estimate Tree Carbon using Biomass package functions}
+\title{Estimate Tree Carbon using allodb package functions}
 \usage{
 allodb(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable = NULL)
 }
@@ -21,15 +21,18 @@ coordinates for each tree of longitude and latitude}
 \item{new.eqtable}{a subset or extension of the allometric equation table. Create with allodb::new_equations}
 }
 \value{
-your dataframe back with added columns of carbon estimates. If
-output.all = FALSE, then returns columns 'Genus_corrected','Species',
-'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
-then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
-'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
-is inputed height filled in with Height estimate where missing)
+Above-ground Biomass in kg. If output.all = TRUE then returns columns
+'DBH', 'Genus', 'Species', 'AGB_allodb_kg', 'allodb_a', 'allodb_b',
+'allodb_sigma' (where AGB = a*DBH^b+e {e ~ N(0,sigma^2}).
 }
 \description{
-Using the Biomass package to calculate carbon
+Use the aalodb R package to calculate carbon
+}
+\examples{
+coords <- c(-0.088837,51.071610)
+allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
+allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
+
 }
 \references{
 Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira,

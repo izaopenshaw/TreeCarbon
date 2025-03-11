@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{error_product}
 \alias{error_product}
-\title{Analytical error progression for a product}
+\title{Analytical error progression for a product or a quotient}
 \usage{
 error_product(
   a,
@@ -34,7 +34,8 @@ error_product(
 either an estimate for sigma or sigma squared of a product
 }
 \description{
-Calculates sigma squared for x when x = a * b or x = a * b * c
+Calculates sigma squared for x when either x = a * b, x = a / b
+or x = a * b * c, x = a / b * c, x = a * b / c
 }
 \examples{
 error_product(5, 0.01, 10, 0.1)

@@ -18,7 +18,7 @@
 #' @param sig_vol sigma for tree volume (optional)
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
 #' @param re  relative error of coefficients (default = 2.5%)
-#' @returns  Tariff number or if sigma for inputs are provided, then will return
+#' @return  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). (Equation 1)
@@ -80,7 +80,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
 #' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re  relative error of coefficients (default = 2.5%)
-#' @returns  tariff number or if relative errors are provided returns a list of
+#' @return  tariff number or if relative errors are provided returns a list of
 #' tariff number and an estimate for sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -158,7 +158,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0
 #' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for DBH/percentage measurement error (optional)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns  tariff number or if relative errors are provided returns a list of
+#' @return  tariff number or if relative errors are provided returns a list of
 #' tariff number and an estimate for sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
@@ -238,7 +238,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = 0.1, re = 
 #' @param spcode species code
 #' @param re_h relative error of height measurement (optional)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns either tariff number or if re_h is provided, then returns a list
+#' @return either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and an estimate of sigma for tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -307,7 +307,7 @@ stand_tariff <- function(spcode, height, re_h = NA, re=0.025) {
 #' @param type conifer or broadleaf
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns either tariff number or if re_h is provided, then returns a list
+#' @return either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and uncertainty
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -408,7 +408,7 @@ tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = 0
 #' @param sig_tariff tariff sigma (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns  volume in metres cubed and error if sig of variables inputted
+#' @return  volume in metres cubed and error if sig of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
@@ -465,7 +465,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param sig_mtreevol sigma for mtreevol (optional)
 #' @param re relative error of conversion factor (default = 2.5%)
-#' @returns volume metres cubed or if sig_mtreevol is provided then additionally
+#' @return volume metres cubed or if sig_mtreevol is provided then additionally
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -519,8 +519,9 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 }
 
 ############# Propagation of error for a product ################
-#' @title Analytical error progression for a product
-#' @description Calculates sigma squared for x when x = a * b or x = a * b * c
+#' @title Analytical error progression for a product or a quotient
+#' @description Calculates sigma squared for x when either x = a * b, x = a / b
+#'  or x = a * b * c, x = a / b * c, x = a * b / c
 #' @author Isabel Openshaw. I.Openshaw@kew.org
 #' @param a first variable in product
 #' @param sig_a sigma for a
@@ -530,7 +531,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @param sig_c sigma for c (if c provided then provide sig_c also)
 #' @param returnv return value, either 'sigma' (standard deviation) or
 #' 'sigma squared' (variance)
-#' @returns either an estimate for sigma or sigma squared of a product
+#' @return either an estimate for sigma or sigma squared of a product
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
@@ -554,12 +555,22 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
   if (is.null(c)) {
 
     if(returnv == "sigma") {
-      # sigma for a*b
+      # sigma for a*b or a/b
       result <- abs(a * b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
     } else {
-      # sigma_squared for a*b
+      # sigma_squared for a*b or a/b
       result <- (a * b)^2 * (sig_a / a)^2 + (sig_b / b)^2
     }
+
+    if(returnv == "sigma") {
+      # sigma for a / b
+      result <- abs(a / b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
+    } else {
+      # sigma_squared for a / b
+      result <- (a / b)^2 * (sig_a / a)^2 + (sig_b / b)^2
+    }
+
+
 
   } else {
     if (!is.numeric(c) || !is.numeric(sig_c)) {
@@ -579,48 +590,6 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
   return(result)
 }
 
-
-############# Propagation of error for a quotient ################
-#' @title Analytical error progression for a quotient
-#' @description Calculates sigma squared for x when x = a / b
-#' @author Isabel Openshaw. I.Openshaw@kew.org
-#' @param a numerator
-#' @param sig_a sigma for a
-#' @param b denominator
-#' @param sig_b sigma for b
-#' @param returnv return value, either 'sigma' (standard deviation) or
-#' 'sigma squared' (variance)
-#' @returns either an estimate for sigma or sigma squared of a quotient
-#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
-#' Study of Uncertainties in Physical Measurements (2nd ed.). University
-#' Science Books.
-#' @examples
-#' error_division(50, 10, 100, 2)
-#' error_division(5, 0.5, 10, 0.1)
-#' @export
-#' @aliases error_division
-#'
-error_division <- function(a, sig_a, b, sig_b, returnv = "sigmasquared")
-{
-  if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
-      !is.numeric(sig_b)) {
-    stop("inputs must be numeric")
-  }
-  if (!is.character(returnv) || !(returnv %in% c("sigma", "sigmasquared"))) {
-    stop("returnv must be either 'sigma' or 'sigmasquared' (default)")
-  }
-
-  if(returnv == "sigma") {
-      # sigma for a / b
-      result <- abs(a / b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
-    } else {
-      # sigma_squared for a / b
-      result <- (a / b)^2 * (sig_a / a)^2 + (sig_b / b)^2
-    }
-
-  return(result)
-}
-
 ############# FC wood biomass ################
 #'
 #' @title Forestry commission wood biomass
@@ -631,7 +600,7 @@ error_division <- function(a, sig_a, b, sig_b, returnv = "sigmasquared")
 #' @param nsg Nominal Specific Gravity
 #' @param sig_treevol tree volume sigma (optional)
 #' @param sig_nsg sigma for nsg (optional)
-#' @returns  biomass in oven dry tonnes or if sig_treevol is provided then
+#' @return  biomass in oven dry tonnes or if sig_treevol is provided then
 #' additionally returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
@@ -678,7 +647,7 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
 #' defined for species, lookup_df$short to find relating lookup_df$Crown
 #' @param re_d relative error for diameter at breast height measurement (default = 5%)
 #' @param re relative error of coefficients (default = 2.5%)
-#' @returns  biomass (oven dry tonnes) and estimated sigma
+#' @return  biomass (oven dry tonnes) and estimated sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
 #' @importFrom utils data
@@ -756,7 +725,7 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
 #' @param spcode species code
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients of the equation (default = 2.5%)
-#' @returns biomass (oven dry tonnes)
+#' @return biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.3.
 #' @examples
@@ -828,7 +797,7 @@ rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
 #' @description Function to convert from carbon to carbon dioxide equivalent
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param carbon carbon
-#' @returns carbon dioxide equivalent
+#' @return carbon dioxide equivalent
 #' @examples
 #' ctoco2e(448)
 #' ctoco2e(c(448, 450))
@@ -849,27 +818,50 @@ ctoco2e <- function(carbon) {
 
 
 ############# Plant biomass conversion to carbon ################
-#'
-#' @title Calculates biomass conversion to carbon
-#' @description Converts biomass to carbon values using the carbon volatile
-#'  fraction from chosen method/citation.
-#' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param biomass (usually kg or metric tonnes)
-#' @param method Method defining carbon volatile fraction (CVF) see CVF_df.RData
+#' @title Convert Biomass to Carbon
+#' @description Converts biomass values to carbon values using the carbon
+#' volatile fraction (CVF) from the chosen method or citation.
+#' @author Justin Moat <J.Moat@kew.org>, Isabel Openshaw <I.Openshaw@kew.org>
+#' @param biomass Numeric vector, representing biomass values (typically in kg
+#' or metric tonnes).
+#' @param method Character. Method defining the carbon volatile fraction (CVF).
+#' Supported methods:
+#' \itemize{
+#'   \item `"Matthews1"`: Simplest, CVF = 50% (Matthews, 1993).
+#'   \item `"Matthews2"`: CVF based on type (broadleaf or conifer).
+#'   \item `"IPCC1"`: CVF = 47.7% (IPCC, 2006).
+#'   \item `"IPCC2"`: Lookup CVF by type and biome.
+#'   \item `"Thomas"`: Lookup by type and biome (Thomas & Martin, 2012).
+#' }
+#' Method defining carbon volatile fraction (CVF) see CVF_df.RData
 #' [1: Matthews, 1993] "Matthews1": Simplest, CVF = 50%.
 #' "Matthews2": CVF based on type (broadleaf or conifer)
 #' [2: IPCC, 2006] "IPCC1": CVF = 47.7%
 #' "IPCC2": Lookup CVF by type and biome
 #' [3: Thomas and Martin, 2012] "Thomas": Lookup by type and biome
-#' @param type broadleaf or conifer. Required for method = 'Matthews2',
-#' 'IPCC2' or 'Thomas', only.
-#' @param biome tropical, subtropical, mediterranean, temperate or boreal.
-#' Required for 'IPCC2' and 'Thomas' only.
-#' @param sig_biomass biomass uncertainty (optional, only available with 'IPCC2'
-#'  and 'Thomas')
-#' @returns either carbon or if 'sig_biomass' is provided, returns a list of
-#' carbon value and error. Errors only given with method = 'IPCC2' or 'Thomas'.
-#' @references [1] Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
+#'
+#' @param type Character vector. `"broadleaf"` or `"conifer"`. Required for
+#' `"Matthews2"`, `"IPCC2"`, or `"Thomas"`.
+#' @param biome Character vector. Biome classification, required for `"IPCC2"`
+#' and `"Thomas"` methods. Accepted values: `"tropical"`, `"subtropical"`,
+#' `"mediterranean"`, `"temperate"`, or `"boreal"`.
+#' @param sig_biomass Numeric vector. Biomass uncertainty (optional, only used
+#' with `"IPCC2"` and `"Thomas"` methods).
+#' @return Numeric vector of carbon values. If `sig_biomass` is provided,
+#' returns a data frame with columns `"AGC"` (above-ground carbon) and
+#' `"sig_AGC"` (associated uncertainty).
+#'
+#' @references
+#' Thomas, S.C., & Martin, A.R. (2012). Carbon content of tree tissues: A synthesis.
+#' *Forests, 3*(2), 332-352. \doi{10.3390/f3020332}
+#'
+#' IPCC. (2006). Forest lands. *Intergovernmental Panel on Climate Change Guidelines*
+#' for National Greenhouse Gas Inventories, Volume 4, p. 83.
+#'
+#' Matthews, G.A.R. (1993). *The Carbon Content of Trees.* Forestry Commission Technical
+#' Paper 4, Forestry Commission, Edinburgh, 21 pp. ISBN: 0-85538-317-8.
+#'
+#' [1] Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
 #' tissues: a synthesis." Forests 3.2 (2012): 332-352.
 #'  https://www.mdpi.com/1999-4907/3/2/332.
 #' [2] IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
@@ -877,13 +869,17 @@ ctoco2e <- function(carbon) {
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
 #' [3] Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
-#'  @examples
-#'  biomass2c(1, method="IPCC2", c("conifer"), "temperate")
-#'  biomass2c(c(0.5, 0.75, 2, 7), "IPCC2", rep("broadleaf",4), sig_biomass = rep(0.2, 4))
-#'  @importFrom utils globalVariables
+#' @examples
+#' # Basic conversion using IPCC2 method
+#' biomass2c(1, method = "IPCC2", type = "conifer", biome = "temperate")
+#'
+#' # Vectorized conversion with uncertainty
+#' biomass2c(c(0.5, 0.75, 2, 7), method = "IPCC2", type = rep("broadleaf", 4),
+#'           sig_biomass = rep(0.2, 4), biome = "temperate")
+#'
+#' @importFrom utils globalVariables
 #' @aliases biomass2c
 #' @export
-#'
 #'
 biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 'temperate') {
 
@@ -917,19 +913,25 @@ biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 't
   }
 
   # Match CVF and confidence values
-  CVF <- CVF_data$CVF[match(type, CVF_data$type)]
-  re <- ifelse(!is.null(CVF_data$confidence),
-               CVF_data$confidence[match(type, CVF_data$type)], 0)
+  CVF <- CVF_data$CVF[match(type, CVF_data$type)] / 100
+
+  #re <- ifelse(!is.null(CVF_data$confidence),
+  #             CVF_data$confidence[match(type, CVF_data$type)], 0)
+  sig_CVF <- ifelse(!is.null(CVF_data$confidence),
+                    CVF_data$confidence[match(type, CVF_data$type)] /100 /1.96,
+                    0)
 
   # Calculate AGC (carbon)
-  AGC <- biomass * CVF / 100
+  AGC <- biomass * CVF
 
   # Propagate error if sig_biomass is provided
   if (!is.null(sig_biomass)) {
     if (length(sig_biomass) != length(biomass)){
       stop("Length of sig_biomass must match biomass length.")
       }
-    sigma_AGC <- AGC * sqrt((sig_biomass / biomass)^2 + (re / 100)^2)
+    #sigma_AGC <- AGC * sqrt((sig_biomass / biomass)^2 + (re / 100)^2)
+    sigma_AGC <- error_product(biomass, sig_biomass, CVF, sig_CVF, returnv = "sigma")
+
     return(data.frame(AGC = AGC, sig_AGC = sigma_AGC))
   } else {
     return(AGC)
@@ -946,7 +948,7 @@ biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 't
 #' @param type 'conifer' or 'broadleaf'
 #' @param re relative error of estimates (default = 2.5%)
 #' @param re_h relative error of height measurement in cm (optional)
-#' @returns carbon in tonnes or if re_h provided then additionally the error
+#' @return carbon in tonnes or if re_h provided then additionally the error
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
@@ -1020,7 +1022,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 #' @param name name of species (common or botanical). See lookup_df.Rda
 #' @param type either 'broadleaf' or 'conifer'
 #' @param code either 'short', 'single', 'stand', 'root' or 'crown'
-#' @returns Species code
+#' @return Species code
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom stringr word str_trim
@@ -1125,7 +1127,7 @@ lookupcode <- function(name, type = NA, code = "short") {
 #' @param output.all if TRUE (default) outputs all data from processing, else outputs carbon estimate
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @returns either Above ground carbon (AGC) in tonnes, or a list with tariff
+#' @return either Above ground carbon (AGC) in tonnes, or a list with tariff
 #' number, merchantable volume (metres cubed), stem volume (metres cubed),
 #' stem biomass (tonnes), stem carbon (tonnes), canopy carbon (tonnes),
 #' root carbon (tonnes) and AGC.
@@ -1247,7 +1249,7 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 #' @param re relative error of coefficients (default = 2.5%)
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
+#' @return either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
 #' a list of tariff number, merchantable volume (metres cubed), stem volume
 #' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
 #' (tonnes) and root carbon (tonnes)
@@ -1386,7 +1388,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 #' @param nruns number of iteration, suggest 10,000 as min and 100,000 is a good number
 #' @param returnv if null then mean and sd is returned else vector of
 #' quantiles ie c(5,50,95)/100 will return 5%, mean and 95% quantiles.
-#' @returns  either vector of mean and sd or vector of quantiles
+#' @return  either vector of mean and sd or vector of quantiles
 #' @references todo** and to write at export
 #' @importFrom stats quantile rnorm sd
 #' @import remotes
@@ -1427,7 +1429,7 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @param dbh diameter at breast height
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
 #' @param re  relative error of coefficients (default = 2.5%)
-#' @returns  biomass in kg
+#' @return  biomass in kg
 #' @references Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
@@ -1486,12 +1488,12 @@ bunce <- function(name, dbh, type = NA, re_dbh = NULL, re = 0.025) {
 #' coordinates for each tree of longitude and latitude
 #' @param region of the World. See ?getWoodDensity for the list of regions
 #' @param output.all if TRUE outputs all data from processing, else just outputs carbon figures
-#' @returns  your dataframe back with added columns of carbon estimates. If
-#' output.all = FALSE, then returns columns 'Genus_corrected','Species',
-#' 'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
-#' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
-#' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
-#' is inputed height filled in with Height estimate where missing)
+#' @return Above-ground Biomass in kg. If output.all = FALSE, then returns
+#' columns 'Genus_corrected','Species', 'Family', 'Latitude', 'Longitude',
+#' 'DBH', 'AGB_Biomass_kg'. If output.all = TRUE then additionally returns
+#' columns 'Wood_Density', 'Wood_Density_sd', 'Height_est', 'RSE'
+#' (Residual Standard Error of the model), 'Height_1' (which is inputed height
+#' filled in with Height estimate where missing).
 #' @importFrom utils install.packages
 #' @import remotes
 #' @references Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault
@@ -1499,7 +1501,7 @@ bunce <- function(name, dbh, type = NA, re_dbh = NULL, re = 0.025) {
 #' its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
 #' 1163-1167
 #' @examples
-#' coords <- c(-0.088837,51.071610)
+#' coords <- c(-0.088837, 51.071610)
 #' biomass(12, 12, 'Quercus', 'robus', coords)
 #' @aliases biomass
 #' @export
@@ -1576,8 +1578,8 @@ biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World"
 #         or a matrix of coordinates for each tree
 # ==== Optional Inputs:
 # output.all: if TRUE outputs the coefficients of the model, a*DBH^b+e {e ~ N(0,sigma^2}
-#' @title Estimate Tree Carbon using Biomass package functions
-#' @description Using the Biomass package to calculate carbon
+#' @title Estimate Tree Carbon using allodb package functions
+#' @description Use the aalodb R package to calculate carbon
 #' @param DBH Diameter at breast height (cm)
 #' @param Genus First part of Species binomial
 #' @param Species Second part of Species binomial
@@ -1589,12 +1591,14 @@ biomass <- function(DBH, Height = NULL, Genus, Species, coords, region = "World"
 #' K. (2020). allodb: An R package for biomass estimation at globally
 #' distributed extratropical forest plots. Methods in Ecology and Evolution,
 #' 11(10), 1273-1280
-#' @returns  your dataframe back with added columns of carbon estimates. If
-#' output.all = FALSE, then returns columns 'Genus_corrected','Species',
-#' 'Family','Latitude','Longitude','DBH','AGB_Biomass_kg'. If output.all = TRUE
-#' then additionally returns columns 'Wood_Density', 'Wood_Density_sd',
-#' 'Height_est', 'RSE' (Residual Standard Error of the model), 'Height_1' (which
-#' is inputed height filled in with Height estimate where missing)
+#' @return Above-ground Biomass in kg. If output.all = TRUE then returns columns
+#'  'DBH', 'Genus', 'Species', 'AGB_allodb_kg', 'allodb_a', 'allodb_b',
+#'  'allodb_sigma' (where AGB = a*DBH^b+e {e ~ N(0,sigma^2}).
+#' @examples
+#' coords <- c(-0.088837,51.071610)
+#' allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
+#' allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
+#'
 #' @import remotes
 #' @export
 #' @aliases allodb
@@ -1680,31 +1684,32 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' @param area Total area sampled (whole habitat or sampled plots) or a vector
 #' of multiple areas.
 #' @param sigma_area Standard deviation of plot area measurement or a vector.
-#' @returns A list containing the estimated total per unit area and its
+#' @return A list containing the estimated total per unit area and its
 #' propagated standard deviation.
 #' @examples
 #' AGB <- c(2.3, 1.8, 3.2)  # Biomass estimates for trees
 #' SD_AGB <- c(0.2, 0.15, 0.3)  # Standard deviations of biomass estimates
-#' summary_per_hectare(AGB, SD_AGB, 0.5, 0.05)
+#' summary_per_area(AGB, SD_AGB, 0.5, 0.05)
 #'
 #' AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for trees
 #' SD_AGB_2 <- c(0.7, 1.02, 0.3)  # Standard deviations of biomass estimates
 #'
-#' summary_by_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
+#' summary_per_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
 #' SD_AGB_2), area = c(0.5, 0.7), sigma_area = c(0.05, 0.09))
 #'
-#' summary_by_area(AGB, SD_AGB, 0.5, 0.09)
+#' summary_per_area(AGB, SD_AGB, 0.5, 0.09)
 #'
 #' Carbon <- AGB * 0.5  # Convert biomass to carbon
 #' SD_Carbon <- SD_AGB * 0.5  # Approximate error scaling
-#' summary_by_area(Carbon, SD_Carbon, 2.5, 0.09)
+#' summary_per_area(Carbon, SD_Carbon, 2.5, 0.09)
 #'
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
 #' @export
 #'
-summary_by_area <- function(input, sigma_input, area, sigma_area) {
+summary_per_area <- function(input, sigma_input, area, sigma_area,
+                            returnv = "sigma") {
 
   # Ensure input is a list of vectors if multiple areas are provided
   if (!is.list(input)) input <- as.list(as.data.frame(input))
