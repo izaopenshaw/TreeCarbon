@@ -3,7 +3,6 @@
 # error for ctoco2e ?
 # todo error for nsg
 # search not found and check that intermediate species are found in lookup_df
-# check biomass2c that error is confidence percentage by checking references
 # single crown root dont have a code for Mixed species
 # species specific sd for nsg?
 
@@ -520,18 +519,21 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 
 ############# Propagation of error for a product ################
 #' @title Analytical error progression for a product or a quotient
-#' @description Calculates sigma squared for x when either x = a * b, x = a / b
-#'  or x = a * b * c, x = a / b * c, x = a * b / c
-#' @author Isabel Openshaw. I.Openshaw@kew.org
-#' @param a first variable in product
+#' @description Calculates sigma squared for f when either f = a * b, f = a / b
+#'  or f = a * b * c, f = a / b * c, f = a * b / c
+#' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
+#' @param a first variable in function
 #' @param sig_a sigma for a
-#' @param b second variable in product
+#' @param b second variable in function
 #' @param sig_b sigma for b
-#' @param c (optional) third variable in product
-#' @param sig_c sigma for c (if c provided then provide sig_c also)
+#' @param c (optional) third variable in function
+#' @param sig_c (optional) sigma for c
 #' @param returnv return value, either 'sigma' (standard deviation) or
 #' 'sigma squared' (variance)
-#' @return either an estimate for sigma or sigma squared of a product
+#' @param fn function describing how the variables are related. Default is fn =
+#' NA which assumes that the variables are a product.
+#' @return either an estimate for sigma or sigma squared error propagation for a
+#' product or a quotient of two or three variables.
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
@@ -542,7 +544,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @aliases error_product
 #'
 error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
-                          returnv = "sigmasquared")
+                          returnv = "sigmasquared", fn = NA)
 {
   if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
       !is.numeric(sig_b)) {
@@ -552,39 +554,32 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
     stop("returnv must be either 'sigma' or 'sigmasquared' (default)")
   }
 
-  if (is.null(c)) {
+  if(is.null(c)) { # function is either a*b or a/b
+
+    if(is.na(fn)){ fn <- a * b }
 
     if(returnv == "sigma") {
-      # sigma for a*b or a/b
-      result <- abs(a * b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
+      # sigma
+      result <- abs(fn) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
     } else {
-      # sigma_squared for a*b or a/b
-      result <- (a * b)^2 * (sig_a / a)^2 + (sig_b / b)^2
+      # sigma_squared
+      result <- (fn)^2 * (sig_a / a)^2 + (sig_b / b)^2
     }
 
-    if(returnv == "sigma") {
-      # sigma for a / b
-      result <- abs(a / b) * sqrt((sig_a / a)^2 + (sig_b / b)^2)
-    } else {
-      # sigma_squared for a / b
-      result <- (a / b)^2 * (sig_a / a)^2 + (sig_b / b)^2
-    }
-
-
-
-  } else {
+  } else { # if c is not null, and function is a*b*c or a*b/c or a/b*c
     if (!is.numeric(c) || !is.numeric(sig_c)) {
       stop("c and sig_c must be numeric")
     }
+    if(is.na(fn)){ fn <- a * b * c}
+
 
     if(returnv == "sigma") {
-      # sigma for a*b*c
-      result <- abs(a * b * c) * sqrt((sig_a / a)^2 + (sig_b / b)^2 + (sig_c / c)^2)
+      # sigma
+      result <- abs(fn) * sqrt((sig_a / a)^2 + (sig_b / b)^2 + (sig_c / c)^2)
     } else {
-      # sigma_squared for a*b*c
-      result <- (a * b * c)^2 * (sig_a / a)^2 + (sig_b / b)^2 + (sig_c / c)^2
+      # sigma_squared
+      result <- (fn)^2 * ( (sig_a / a)^2 + (sig_b / b)^2 + (sig_c / c)^2 )
     }
-
   }
 
   return(result)
@@ -1180,16 +1175,16 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     matchtype=spcodes$matchtype, AGC_WCC_t=NA, stringsAsFactors=FALSE)
   }
 
-  # Trees with height < 6.5m
-  small_id <- !is.na(height) & height < 6.5 & type %in% class
+  # Trees with height < 7 m
+  small_id <- !is.na(height) & height < 7 & type %in% class
 
   if (any(small_id, na.rm = TRUE)) {
     r$AGC_WCC_t[small_id] <- sap_seedling2C(heightincm =
                                 height[small_id] * 100, type[small_id])
   }
 
-  # Trees with height >= 6.5m
-  tall_id <- height >= 6.5 & !is.na(height)
+  # Trees with height >= 7 m
+  tall_id <- height >= 7 & !is.na(height)
 
   if (any(tall_id, na.rm = TRUE)) {
     tariff <- tariffs(spcode= spcodes$code[tall_id],height= height[tall_id],
@@ -1313,8 +1308,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     matchtype=spcodes$matchtype, stringsAsFactors=FALSE)
   }
 
-  # Trees with height < 6.5m
-  small_id <- !is.na(height) & height < 6.5 & type %in% class
+  # Trees with height < 7m
+  small_id <- !is.na(height) & height < 7 & type %in% class
 
   if (any(small_id, na.rm = TRUE)) {
     carbon <- sap_seedling2C(heightincm = height[small_id] * 100,
@@ -1323,8 +1318,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
     r$sig_AGC[small_id] <- carbon$sd
   }
 
-  # Trees with height >= 6.5m
-  tall_id <- height >= 6.5 & !is.na(height)
+  # Trees with height >= 7m
+  tall_id <- height >= 7 & !is.na(height)
 
   if (any(tall_id, na.rm = TRUE)) {
     tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
@@ -1436,7 +1431,7 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @importFrom utils data
 #' @examples
 #' bunce("Oak", 24)
-#' bunce(c("Oak", "Beech"), c(24,23))
+#' bunce(c("Oak", "Beech"), c(23,23))
 #' @export
 #' @aliases bunce
 #'
