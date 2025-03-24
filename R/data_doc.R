@@ -199,3 +199,23 @@
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
 "buncedf"
+
+#' Wood Density Dataset from Zanne et al.
+#'
+#' A dataset of wood density measurements compiled by Zanne et al. across various species, continents, and biomes.
+#'
+#' @format A data frame with 16,468 rows and 9 variables:
+#' \describe{
+#'   \item{Family}{Character. Plant family.}
+#'   \item{Genus}{Character. Plant genus.}
+#'   \item{Species}{Character. Plant species.}
+#'   \item{Binomial}{Character. Genus + species name.}
+#'   \item{Wood.density}{Numeric. Wood density (g/cm³), ranging from 0.08 to 1.39.}
+#'   \item{Reference}{Integer. Reference ID for source of data.}
+#'   \item{Continent}{Character. Continent where data was collected.}
+#'   \item{Biome}{Character. Biome classification.}
+#'   \item{Region}{Character. Combined continent and biome description.}
+#' }
+#'
+#' @source Zanne, A.E., et al. (2009). Global wood density database. Dryad. http://hdl.handle.net/10255/dryad.235
+"wd_zanne"

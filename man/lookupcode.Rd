@@ -4,14 +4,18 @@
 \alias{lookupcode}
 \title{Lookup species code}
 \usage{
-lookupcode(name, type = NA, code = "short")
+lookupcode(name, type = NA, code = "short", returnv = "all")
 }
 \arguments{
 \item{name}{name of species (common or botanical). See lookup_df.Rda}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
-\item{code}{either 'short', 'single', 'stand', 'root' or 'crown'}
+\item{code}{either 'short', 'single', 'stand', 'Root' or 'Crown' Or other
+column names from lookup_df.Rda}
+
+\item{returnv}{either 'code' for just the code output or 'all' (default) with
+spname and matchtype for checking}
 }
 \value{
 Species code

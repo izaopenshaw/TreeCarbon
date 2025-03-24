@@ -544,8 +544,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @aliases error_product
 #'
 error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
-                          returnv = "sigmasquared", fn = NA)
-{
+                          returnv = "sigmasquared", fn = NA){
   if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
       !is.numeric(sig_b)) {
     stop("inputs must be numeric")
@@ -556,7 +555,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 
   if(is.null(c)) { # function is either a*b or a/b
 
-    if(is.na(fn)){ fn <- a * b }
+    if(anyNA(fn)){ fn <- a * b }
 
     if(returnv == "sigma") {
       # sigma
@@ -570,7 +569,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
     if (!is.numeric(c) || !is.numeric(sig_c)) {
       stop("c and sig_c must be numeric")
     }
-    if(is.na(fn)){ fn <- a * b * c}
+    if(anyNA(fn)){ fn <- a * b * c}
 
 
     if(returnv == "sigma") {
@@ -616,17 +615,17 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
   woodbio <- treevol * nsg
   sigma <- rep(NA, length(treevol))
 
-  if(!is.null(sig_treevol)) {
-    if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
-      stop("'sig_treevol' must be positive & numeric")}
-    if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
-      stop("'sig_nsg' must be positive & numeric")}
+  if(is.null(sig_treevol)) {
+    return(woodbio)
+    } else {
+      if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
+        stop("'sig_treevol' must be positive & numeric")}
+      if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
+        stop("'sig_nsg' must be positive & numeric")}
 
     v <- !is.na(sig_treevol) & !is.na(treevol) & !is.na(nsg)
     sigma[v] <- error_product(treevol[v], sig_treevol[v], nsg[v], sig_nsg, returnv = "sigma")
     return(list(woodbiomass = woodbio, sigma = sigma))
-  } else {
-    return(woodbio)
   }
 
 }
@@ -893,11 +892,11 @@ biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 't
   # Subset conversion factor table
   CVF_data <- CVF_df[CVF_df$method == method, ]
 
-  # Handle type & biome filtering
-  if (method %in% c("Matthews2", "IPCC2", "Thomas")) {
-    if (!all(type %in% c("broadleaf", "conifer"))) {
-      stop("Type must be 'broadleaf' or 'conifer'.")
-      }
+  # Match CVF and confidence values
+  if (method %in% c("Matthews1", "IPCC1")) {
+    CVF <- CVF_data$CVF / 100
+  #} else if (!all(type %in% c("broadleaf", "conifer"))) {
+      #warning("Skipping trees without type = 'broadleaf' or 'conifer'.") }
     if (method %in% c("IPCC2", "Thomas") ){
       if(!all(biome %in% CVF_data$biome)) {
         stop("Invalid biome for the chosen method. Choose from: ",
@@ -905,16 +904,13 @@ biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 't
       }
       CVF_data <- CVF_data[CVF_data$biome == biome, ]
     }
+
+    CVF <- CVF_data$CVF[match(type, CVF_data$type)] / 100
+
+    sig_CVF <- ifelse(!is.null(CVF_data$confidence),
+                      CVF_data$confidence[match(type, CVF_data$type)]/100 /1.96,
+                      0)
   }
-
-  # Match CVF and confidence values
-  CVF <- CVF_data$CVF[match(type, CVF_data$type)] / 100
-
-  #re <- ifelse(!is.null(CVF_data$confidence),
-  #             CVF_data$confidence[match(type, CVF_data$type)], 0)
-  sig_CVF <- ifelse(!is.null(CVF_data$confidence),
-                    CVF_data$confidence[match(type, CVF_data$type)] /100 /1.96,
-                    0)
 
   # Calculate AGC (carbon)
   AGC <- biomass * CVF
@@ -1016,7 +1012,10 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 #' @author Isabel Openshaw I.Openshaw@kew.org
 #' @param name name of species (common or botanical). See lookup_df.Rda
 #' @param type either 'broadleaf' or 'conifer'
-#' @param code either 'short', 'single', 'stand', 'root' or 'crown'
+#' @param code either 'short', 'single', 'stand', 'Root' or 'Crown' Or other
+#' column names from lookup_df.Rda
+#' @param returnv either 'code' for just the code output or 'all' (default) with
+#'  spname and matchtype for checking
 #' @return Species code
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -1031,7 +1030,7 @@ sap_seedling2C <- function(heightincm, type, re_h = NA, re = 0.025) {
 #' @export
 #' @aliases lookupcode
 #'
-lookupcode <- function(name, type = NA, code = "short") {
+lookupcode <- function(name, type = NA, code = "short", returnv = "all") {
   if (!is.character(name)) stop("'name' must be a character vector.")
 
   # Identify the column index for the selected 'code'
@@ -1104,7 +1103,12 @@ lookupcode <- function(name, type = NA, code = "short") {
   if (length(unmatched) > 0) {warning("The following species were not found: ",
                                       paste(unmatched, collapse = ", "))}
 
-  return(result_df)
+  if(returnv == "all"){
+    return(result_df)
+  } else {
+    return(result_df$code)
+  }
+
 }
 
 ############# FC Above Ground Carbon ################
@@ -1175,16 +1179,16 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     matchtype=spcodes$matchtype, AGC_WCC_t=NA, stringsAsFactors=FALSE)
   }
 
-  # Trees with height < 7 m
-  small_id <- !is.na(height) & height < 7 & type %in% class
+  # Trees with dbh < 7m
+  small_id <- type %in% class & !is.na(height) & (!is.na(dbh) & dbh < 7 | is.na(dbh) & height < 10)
 
   if (any(small_id, na.rm = TRUE)) {
     r$AGC_WCC_t[small_id] <- sap_seedling2C(heightincm =
                                 height[small_id] * 100, type[small_id])
   }
 
-  # Trees with height >= 7 m
-  tall_id <- height >= 7 & !is.na(height)
+  # Trees with dbh >= 7 m
+  tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
 
   if (any(tall_id, na.rm = TRUE)) {
     tariff <- tariffs(spcode= spcodes$code[tall_id],height= height[tall_id],
@@ -1209,6 +1213,7 @@ fc_agc <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
       warning("Type must be specified as 'broadleaf' or 'conifer' for carbon
               conversion.")
     }
+    r$AGC_WCC_t[tall_id] <- AGB
 
     if(output.all){
       # Root Biomass
@@ -1292,7 +1297,7 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
   # Lookup species codes and type
   spcodes <- lookupcode(name, type, code = 'short')
   rec <- lookup_df[match(spcodes$code, lookup_df$short), ]
-  type <- rec$type
+  type <- ifelse(is.na(rec$type) | rec$type == "MX", type, rec$type)
 
   # Create results table
   if(output.all){
@@ -1308,8 +1313,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
                     matchtype=spcodes$matchtype, stringsAsFactors=FALSE)
   }
 
-  # Trees with height < 7m
-  small_id <- !is.na(height) & height < 7 & type %in% class
+  # Trees with dbh < 7m
+  small_id <- type %in% class & !is.na(height) & (!is.na(dbh) & dbh < 7 | is.na(dbh) & height < 10)
 
   if (any(small_id, na.rm = TRUE)) {
     carbon <- sap_seedling2C(heightincm = height[small_id] * 100,
@@ -1318,8 +1323,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
     r$sig_AGC[small_id] <- carbon$sd
   }
 
-  # Trees with height >= 7m
-  tall_id <- height >= 7 & !is.na(height)
+  # Trees with dbh >= 7 m
+  tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
 
   if (any(tall_id, na.rm = TRUE)) {
     tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
@@ -1357,8 +1362,8 @@ fc_agc_error <- function(name, dbh, height, type = NA, method = "IPCC2", biome =
 
       r[tall_id, c("tariff", "sig_tariff",
         "mercvol_m.3", "sig_mercvol", "stemvol_m.3", "sig_stemvol",
-        "stembiomass_t", "sig_stembiomass", "crownbiomass_t", "sig_crown",
-        "rootbiomass_t", "sig_root")] <-
+        "stembiomass_t", "sig_stembiomass", "crownbiomass_t", "sig_crownbiomass",
+        "rootbiomass_t", "sig_rootbiomass")] <-
         list(tariff$tariff, tariff$sigma,
              mercvol$volume, mercvol$sigma, stemvol$stemvolume, stemvol$sigma,
              woodbio$woodbiomass, woodbio$sigma, crownbio$biomass,
@@ -1430,12 +1435,12 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' Tree Dry Weight" (1968)
 #' @importFrom utils data
 #' @examples
-#' bunce("Oak", 24)
-#' bunce(c("Oak", "Beech"), c(23,23))
+#' Bunce("Oak", 24)
+#' Bunce(c("Oak", "Beech"), c(23,23))
 #' @export
-#' @aliases bunce
+#' @aliases Bunce
 #'
-bunce <- function(name, dbh, type = NA, re_dbh = NULL, re = 0.025) {
+Bunce <- function(name, dbh, type = NA, re_dbh = NULL, re = 0.025) {
   # Check inputs
   if (missing(name) || missing(dbh)) stop("Both 'name' and 'dbh' are required.")
   if (!is.character(name)) stop("'name' must be a character vector.")
@@ -1773,3 +1778,218 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 
   return(result)
 }
+
+#############  Compare Allometries #############
+#' @title Calculate above ground carbon
+#' @description  Function that inputs tree species code, dbh, height and method
+#' for converting biomass to carbon, and returns the carbon estimate
+#' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
+#' @param Genus First part of Species binomial
+#' @param Species Second part of Species binomial
+#' @param type either 'broadleaf' or 'conifer'
+#' @param dbh diameter at breast height in centimetres
+#' @param height in metres
+#' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
+#' @param output.all if TRUE outputs all data from processing, else just outputs carbon estimates
+#' @param region of the World. See ?getWoodDensity for the list of regions
+#' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
+#' @param coords either a vector of coordinates of the site or a matrix of
+#' coordinates for each tree of longitude and latitude
+#' @param re_dbh relative measurement error for diameter at breast height, single value
+#' @param re_h relative error of height measurement, single value
+#' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
+#' @param re relative error of coefficients (default = 2.5%)
+#' @param nsg nominal specific gravity. Optionally specified, else will use that
+#'  given by the WCC
+#' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
+#' a list of tariff number, merchantable volume (metres cubed), stem volume
+#' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
+#' (tonnes) and root carbon (tonnes)
+#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#'  Carbon Assessment Protocol (v2. 0)." (2018).
+#' Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017).
+#'  BIOMASS: an R package for estimating above-ground biomass and its
+#'  uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
+#'  1163-1167
+#' Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira, K. (2020).
+#'  allodb: An R package for biomass estimation at globally distributed
+#'  extratropical forest plots. Methods in Ecology and Evolution, 11(10),
+#'  1273-1280
+#' Bunce, R. G. H. "Biomass and Production of Trees in a Mixed Deciduous
+#'  Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry
+#'  Weight" (1968)
+#' @importFrom utils data
+#' @examples
+#' allometries("Quercus", "robur", 20, 10)
+#' @export
+#'
+allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
+                        output.all = FALSE, returnv = "AGC", nsg = NA,
+                        region = "Europe", biome = "temperate",
+                        coords = c(-0.088837,51.071610), re_dbh = 0.05,
+                        re_h = 0.1, re = 0.025, sig_nsg = 0.09413391){
+
+  bio <- biomass(dbh, height, genus, species, coords, region=region, output.all = TRUE)
+  if(!output.all){ bio <- bio[, c(1:7, 14)]}
+
+  if(any(bio$Modified == TRUE, na.rm = TRUE)){
+    genus <- bio$Genus_corrected
+    species <- bio$Species_corrected
+  }
+
+  allo <- allodb(dbh, genus, species, coords, TRUE)
+
+  name = paste(genus, species)
+
+  if(method %in% c("Thomas", "IPCC2")){
+    WCC <- fc_agc_error(name, dbh, height, type, method,
+                        biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg)
+  } else {
+    WCC <- fc_agc(paste(genus, species), dbh, height, type, method, output.all = TRUE)
+  }
+  type0 <- ifelse(is.na(WCC$type) | WCC$type == "any", as.character(type), as.character(WCC$type))
+  WCC$AGB_WCC_t <- WCC$crownbiomass_t + WCC$stembiomass_t
+
+  AGB_Bunce_kg <- Bunce(name, dbh, re_dbh, re)
+
+  if(!output.all){
+    allo <- allo[, !colnames(allo) %in% c("allodb_a", "allodb_b")]
+
+    if(returnv == "AGC"){
+      WCC <- WCC[, colnames(WCC) %in% c("AGC_WCC_t", "sig_AGC")]
+
+    } else {
+      WCC <- WCC[, colnames(WCC) == c("AGB_WCC_t")]
+    }
+
+  } else {
+    WCC <- WCC[, !colnames(WCC) %in% c("name", "dbh", "height")]
+  }
+
+  allo <- allo[, !colnames(allo) %in% c("Genus", "Species", "DBH")]
+  df <- cbind(bio, allo, WCC)
+
+  if(returnv == "AGC"){
+    colnames(df)[colnames(df) == "WCC"] <- "AGC_WCC_t"
+
+    # Biomass to Carbon
+    df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome = biome)
+    allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, df$allodb_sigma*0.001, biome)
+    bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, AGB_Bunce_kg$sigma, biome)
+
+    df$AGC_allodb_t <- allo$AGC
+    df$AGC_Bunce_t <- bunce$AGC
+
+    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg", "DBH")]
+
+    if(!anyNA(allo$sig_AGC)){
+      df$sig_allodb <- allo$sig_AGC
+      df$sig_Bunce <- bunce$sig_AGC
+    }
+  } else {
+    colnames(df)[colnames(df) == "WCC"] <- "AGB_WCC_t"
+  }
+
+  colnames(df)[colnames(df) == "sig_AGC"] <- "sig_WCC"
+
+  return(df)
+
+}
+
+
+#' Global Wood Density Lookup
+#'
+#' Retrieves wood density values (g/cm^3) from the Global Wood Density Database
+#' based on binomial name and a specified region.
+#' If no value exists for a species in a region, it calculates a mean based on available data from broader categories (global species mean, genus in region, genus globally, family in region, family globally).
+#'
+#' @param binomial Character vector of binomial names (Genus species).
+#' @param region A single character string specifying the region to match.
+#' Choose from: "Africa (extratropical)", "Africa (tropical)", "Australia",
+#' "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
+#' "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
+#' "South America (extratropical)", "South America (tropical)",
+#' "South-East Asia", "South-East Asia (tropical)"
+#'
+#' @return Numeric vector of wood density values corresponding to the inputs. Returns NA if no relevant match is found.
+#'
+#' @references Zanne, A.E., et al. (2009). Global wood density database. Dryad. http://hdl.handle.net/10255/dryad.235
+#'
+#' @examples
+#' global_wd(binomial = c("Quercus alba", "Pinus sylvestris"), region = "Europe")
+#' @export
+#'
+global_wd <- function(binomial, region = "World") {
+  # Check inputs
+  if (!is.character(binomial)) stop("'binomial' must be a character vector")
+  regions <- c("Africa (extratropical)", "Africa (tropical)", "Australia",
+    "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
+    "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
+    "South America (extratropical)", "South America (tropical)",
+    "South-East Asia", "South-East Asia (tropical)")
+  if (!region %in% regions) stop("'region' must be a single character string")
+
+  # Filter dataset by region
+  region_wd <- wd_zanne[wd_zanne$Region == region, ]
+
+  # Lookup species-level wood density in the specified region
+  match_idx <- match(binomial, region_wd$Binomial)
+  result <- region_wd$Wood.density[match_idx]
+
+  # If missing, lookup species wd across the world
+  missing <- is.na(result)
+  if (any(missing)) {
+    global_region_wd <- wd_zanne[wd_zanne$Binomial %in% binomial[missing], ]
+    result[missing] <- tapply(global_region_wd$Wood.density,
+                              global_region_wd$Binomial,
+                              mean, na.rm = TRUE)[binomial[missing]]
+
+    # Lookup genus in region
+    missing <- is.na(result)
+    if (any(missing)) {
+      genus <- sapply(strsplit(binomial, " "), `[`, 1)
+      genus_data <- region_wd[region_wd$Genus %in% genus[missing], ]
+      result[missing] <- tapply(genus_data$Wood.density,
+                                genus_data$Genus,
+                                mean, na.rm = TRUE)[genus[missing]]
+
+      # Lookup genus across world
+      missing <- is.na(result)
+      if (any(missing)) {
+        global_genus_data <- wd_zanne[wd_zanne$Genus %in% genus[missing], ]
+        result[missing] <- tapply(global_genus_data$Wood.density,
+                                  global_genus_data$Genus,
+                                  mean, na.rm = TRUE)[genus[missing]]
+
+        # Lookup family in region
+        missing <- is.na(result)
+        if (any(missing)) {
+          family <- wd_zanne$Family[match(binomial, wd_zanne$Binomial)]
+          family_data <- region_wd[region_wd$Family %in% family[missing], ]
+          result[missing] <- tapply(family_data$Wood.density,
+                                    family_data$Family,
+                                    mean, na.rm = TRUE)[family[missing]]
+
+          # Lookup family across the world
+          missing <- is.na(result)
+          if (any(missing)) {
+            global_family_data <- wd_zanne[wd_zanne$Family %in% family[missing], ]
+            result[missing] <- tapply(global_family_data$Wood.density,
+                                      global_family_data$Family,
+                                      mean, na.rm = TRUE)[family[missing]]
+
+            missing <- is.na(result)
+            if(any(missing)){
+              warning(paste(paste(as.character(result[missing]),
+                                  collapse = ", "), "species not found."))
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return(result)
+}
+## what to do with the sd???
+# to do default region world.

@@ -29,7 +29,7 @@ lookup_latin_names <- c(" ", "Abies", "Abies alba", "Abies grandis", "Abies nord
 
 # Define UI
 ui <- fluidPage(
-  titlePanel("Tree Above Ground Carbon Calculator using WCC"),
+  titlePanel("Tree Above Ground Carbon Calculator using Woodland Carbon Code Protocol Assessment (2018)"),
 
   sidebarLayout(
     sidebarPanel(
@@ -166,9 +166,11 @@ server <- function(input, output, session) {
     plot_data <- data.frame(ID = seq_len(nrow(plot_data)), plot_data)
 
     if(input$plot_carbon){
-      ggplot(plot_data, aes(x = ID, y = AGC_t)) +
+      print(head(plot_data))
+
+      ggplot(plot_data, aes(x = factor(ID), y = AGC_WCC_t)) +
         geom_bar(stat = "identity", fill = "skyblue") +
-        geom_errorbar(aes(ymin = AGC_t - sig_AGC, ymax = AGC_t + sig_AGC), width = 0.5) +
+        geom_errorbar(aes(ymin = AGC_WCC_t - sig_AGC, ymax = AGC_WCC_t + sig_AGC), width = 0.5) +
         labs(title = "Above Ground Carbon (AGC)", x = "Tree Index", y = "AGC (t)") +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -183,7 +185,7 @@ server <- function(input, output, session) {
           values_to = "biomass"
         )
 
-      ggplot(plot_data_long, aes(x = ID, y = biomass, fill = component)) +
+      ggplot(plot_data_long, aes(x = factor(ID), y = biomass, fill = component)) +
         geom_bar(stat = "identity", position = "stack") +
         geom_errorbar(data = plot_data, aes(x = ID, ymin = crownbiomass_t + stembiomass_t + rootbiomass_t - total_biomass_sigma,
                                             ymax = crownbiomass_t + stembiomass_t + rootbiomass_t + total_biomass_sigma),
@@ -202,7 +204,7 @@ server <- function(input, output, session) {
     if (input$output_all) {
       appData$results
     } else {
-      appData$results[, c("name", "AGC_t", "sig_AGC", "matchtype"), drop = FALSE]
+      appData$results[, c("name", "AGC_WCC_t", "sig_AGC", "matchtype"), drop = FALSE]
     }
   })
 

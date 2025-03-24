@@ -11,31 +11,36 @@ error_product(
   sig_b,
   c = NULL,
   sig_c = NULL,
-  returnv = "sigmasquared"
+  returnv = "sigmasquared",
+  fn = NA
 )
 }
 \arguments{
-\item{a}{first variable in product}
+\item{a}{first variable in function}
 
 \item{sig_a}{sigma for a}
 
-\item{b}{second variable in product}
+\item{b}{second variable in function}
 
 \item{sig_b}{sigma for b}
 
-\item{c}{(optional) third variable in product}
+\item{c}{(optional) third variable in function}
 
-\item{sig_c}{sigma for c (if c provided then provide sig_c also)}
+\item{sig_c}{(optional) sigma for c}
 
 \item{returnv}{return value, either 'sigma' (standard deviation) or
 'sigma squared' (variance)}
+
+\item{fn}{function describing how the variables are related. Default is fn =
+NA which assumes that the variables are a product.}
 }
 \value{
-either an estimate for sigma or sigma squared of a product
+either an estimate for sigma or sigma squared error propagation for a
+product or a quotient of two or three variables.
 }
 \description{
-Calculates sigma squared for x when either x = a * b, x = a / b
-or x = a * b * c, x = a / b * c, x = a * b / c
+Calculates sigma squared for f when either f = a * b, f = a / b
+or f = a * b * c, f = a / b * c, f = a * b / c
 }
 \examples{
 error_product(5, 0.01, 10, 0.1)
@@ -47,5 +52,5 @@ Study of Uncertainties in Physical Measurements (2nd ed.). University
 Science Books.
 }
 \author{
-Isabel Openshaw. I.Openshaw@kew.org
+Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 }

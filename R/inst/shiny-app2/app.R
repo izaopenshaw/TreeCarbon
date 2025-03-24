@@ -3,8 +3,6 @@
 library(shiny)
 library(ggplot2)
 
-# errors: graph not appearing with output all False, cant get re inputs to work
-
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
@@ -12,22 +10,6 @@ if (!requireNamespace("TreeCarbon", quietly = TRUE)) {
   remotes::install_github("izaopenshaw/TreeCarbon")
 }
 library(TreeCarbon)
-
-lookup_latin_names <- c(" ", "Abies", "Abies alba", "Abies grandis", "Abies nordmanniana", "Abies procera",
-                        "Abies sibirica", "Acer campestre", "Acer platanoides", "Acer pseudoplatanus",
-                        "Aesculus hippocastanum", "Alnus", "Alnus cordata", "Alnus glutinosa", "Alnus incana",
-                        "Betula", "Callitropsis nootkatensis", "Carpinus betulus", "Castanea sativa",
-                        "Chamaecyparis lawsoniana", "Corylus avellana", "Cupressocyparis leylandii",
-                        "Cupressus macrocarpa", "Cryptomeria japonica", "Fagus sylvatica", "Fraxinus",
-                        "Larix decidua", "Larix kaempferi", "Larix × eurolepis", "Metasequoia glyptostroboides",
-                        "Nothofagus nervosa", "Nothofagus obliqua", "Nothofagus procera", "Picea", "Picea abies",
-                        "Picea engelmannii", "Picea glauca", "Picea omorika", "Picea orientalis", "Picea pungens",
-                        "Picea sitchensis", "Pinus", "Pinus contorta", "Pinus muricata", "Pinus nigra",
-                        "Pinus pinaster", "Pinus ponderosa", "Pinus radiata", "Pinus resinosa", "Pinus strobus",
-                        "Pinus sylvestris", "Platanus × hispanica", "Populus", "Populus canadensis", "Populus nigra",
-                        "Prunus avium", "Prunus padus", "Pseudotsuga menziesii", "Quercus", "Quercus cerris",
-                        "Quercus petraea", "Quercus robur", "Quercus rubra", "Sequoiadendron giganteum",
-                        "Sequoia sempervirens", "Thuja plicata", "Tilia", "Tsuga heterophylla", "Ulmus", "Ulmus glabra", "")
 
 # Define UI
 ui <- fluidPage(
@@ -37,17 +19,14 @@ ui <- fluidPage(
     sidebarPanel(
       fileInput("datafile", "Upload a CSV file with tree data",
                 accept = c(".csv")),
-      selectInput("botanical_name", "Select Botanical Name:",
-                  choices = c("", lookup_latin_names), selected = NULL),
-      textInput("common_name", "Or enter a name to search:", value = ""),
+      textInput("genus", "Enter Genus:", value = ""),
+      textInput("species", "Enter Species:", value = ""),
       selectInput("type", "Type (optional):", choices = c("broadleaf", "conifer", "NA"), selected = "NA"),
       sliderInput("dbh", "DBH (cm):", min = 0, max = 150, value = 20, step = 1),
       sliderInput("height", "Height (m):", min = 0, max = 60, value = 15, step = 1),
-      selectInput("method", "Carbon to Biomass Conversion Method:", choices = c("Thomas", "IPCC2")),
-      #textInput("re_dbh", "Relative error for dbh (%)", value = "0.05"),
-      #textInput("re_h", "Relative error for height (%)", value = "0.1"),
-      #textInput("re", "Relative error for coefficients (%)", value = "0.025"),
+      selectInput("method", "Carbon to Biomass Conversion Method:", choices = c("IPCC1", "IPCC2", "Matthews1", "Matthews2", "Thomas")),
       checkboxInput("output_all", "Output all data", value = TRUE),
+      checkboxInput("returnv", "Output Biomass", value = "AGB"),
       actionButton("calculate", "Calculate"),
       downloadButton("download", "Download Results")
     ),
@@ -109,47 +88,22 @@ server <- function(input, output, session) {
           if (!"type" %in% colnames(tree_data)) tree_data$type <- NA
           tree_data$type[!tree_data$type %in% c("broadleaf", "conifer")] <- NA
           print("checks2")
-          #if (!"nsg" %in% colnames(tree_data)) tree_data$nsg <- NA
-          #if (!"sig_nsg" %in% colnames(tree_data)) tree_data$sig_nsg <- NA
-          #if (!"re_dbh" %in% colnames(tree_data)) tree_data$re_dbh <- 0.05
-          #if (!"re_h" %in% colnames(tree_data)) tree_data$re_h <- 0.1
-          #if (!"re" %in% colnames(tree_data)) tree_data$re <- 0.025
 
           print(tree_data$type)
 
           # Calculate results for all trees
-          fc_agc_error(
-            name = tree_data$name,
-            dbh = tree_data$dbh,
-            height = tree_data$height,
-            type = ifelse("type" %in% colnames(tree_data), tree_data$type, NA),
-            method = input$method
-            #biome = input$biome,
-            #nsg = tree_data$nsg,
-            #sig_nsg = tree_data$sig_nsg,
-            #re_dbh = as.numeric(input$re_dbh),
-            #re_h = as.numeric(input$re_h),
-            #re = as.numeric(input$re)
-          )
+          allometries(tree_data$genus, tree_data$species, tree_data$dbh, tree_data$height, tree_data$type,
+                      method = input$method, output.all = input$output_all , returnv = input$returnv)
+
         } else {
           # Single tree calculation
-          fc_agc_error(
-            name = selected_name(),
-            dbh = input$dbh,
-            height = input$height,
-            type = input$type,
-            method = input$method
-            #biome = input$biome,
-            #re_dbh = input$re_dbh,
-            #re_h = input$re_h,
-            #re = input$re
-          )
+          allometries(input$genus, input$species, input$dbh, input$height, input$type, method =input$method,
+                      output.all = input$output_all , returnv = input$returnv)
         }
       }, warning = capture_warning)
     }, error = function(e) {
       showNotification("An error occurred while calculating results", type = "error")    # paste("Error:", conditionMessage(e)), type = "error")
       return(NULL)
-      req(!is.null(result))
       result
     })
 
@@ -165,28 +119,49 @@ server <- function(input, output, session) {
   output$dbhPlot <- renderPlot({
     results <- req(calculate_results())
 
-      plot_data <- results[!is.na(results$dbh) & !is.na(results$AGC_t), ]
+      plot_data <- results[!is.na(results$dbh) & !is.na(results$Height), ]
 
-        ggplot(plot_data, aes(x = dbh, y = AGC_t)) +
-          geom_point(aes(color = spcode, size = height)) +
-          geom_errorbar(aes(ymin = AGC_t - sig_AGC, ymax = AGC_t + sig_AGC), width = 0.5) +
-          labs(x = "DBH (cm)", y = "AGC (t)", title = "Above Ground Carbon (AGC)") +
+      if(input$returnv == "AGB"){
+        agb_cols <- grep("^AGB_", names(plot_data), value = TRUE)
+        plot_data_long <- data.frame(
+          Method = rep(agb_cols, each = nrow(plot_data)),
+          Biomass = unlist(plot_data[agb_cols])
+        )
+
+        # Create bar plot
+        ggplot(plot_data_long, aes(x = Method, y = Biomass, fill = Method)) +
+          geom_bar(stat = "identity", position = "dodge") +
+          labs(title = "Comparison of Biomass Calculation Methods",
+               x = "Biomass Calculation Method",
+               y = "Biomass Value") +
           theme_minimal() +
           theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+      } else {
+        agc_cols <- grep("^AGC_", names(plot_data), value = TRUE)
+        plot_data_long <- data.frame(
+          Method = rep(agc_cols, each = nrow(plot_data)),
+          Carbon = unlist(plot_data[agc_cols])
+        )
+
+        # Create bar plot
+        ggplot(plot_data_long, aes(x = Method, y = Carbon, fill = Method)) +
+          geom_bar(stat = "identity", position = "dodge") +
+          labs(title = "Comparison of Carbon Calculation Methods",
+               x = "Carbon Calculation Method",
+               y = "Carbon Value") +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
+
   })
 
   # Render results table
   output$results <- renderTable({
     results <- req(calculate_results())
 
-    # Check the value of input$output_all
-    if (input$output_all) {
-      # Show the full results table
-      results
-    } else {
-      # Show a subset of columns: name, AGC_t, sig_AGC, matchtype
-      results[, c("name", "AGC_t", "sig_AGC", "matchtype"), drop = FALSE]
-    }
+    results
+
   })
 
   # Handle file download
