@@ -814,24 +814,24 @@ ctoco2e <- function(carbon) {
 ############# Plant biomass conversion to carbon ################
 #' @title Convert Biomass to Carbon
 #' @description Converts biomass values to carbon values using the carbon
-#' volatile fraction (CVF) from the chosen method or citation.
+#' fraction (CF) from the chosen method or citation.
 #' @author Justin Moat <J.Moat@kew.org>, Isabel Openshaw <I.Openshaw@kew.org>
 #' @param biomass Numeric vector, representing biomass values (typically in kg
 #' or metric tonnes).
-#' @param method Character. Method defining the carbon volatile fraction (CVF).
+#' @param method Character. Method defining the carbon volatile fraction (CF).
 #' Supported methods:
 #' \itemize{
-#'   \item `"Matthews1"`: Simplest, CVF = 50% (Matthews, 1993).
-#'   \item `"Matthews2"`: CVF based on type (broadleaf or conifer).
-#'   \item `"IPCC1"`: CVF = 47.7% (IPCC, 2006).
-#'   \item `"IPCC2"`: Lookup CVF by type and biome.
+#'   \item `"Matthews1"`: Simplest, CF = 50% (Matthews, 1993).
+#'   \item `"Matthews2"`: CF based on type (broadleaf or conifer).
+#'   \item `"IPCC1"`: CF = 47.7% (IPCC, 2006).
+#'   \item `"IPCC2"`: Lookup CF by type and biome.
 #'   \item `"Thomas"`: Lookup by type and biome (Thomas & Martin, 2012).
 #' }
-#' Method defining carbon volatile fraction (CVF) see CVF_df.RData
-#' [1: Matthews, 1993] "Matthews1": Simplest, CVF = 50%.
-#' "Matthews2": CVF based on type (broadleaf or conifer)
-#' [2: IPCC, 2006] "IPCC1": CVF = 47.7%
-#' "IPCC2": Lookup CVF by type and biome
+#' Method defining carbon volatile fraction (CF) see CVF_df.RData
+#' [1: Matthews, 1993] "Matthews1": Simplest, CF = 50%.
+#' "Matthews2": CF based on type (broadleaf or conifer)
+#' [2: IPCC, 2006] "IPCC1": CF = 47.7%
+#' "IPCC2": Lookup CF by type and biome
 #' [3: Thomas and Martin, 2012] "Thomas": Lookup by type and biome
 #'
 #' @param type Character vector. `"broadleaf"` or `"conifer"`. Required for
@@ -868,7 +868,7 @@ ctoco2e <- function(carbon) {
 #' biomass2c(1, method = "IPCC2", type = "conifer", biome = "temperate")
 #'
 #' # Vectorized conversion with uncertainty
-#' biomass2c(c(0.5, 0.75, 2, 7), method = "IPCC2", type = rep("broadleaf", 4),
+#' biomass2c(biomass=c(0.5, 0.75, 2, 7), method = "IPCC2", type = rep("broadleaf", 4),
 #'           sig_biomass = rep(0.2, 4), biome = "temperate")
 #'
 #' @importFrom utils globalVariables
@@ -883,45 +883,44 @@ biomass2c <- function(biomass, method, type = NA, sig_biomass = NULL, biome = 't
                                          paste(valid_methods, collapse = ", "))
 
   if (length(type) != length(biomass)) {
-    stop("'type' and 'biomass' must have the same length.")}
+    stop("'type' and 'biomass' must have the same length.")} # do i need this for ippc1?
 
   if (any(!is.numeric(biomass))){
     stop("Biomass values must be numeric and positive")
   }
-
   # Subset conversion factor table
-  CVF_data <- CVF_df[CVF_df$method == method, ]
+  CF_data <- CVF_df[CVF_df$method == method, ]
 
-  # Match CVF and confidence values
-  if (method %in% c("Matthews1", "IPCC1")) {
-    CVF <- CVF_data$CVF / 100
-  #} else if (!all(type %in% c("broadleaf", "conifer"))) {
-      #warning("Skipping trees without type = 'broadleaf' or 'conifer'.") }
-    if (method %in% c("IPCC2", "Thomas") ){
-      if(!all(biome %in% CVF_data$biome)) {
+  # Match CF and confidence values
+  if (method %in% c("IPCC1", "Matthews1") ) {
+    CF <- rep(CF_data$CVF, length(biomass))/ 100
+
+  } else if (method == "Matthews2") {
+    index <- match(type, CF_data$type)
+    CF <- CF_data$CVF[index] / 100
+
+  } else {
+      if(!all(biome %in% CF_data$biome)) {
         stop("Invalid biome for the chosen method. Choose from: ",
-             paste(unique(CVF_data$biome), collapse = ", "))
+             paste(unique(CF_data$biome), collapse = ", "))
       }
-      CVF_data <- CVF_data[CVF_data$biome == biome, ]
-    }
+      CF_data <- CF_data[CF_data$biome == biome, ]
+      index <- match(type, CF_data$type)
+      CF <- CF_data$CVF[index] / 100
+      sig_CF <- CF_data$confidence[index] / 100 / 1.96
 
-    CVF <- CVF_data$CVF[match(type, CVF_data$type)] / 100
-
-    sig_CVF <- ifelse(!is.null(CVF_data$confidence),
-                      CVF_data$confidence[match(type, CVF_data$type)]/100 /1.96,
-                      0)
   }
 
   # Calculate AGC (carbon)
-  AGC <- biomass * CVF
+  AGC <- biomass * CF
 
   # Propagate error if sig_biomass is provided
-  if (!is.null(sig_biomass)) {
+  if (!is.null(sig_biomass) & method %in% c("Thomas", "IPCC2")) {
     if (length(sig_biomass) != length(biomass)){
       stop("Length of sig_biomass must match biomass length.")
       }
     #sigma_AGC <- AGC * sqrt((sig_biomass / biomass)^2 + (re / 100)^2)
-    sigma_AGC <- error_product(biomass, sig_biomass, CVF, sig_CVF, returnv = "sigma")
+    sigma_AGC <- error_product(biomass, sig_biomass, CF, sig_CF, returnv = "sigma")
 
     return(data.frame(AGC = AGC, sig_AGC = sigma_AGC))
   } else {
@@ -1926,61 +1925,65 @@ global_wd <- function(binomial, region = "World") {
     "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
     "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
     "South America (extratropical)", "South America (tropical)",
-    "South-East Asia", "South-East Asia (tropical)")
+    "South-East Asia", "South-East Asia (tropical)", "World")
   if (!region %in% regions) stop("'region' must be a single character string")
 
   # Filter dataset by region
-  region_wd <- wd_zanne[wd_zanne$Region == region, ]
+  if(region == "World"){
+    region_wd <- wd_zanne
+  } else {
+    region_wd <- wd_zanne[wd_zanne$Region == region, ]
+  }
 
   # Lookup species-level wood density in the specified region
   match_idx <- match(binomial, region_wd$Binomial)
-  result <- region_wd$Wood.density[match_idx]
+  wd <- region_wd$Wood.density[match_idx]
 
   # If missing, lookup species wd across the world
-  missing <- is.na(result)
+  missing <- is.na(wd)
   if (any(missing)) {
     global_region_wd <- wd_zanne[wd_zanne$Binomial %in% binomial[missing], ]
-    result[missing] <- tapply(global_region_wd$Wood.density,
+    wd[missing] <- tapply(global_region_wd$Wood.density,
                               global_region_wd$Binomial,
                               mean, na.rm = TRUE)[binomial[missing]]
 
     # Lookup genus in region
-    missing <- is.na(result)
+    missing <- is.na(wd)
     if (any(missing)) {
       genus <- sapply(strsplit(binomial, " "), `[`, 1)
       genus_data <- region_wd[region_wd$Genus %in% genus[missing], ]
-      result[missing] <- tapply(genus_data$Wood.density,
+      wd[missing] <- tapply(genus_data$Wood.density,
                                 genus_data$Genus,
                                 mean, na.rm = TRUE)[genus[missing]]
 
       # Lookup genus across world
-      missing <- is.na(result)
+      missing <- is.na(wd)
       if (any(missing)) {
         global_genus_data <- wd_zanne[wd_zanne$Genus %in% genus[missing], ]
-        result[missing] <- tapply(global_genus_data$Wood.density,
+        wd[missing] <- tapply(global_genus_data$Wood.density,
                                   global_genus_data$Genus,
                                   mean, na.rm = TRUE)[genus[missing]]
 
         # Lookup family in region
-        missing <- is.na(result)
+        missing <- is.na(wd)
         if (any(missing)) {
           family <- wd_zanne$Family[match(binomial, wd_zanne$Binomial)]
           family_data <- region_wd[region_wd$Family %in% family[missing], ]
-          result[missing] <- tapply(family_data$Wood.density,
+          wd[missing] <- tapply(family_data$Wood.density,
                                     family_data$Family,
                                     mean, na.rm = TRUE)[family[missing]]
 
           # Lookup family across the world
-          missing <- is.na(result)
+          missing <- is.na(wd)
           if (any(missing)) {
             global_family_data <- wd_zanne[wd_zanne$Family %in% family[missing], ]
-            result[missing] <- tapply(global_family_data$Wood.density,
+            wd[missing] <- tapply(global_family_data$Wood.density,
                                       global_family_data$Family,
                                       mean, na.rm = TRUE)[family[missing]]
 
-            missing <- is.na(result)
+            missing <- is.na(wd)
             if(any(missing)){
-              warning(paste(paste(as.character(result[missing]),
+              warning(paste(paste(as.character(wd[missing]),
                                   collapse = ", "), "species not found."))
             }
           }
@@ -1989,7 +1992,7 @@ global_wd <- function(binomial, region = "World") {
     }
   }
 
-  return(result)
+  return(wd)
 }
 ## what to do with the sd???
 # to do default region world.

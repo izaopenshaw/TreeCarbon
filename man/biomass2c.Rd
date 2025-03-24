@@ -10,20 +10,20 @@ biomass2c(biomass, method, type = NA, sig_biomass = NULL, biome = "temperate")
 \item{biomass}{Numeric vector, representing biomass values (typically in kg
 or metric tonnes).}
 
-\item{method}{Character. Method defining the carbon volatile fraction (CVF).
+\item{method}{Character. Method defining the carbon volatile fraction (CF).
 Supported methods:
 \itemize{
-\item \code{"Matthews1"}: Simplest, CVF = 50\% (Matthews, 1993).
-\item \code{"Matthews2"}: CVF based on type (broadleaf or conifer).
-\item \code{"IPCC1"}: CVF = 47.7\% (IPCC, 2006).
-\item \code{"IPCC2"}: Lookup CVF by type and biome.
+\item \code{"Matthews1"}: Simplest, CF = 50\% (Matthews, 1993).
+\item \code{"Matthews2"}: CF based on type (broadleaf or conifer).
+\item \code{"IPCC1"}: CF = 47.7\% (IPCC, 2006).
+\item \code{"IPCC2"}: Lookup CF by type and biome.
 \item \code{"Thomas"}: Lookup by type and biome (Thomas & Martin, 2012).
 }
-Method defining carbon volatile fraction (CVF) see CVF_df.RData
-\link{1: Matthews, 1993} "Matthews1": Simplest, CVF = 50\%.
-"Matthews2": CVF based on type (broadleaf or conifer)
-\link{2: IPCC, 2006} "IPCC1": CVF = 47.7\%
-"IPCC2": Lookup CVF by type and biome
+Method defining carbon volatile fraction (CF) see CVF_df.RData
+\link{1: Matthews, 1993} "Matthews1": Simplest, CF = 50\%.
+"Matthews2": CF based on type (broadleaf or conifer)
+\link{2: IPCC, 2006} "IPCC1": CF = 47.7\%
+"IPCC2": Lookup CF by type and biome
 \link{3: Thomas and Martin, 2012} "Thomas": Lookup by type and biome}
 
 \item{type}{Character vector. \code{"broadleaf"} or \code{"conifer"}. Required for
@@ -43,14 +43,14 @@ returns a data frame with columns \code{"AGC"} (above-ground carbon) and
 }
 \description{
 Converts biomass values to carbon values using the carbon
-volatile fraction (CVF) from the chosen method or citation.
+fraction (CF) from the chosen method or citation.
 }
 \examples{
 # Basic conversion using IPCC2 method
 biomass2c(1, method = "IPCC2", type = "conifer", biome = "temperate")
 
 # Vectorized conversion with uncertainty
-biomass2c(c(0.5, 0.75, 2, 7), method = "IPCC2", type = rep("broadleaf", 4),
+biomass2c(biomass=c(0.5, 0.75, 2, 7), method = "IPCC2", type = rep("broadleaf", 4),
           sig_biomass = rep(0.2, 4), biome = "temperate")
 
 }
