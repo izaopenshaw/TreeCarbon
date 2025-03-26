@@ -530,8 +530,8 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @param sig_c (optional) sigma for c
 #' @param returnv return value, either 'sigma' (standard deviation) or
 #' 'sigma squared' (variance)
-#' @param fn function describing how the variables are related. Default is fn =
-#' NA which assumes that the variables are a product.
+#' @param fn function describing how the variables are related. If not specified
+#'  assumes that the variables are related by a product.
 #' @return either an estimate for sigma or sigma squared error propagation for a
 #' product or a quotient of two or three variables.
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
@@ -544,18 +544,18 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' @aliases error_product
 #'
 error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
-                          returnv = "sigmasquared", fn = NA){
+                          returnv = "sigmasquared", fn = NULL){
   if (!is.numeric(a) || !is.numeric(b) || !is.numeric(sig_a) ||
       !is.numeric(sig_b)) {
     stop("inputs must be numeric")
   }
   if (!is.character(returnv) || !(returnv %in% c("sigma", "sigmasquared"))) {
-    stop("returnv must be either 'sigma' or 'sigmasquared' (default)")
+    stop("returnv must be either 'sigma' or 'sigmasquared'")
   }
 
   if(is.null(c)) { # function is either a*b or a/b
 
-    if(anyNA(fn)){ fn <- a * b }
+    if(is.null(fn)){ fn <- a * b }
 
     if(returnv == "sigma") {
       # sigma
@@ -569,7 +569,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
     if (!is.numeric(c) || !is.numeric(sig_c)) {
       stop("c and sig_c must be numeric")
     }
-    if(anyNA(fn)){ fn <- a * b * c}
+    if(is.null(fn)){ fn <- a * b * c}
 
 
     if(returnv == "sigma") {
@@ -1683,6 +1683,8 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' @param area Total area sampled (whole habitat or sampled plots) or a vector
 #' of multiple areas.
 #' @param sigma_area Standard deviation of plot area measurement or a vector.
+#' @param returnv error returned as standard deviation, 'sigma' (default) or
+#' variance, 'sigmasquared'
 #' @return A list containing the estimated total per unit area and its
 #' propagated standard deviation.
 #' @examples
@@ -1710,28 +1712,35 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 summary_per_area <- function(input, sigma_input, area, sigma_area,
                             returnv = "sigma") {
 
-  # Ensure input is a list of vectors if multiple areas are provided
-  if (!is.list(input)) input <- as.list(as.data.frame(input))
-  if (!is.list(sigma_input)) sigma_input <- as.list(as.data.frame(sigma_input))
-
   # Check for dimension consistency
   if (length(input) != length(area) || length(sigma_input) != length(sigma_area)) {
     stop("Mismatch in number of habitats/areas provided.")
   }
 
-  # Apply calculations to each habitat
-  total_per_ha <- numeric(length(input))
-  sigma_per_ha <- numeric(length(input))
+  if(is.list(input)){
+    total_per_area <- numeric(length(input))
+    sigma_per_area <- numeric(length(input))
 
-  for (i in seq_along(input)) {
-    total <- sum(input[[i]], na.rm = TRUE)
-    sigma_total <- sqrt(sum(sigma_input[[i]]^2, na.rm = TRUE))
-    total_per_ha[i] <- total / area[i]
-    sigma_per_ha[i] <- total_per_ha[i] * sqrt((sigma_total / total)^2 +
-                                                (sigma_area[i] / area[i])^2)
+    for (i in seq_along(input)) {
+      total <- sum(input[[i]], na.rm = TRUE)
+      sigma_total <- sqrt(sum(sigma_input[[i]]^2, na.rm = TRUE))
+      total_per_area[i] <- total / area[i]
+      sigma_per_area[i] <- error_product(total, sigma_total,
+                                         area[i], sigma_area[i],
+                                         fn = total_per_area[i],
+                                         returnv = returnv)
+    }
+  } else {
+    total <- sum(input, na.rm = TRUE)
+    sigma_total <- sqrt(sum(sigma_input^2, na.rm = TRUE))
+    total_per_area <- total / area
+    error_per_area <- error_product(total, sigma_total,
+                                    area, sigma_area,
+                                    fn = total_per_area,
+                                    returnv = returnv)
   }
 
-  return(list(total_per_ha = total_per_ha, sigma_per_ha = sigma_per_ha))
+  return(list(total_per_area = total_per_area, error_per_area = error_per_area))
 }
 
 #############  Standard Deviation for Area Measurement =========================
@@ -1918,14 +1927,15 @@ allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
 #' global_wd(binomial = c("Quercus alba", "Pinus sylvestris"), region = "Europe")
 #' @export
 #'
+
 global_wd <- function(binomial, region = "World") {
   # Check inputs
   if (!is.character(binomial)) stop("'binomial' must be a character vector")
   regions <- c("Africa (extratropical)", "Africa (tropical)", "Australia",
-    "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
-    "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
-    "South America (extratropical)", "South America (tropical)",
-    "South-East Asia", "South-East Asia (tropical)", "World")
+               "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
+               "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
+               "South America (extratropical)", "South America (tropical)",
+               "South-East Asia", "South-East Asia (tropical)", "World")
   if (!region %in% regions) stop("'region' must be a single character string")
 
   # Filter dataset by region
@@ -1938,14 +1948,19 @@ global_wd <- function(binomial, region = "World") {
   # Lookup species-level wood density in the specified region
   match_idx <- match(binomial, region_wd$Binomial)
   wd <- region_wd$Wood.density[match_idx]
+  sd <- region_wd$sd[match_idx]
 
   # If missing, lookup species wd across the world
   missing <- is.na(wd)
   if (any(missing)) {
+
     global_region_wd <- wd_zanne[wd_zanne$Binomial %in% binomial[missing], ]
     wd[missing] <- tapply(global_region_wd$Wood.density,
-                              global_region_wd$Binomial,
-                              mean, na.rm = TRUE)[binomial[missing]]
+                          global_region_wd$Binomial,
+                          mean, na.rm = TRUE)[binomial[missing]]
+    sd[missing] <- tapply(global_region_wd$sd,
+                          global_region_wd$Binomial,
+                          mean, na.rm = TRUE)[binomial[missing]]
 
     # Lookup genus in region
     missing <- is.na(wd)
@@ -1953,16 +1968,22 @@ global_wd <- function(binomial, region = "World") {
       genus <- sapply(strsplit(binomial, " "), `[`, 1)
       genus_data <- region_wd[region_wd$Genus %in% genus[missing], ]
       wd[missing] <- tapply(genus_data$Wood.density,
-                                genus_data$Genus,
-                                mean, na.rm = TRUE)[genus[missing]]
+                            genus_data$Genus,
+                            mean, na.rm = TRUE)[genus[missing]]
+      sd[missing] <- tapply(genus_data$sd,
+                            genus_data$Genus,
+                            mean, na.rm = TRUE)[genus[missing]]
 
       # Lookup genus across world
       missing <- is.na(wd)
       if (any(missing)) {
         global_genus_data <- wd_zanne[wd_zanne$Genus %in% genus[missing], ]
         wd[missing] <- tapply(global_genus_data$Wood.density,
-                                  global_genus_data$Genus,
-                                  mean, na.rm = TRUE)[genus[missing]]
+                              global_genus_data$Genus,
+                              mean, na.rm = TRUE)[genus[missing]]
+        sd[missing] <- tapply(global_genus_data$sd,
+                              global_genus_data$Genus,
+                              mean, na.rm = TRUE)[genus[missing]]
 
         # Lookup family in region
         missing <- is.na(wd)
@@ -1970,21 +1991,27 @@ global_wd <- function(binomial, region = "World") {
           family <- wd_zanne$Family[match(binomial, wd_zanne$Binomial)]
           family_data <- region_wd[region_wd$Family %in% family[missing], ]
           wd[missing] <- tapply(family_data$Wood.density,
-                                    family_data$Family,
-                                    mean, na.rm = TRUE)[family[missing]]
+                                family_data$Family,
+                                mean, na.rm = TRUE)[family[missing]]
+          sd[missing] <- tapply(family_data$sd,
+                                family_data$Family,
+                                mean, na.rm = TRUE)[family[missing]]
 
           # Lookup family across the world
           missing <- is.na(wd)
           if (any(missing)) {
             global_family_data <- wd_zanne[wd_zanne$Family %in% family[missing], ]
             wd[missing] <- tapply(global_family_data$Wood.density,
-                                      global_family_data$Family,
-                                      mean, na.rm = TRUE)[family[missing]]
+                                  global_family_data$Family,
+                                  mean, na.rm = TRUE)[family[missing]]
+            sd[missing] <- tapply(global_family_data$sd,
+                                  global_family_data$Family,
+                                  mean, na.rm = TRUE)[family[missing]]
 
             missing <- is.na(wd)
             if(any(missing)){
-              warning(paste(paste(as.character(wd[missing]),
-                                  collapse = ", "), "species not found."))
+              wd[missing] = mean(region_wd$Wood.density)
+              sd[missing] = mean(region_wd$sd)
             }
           }
         }
@@ -1992,7 +2019,7 @@ global_wd <- function(binomial, region = "World") {
     }
   }
 
-  return(wd)
+  return(list(wd = wd, sd = sd))
 }
 ## what to do with the sd???
 # to do default region world.
