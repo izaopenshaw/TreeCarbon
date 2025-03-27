@@ -1710,7 +1710,7 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' @export
 #'
 summary_per_area <- function(input, sigma_input, area, sigma_area,
-                            returnv = "sigma") {
+                             returnv = "sigma") {
 
   # Check for dimension consistency
   if (length(input) != length(area) || length(sigma_input) != length(sigma_area)) {
@@ -1719,13 +1719,13 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
 
   if(is.list(input)){
     total_per_area <- numeric(length(input))
-    sigma_per_area <- numeric(length(input))
+    error_per_area <- numeric(length(input))
 
     for (i in seq_along(input)) {
       total <- sum(input[[i]], na.rm = TRUE)
       sigma_total <- sqrt(sum(sigma_input[[i]]^2, na.rm = TRUE))
       total_per_area[i] <- total / area[i]
-      sigma_per_area[i] <- error_product(total, sigma_total,
+      error_per_area[i] <- error_product(total, sigma_total,
                                          area[i], sigma_area[i],
                                          fn = total_per_area[i],
                                          returnv = returnv)
@@ -1927,22 +1927,22 @@ allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
 #' global_wd(binomial = c("Quercus alba", "Pinus sylvestris"), region = "Europe")
 #' @export
 #'
-
 global_wd <- function(binomial, region = "World") {
   # Check inputs
   if (!is.character(binomial)) stop("'binomial' must be a character vector")
   regions <- c("Africa (extratropical)", "Africa (tropical)", "Australia",
-               "Australia/PNG (tropical)", "Central America (tropical)", "China", "India",
-               "Europe", "Mexico", "Madagascar", "NorthAmerica", "Oceania",
-               "South America (extratropical)", "South America (tropical)",
-               "South-East Asia", "South-East Asia (tropical)", "World")
+               "Australia/PNG (tropical)", "Central America (tropical)",
+               "China", "India", "Europe", "Mexico", "Madagascar",
+               "NorthAmerica", "Oceania", "South America (extratropical)",
+               "South America (tropical)", "South-East Asia",
+               "South-East Asia (tropical)", "World")
   if (!region %in% regions) stop("'region' must be a single character string")
 
   # Filter dataset by region
   if(region == "World"){
-    region_wd <- wd_zanne
+    region_wd <- wd_data_zanne
   } else {
-    region_wd <- wd_zanne[wd_zanne$Region == region, ]
+    region_wd <- wd_data_zanne[wd_data_zanne$Region == region, ]
   }
 
   # Lookup species-level wood density in the specified region

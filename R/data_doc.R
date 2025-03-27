@@ -215,7 +215,9 @@
 #'   \item{Continent}{Character. Continent where data was collected.}
 #'   \item{Biome}{Character. Biome classification.}
 #'   \item{Region}{Character. Combined continent and biome description.}
+#'   \item{sd}{The caculated standard deviation of the wood density estimates
+#'   from the avaliable data for that species.}
 #' }
 #'
 #' @source Zanne, A.E., et al. (2009). Global wood density database. Dryad. http://hdl.handle.net/10255/dryad.235
-"wd_zanne"
+"wd_data_zanne"
