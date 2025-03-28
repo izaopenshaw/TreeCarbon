@@ -1685,6 +1685,10 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' @param sigma_area Standard deviation of plot area measurement or a vector.
 #' @param returnv error returned as standard deviation, 'sigma' (default) or
 #' variance, 'sigmasquared'
+#' @param plots if plots = TRUE then the list is treated as individual plots to
+#' be summed as individual plots then taken the mean to get the weighted per
+#' area mean. Default is plots = FALSE, then items in the list are treated as
+#' separate habitats and metrics outputted seperately.
 #' @return A list containing the estimated total per unit area and its
 #' propagated standard deviation.
 #' @examples
@@ -1692,7 +1696,7 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' SD_AGB <- c(0.2, 0.15, 0.3)  # Standard deviations of biomass estimates
 #' summary_per_area(AGB, SD_AGB, 0.5, 0.05)
 #'
-#' AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for trees
+#' AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for treesz
 #' SD_AGB_2 <- c(0.7, 1.02, 0.3)  # Standard deviations of biomass estimates
 #'
 #' summary_per_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
@@ -1710,7 +1714,7 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' @export
 #'
 summary_per_area <- function(input, sigma_input, area, sigma_area,
-                             returnv = "sigma") {
+                             returnv = "sigma", plots = FALSE) {
 
   # Check for dimension consistency
   if (length(input) != length(area) || length(sigma_input) != length(sigma_area)) {
@@ -1940,9 +1944,9 @@ global_wd <- function(binomial, region = "World") {
 
   # Filter dataset by region
   if(region == "World"){
-    region_wd <- wd_data_zanne
+    region_wd <- wd_df_zanne
   } else {
-    region_wd <- wd_data_zanne[wd_data_zanne$Region == region, ]
+    region_wd <- wd_df_zanne[wd_df_zanne$Region == region, ]
   }
 
   # Lookup species-level wood density in the specified region
@@ -1954,7 +1958,7 @@ global_wd <- function(binomial, region = "World") {
   missing <- is.na(wd)
   if (any(missing)) {
 
-    global_region_wd <- wd_zanne[wd_zanne$Binomial %in% binomial[missing], ]
+    global_region_wd <- wd_df_zanne[wd_df_zanne$Binomial %in% binomial[missing], ]
     wd[missing] <- tapply(global_region_wd$Wood.density,
                           global_region_wd$Binomial,
                           mean, na.rm = TRUE)[binomial[missing]]
@@ -1977,7 +1981,7 @@ global_wd <- function(binomial, region = "World") {
       # Lookup genus across world
       missing <- is.na(wd)
       if (any(missing)) {
-        global_genus_data <- wd_zanne[wd_zanne$Genus %in% genus[missing], ]
+        global_genus_data <- wd_df_zanne[wd_df_zanne$Genus %in% genus[missing], ]
         wd[missing] <- tapply(global_genus_data$Wood.density,
                               global_genus_data$Genus,
                               mean, na.rm = TRUE)[genus[missing]]
@@ -1988,7 +1992,7 @@ global_wd <- function(binomial, region = "World") {
         # Lookup family in region
         missing <- is.na(wd)
         if (any(missing)) {
-          family <- wd_zanne$Family[match(binomial, wd_zanne$Binomial)]
+          family <- wd_df_zanne$Family[match(binomial, wd_df_zanne$Binomial)]
           family_data <- region_wd[region_wd$Family %in% family[missing], ]
           wd[missing] <- tapply(family_data$Wood.density,
                                 family_data$Family,
@@ -2000,7 +2004,7 @@ global_wd <- function(binomial, region = "World") {
           # Lookup family across the world
           missing <- is.na(wd)
           if (any(missing)) {
-            global_family_data <- wd_zanne[wd_zanne$Family %in% family[missing], ]
+            global_family_data <- wd_df_zanne[wd_df_zanne$Family %in% family[missing], ]
             wd[missing] <- tapply(global_family_data$Wood.density,
                                   global_family_data$Family,
                                   mean, na.rm = TRUE)[family[missing]]
@@ -2021,5 +2025,3 @@ global_wd <- function(binomial, region = "World") {
 
   return(list(wd = wd, sd = sd))
 }
-## what to do with the sd???
-# to do default region world.

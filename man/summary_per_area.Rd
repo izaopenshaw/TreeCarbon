@@ -4,7 +4,14 @@
 \alias{summary_per_area}
 \title{Calculate Total per unit area with Error for Biomass or Carbon}
 \usage{
-summary_per_area(input, sigma_input, area, sigma_area, returnv = "sigma")
+summary_per_area(
+  input,
+  sigma_input,
+  area,
+  sigma_area,
+  returnv = "sigma",
+  plots = FALSE
+)
 }
 \arguments{
 \item{input}{Vector of tree-level above-ground biomass or carbon or a list of
@@ -17,6 +24,14 @@ list of multiple areas to be summarised separately.}
 of multiple areas.}
 
 \item{sigma_area}{Standard deviation of plot area measurement or a vector.}
+
+\item{returnv}{error returned as standard deviation, 'sigma' (default) or
+variance, 'sigmasquared'}
+
+\item{plots}{if plots = TRUE then the list is treated as individual plots to
+be summed as individual plots then taken the mean to get the weighted per
+area mean. Default is plots = FALSE, then items in the list are treated as
+separate habitats and metrics outputted seperately.}
 }
 \value{
 A list containing the estimated total per unit area and its
@@ -31,7 +46,7 @@ AGB <- c(2.3, 1.8, 3.2)  # Biomass estimates for trees
 SD_AGB <- c(0.2, 0.15, 0.3)  # Standard deviations of biomass estimates
 summary_per_area(AGB, SD_AGB, 0.5, 0.05)
 
-AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for trees
+AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for treesz
 SD_AGB_2 <- c(0.7, 1.02, 0.3)  # Standard deviations of biomass estimates
 
 summary_per_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,

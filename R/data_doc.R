@@ -210,14 +210,15 @@
 #'   \item{Genus}{Character. Plant genus.}
 #'   \item{Species}{Character. Plant species.}
 #'   \item{Binomial}{Character. Genus + species name.}
-#'   \item{Wood.density}{Numeric. Wood density (g/cm³), ranging from 0.08 to 1.39.}
+#'   \item{Wood.density}{Numeric. Wood density (g/cm³)}
 #'   \item{Reference}{Integer. Reference ID for source of data.}
 #'   \item{Continent}{Character. Continent where data was collected.}
 #'   \item{Biome}{Character. Biome classification.}
 #'   \item{Region}{Character. Combined continent and biome description.}
-#'   \item{sd}{The caculated standard deviation of the wood density estimates
-#'   from the avaliable data for that species.}
+#'   \item{sd}{The calculated standard deviation of the wood density estimates
+#'   from the available data for that species if there are more than 10
+#'   estimates per class.}
 #' }
 #'
 #' @source Zanne, A.E., et al. (2009). Global wood density database. Dryad. http://hdl.handle.net/10255/dryad.235
-"wd_data_zanne"
+"wd_df_zanne"

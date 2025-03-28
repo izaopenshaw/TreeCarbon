@@ -12,7 +12,7 @@ error_product(
   c = NULL,
   sig_c = NULL,
   returnv = "sigmasquared",
-  fn = NA
+  fn = NULL
 )
 }
 \arguments{
@@ -31,8 +31,8 @@ error_product(
 \item{returnv}{return value, either 'sigma' (standard deviation) or
 'sigma squared' (variance)}
 
-\item{fn}{function describing how the variables are related. Default is fn =
-NA which assumes that the variables are a product.}
+\item{fn}{function describing how the variables are related. If not specified
+assumes that the variables are related by a product.}
 }
 \value{
 either an estimate for sigma or sigma squared error propagation for a
