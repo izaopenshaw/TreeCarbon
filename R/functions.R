@@ -1684,7 +1684,7 @@ allodb <- function(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable =
 #' of multiple areas.
 #' @param sigma_area Standard deviation of plot area measurement or a vector.
 #' @param returnv error returned as standard deviation, 'sigma' (default) or
-#' variance, 'sigmasquared'
+#' variance, 'sigmasquared' or 'standarderror' for plot = TRUE.
 #' @param plots if plots = TRUE then the list is treated as individual plots to
 #' be summed as individual plots then taken the mean to get the weighted per
 #' area mean. Default is plots = FALSE, then items in the list are treated as
@@ -1721,7 +1721,9 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
     stop("Mismatch in number of habitats/areas provided.")
   }
 
-  if(is.list(input)){
+  if (returnv == "standarderror") returnv <- "sigma"
+
+  if (is.list(input)) {
     total_per_area <- numeric(length(input))
     error_per_area <- numeric(length(input))
 
@@ -1742,6 +1744,12 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
                                     area, sigma_area,
                                     fn = total_per_area,
                                     returnv = returnv)
+  }
+
+  if (plots) {
+    n <- length(input)
+    total_per_area <- mean(total_per_area, na.rm = TRUE)
+    error_per_area <- sqrt(sum(error_per_area^2)) / sqrt(n)
   }
 
   return(list(total_per_area = total_per_area, error_per_area = error_per_area))
@@ -2015,7 +2023,7 @@ global_wd <- function(binomial, region = "World") {
             missing <- is.na(wd)
             if(any(missing)){
               wd[missing] = mean(region_wd$Wood.density)
-              sd[missing] = mean(region_wd$sd)
+              sd[missing] = mean(region_wd$wd_sd)
             }
           }
         }

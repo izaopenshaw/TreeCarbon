@@ -26,7 +26,7 @@ of multiple areas.}
 \item{sigma_area}{Standard deviation of plot area measurement or a vector.}
 
 \item{returnv}{error returned as standard deviation, 'sigma' (default) or
-variance, 'sigmasquared'}
+variance, 'sigmasquared' or 'standarderror' for plot = TRUE.}
 
 \item{plots}{if plots = TRUE then the list is treated as individual plots to
 be summed as individual plots then taken the mean to get the weighted per
