@@ -1944,25 +1944,25 @@ global_wd <- function(binomial, region = "World") {
 
   # Filter dataset by region
   if(region == "World"){
-    region_wd <- wd_df_zanne
+    region_wd <- WD_Zanne
   } else {
-    region_wd <- wd_df_zanne[wd_df_zanne$Region == region, ]
+    region_wd <- WD_Zanne[WD_Zanne$Region == region, ]
   }
 
   # Lookup species-level wood density in the specified region
   match_idx <- match(binomial, region_wd$Binomial)
   wd <- region_wd$Wood.density[match_idx]
-  sd <- region_wd$sd[match_idx]
+  sd <- region_wd$wd_sd[match_idx]
 
   # If missing, lookup species wd across the world
   missing <- is.na(wd)
   if (any(missing)) {
 
-    global_region_wd <- wd_df_zanne[wd_df_zanne$Binomial %in% binomial[missing], ]
+    global_region_wd <- WD_Zanne[WD_Zanne$Binomial %in% binomial[missing], ]
     wd[missing] <- tapply(global_region_wd$Wood.density,
                           global_region_wd$Binomial,
                           mean, na.rm = TRUE)[binomial[missing]]
-    sd[missing] <- tapply(global_region_wd$sd,
+    sd[missing] <- tapply(global_region_wd$wd_global_sd,
                           global_region_wd$Binomial,
                           mean, na.rm = TRUE)[binomial[missing]]
 
@@ -1974,41 +1974,41 @@ global_wd <- function(binomial, region = "World") {
       wd[missing] <- tapply(genus_data$Wood.density,
                             genus_data$Genus,
                             mean, na.rm = TRUE)[genus[missing]]
-      sd[missing] <- tapply(genus_data$sd,
+      sd[missing] <- tapply(genus_data$wd_sd,
                             genus_data$Genus,
                             mean, na.rm = TRUE)[genus[missing]]
 
       # Lookup genus across world
       missing <- is.na(wd)
       if (any(missing)) {
-        global_genus_data <- wd_df_zanne[wd_df_zanne$Genus %in% genus[missing], ]
+        global_genus_data <- WD_Zanne[WD_Zanne$Genus %in% genus[missing], ]
         wd[missing] <- tapply(global_genus_data$Wood.density,
                               global_genus_data$Genus,
                               mean, na.rm = TRUE)[genus[missing]]
-        sd[missing] <- tapply(global_genus_data$sd,
+        sd[missing] <- tapply(global_genus_data$wd_global_sd,
                               global_genus_data$Genus,
                               mean, na.rm = TRUE)[genus[missing]]
 
         # Lookup family in region
         missing <- is.na(wd)
         if (any(missing)) {
-          family <- wd_df_zanne$Family[match(binomial, wd_df_zanne$Binomial)]
+          family <- WD_Zanne$Family[match(binomial, WD_Zanne$Binomial)]
           family_data <- region_wd[region_wd$Family %in% family[missing], ]
           wd[missing] <- tapply(family_data$Wood.density,
                                 family_data$Family,
                                 mean, na.rm = TRUE)[family[missing]]
-          sd[missing] <- tapply(family_data$sd,
+          sd[missing] <- tapply(family_data$wd_sd,
                                 family_data$Family,
                                 mean, na.rm = TRUE)[family[missing]]
 
           # Lookup family across the world
           missing <- is.na(wd)
           if (any(missing)) {
-            global_family_data <- wd_df_zanne[wd_df_zanne$Family %in% family[missing], ]
+            global_family_data <- WD_Zanne[WD_Zanne$Family %in% family[missing], ]
             wd[missing] <- tapply(global_family_data$Wood.density,
                                   global_family_data$Family,
                                   mean, na.rm = TRUE)[family[missing]]
-            sd[missing] <- tapply(global_family_data$sd,
+            sd[missing] <- tapply(global_family_data$wd_global_sd,
                                   global_family_data$Family,
                                   mean, na.rm = TRUE)[family[missing]]
 

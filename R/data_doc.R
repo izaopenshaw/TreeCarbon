@@ -221,4 +221,4 @@
 #' }
 #'
 #' @source Zanne, A.E., et al. (2009). Global wood density database. Dryad. http://hdl.handle.net/10255/dryad.235
-"wd_df_zanne"
+"WD_Zanne"
