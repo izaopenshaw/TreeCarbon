@@ -12,10 +12,10 @@
 #' @description Using the sample tree’s basal area and volume to calculate the
 #' tariff number. Basal area is calculated by ba = (pi * dbh^2)/40000.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param vol tree volume in metres cubed
-#' @param dbh diameter at breast height in centimetres
+#' @param vol tree volume (metres cubed)
+#' @param dbh diameter at breast height (centimetres)
 #' @param sig_vol sigma for tree volume (optional)
-#' @param re_dbh relative measurement error for diameter at breast height (optional)
+#' @param re_dbh relative measurement error for diameter at breast height (default is 2.5%)
 #' @param re  relative error of coefficients (default = 2.5%)
 #' @return  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
@@ -28,23 +28,33 @@
 #'
 tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025){
 
-  if (!is.numeric(vol) || !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
-    stop("vol and dbh must be non-negative numeric values")
+  # Check inputs are numeric and positive
+  if (!is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
+    stop("dbh must be non-negative and numeric")
+  }
+  if (!is.numeric(vol) || any(vol < 0, na.rm = TRUE)) {
+    stop("vol must be non-negative and numeric")
   }
 
-  # Constants
+  # Set constants
   coef_a1 <- 3.174106384
   const_vol <- 0.005002986
   const_ba <- 0.003848451
   const_tariff <- 0.138763302
 
-  ba <- (pi * dbh^2) / 40000                # tree basal area in m^2
+  # Calculate tree basal area (m^2)
+  ba <- (pi * dbh^2) / 40000
+
+  # Calculate tariff number
   a1 <- (vol - const_vol) / (ba - const_ba)
   tariff <- (coef_a1 * a1) + const_tariff
 
+  # Calculate the error if sig_vol is not null
   if(!is.null(sig_vol)){
+
+    # Check inputs required for error calculation
     if (any(sig_vol < 0, na.rm = TRUE) || !is.numeric(sig_vol)) {
-      stop("sigm_vol must be non-negative numeric")}
+      stop("sig_vol must be non-negative numeric")}
     if (!is.numeric(re_dbh) || re_dbh < 0)
       stop("Argument 're_dbh' must be positive and numeric")
     if (!is.numeric(re) || re < 0)
@@ -52,13 +62,17 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
     if (re_dbh > 1 || re > 1)
       warning("Relative error indicates high uncertainty to measured value")
 
+    # Calculate error propagation for basal area
     sig_ba <- (pi * 2 * dbh / 40000) * re_dbh*dbh
+
+    # Calculate error propagation for a1
     sig_a1 <- a1 * sqrt(
-      (sig_vol / (vol - const_vol))^2 +         # Error from vol
-        (sig_ba / (ba - const_ba))^2 +            # Error from ba
+      (sig_vol / (vol - const_vol))^2 +            # Error from vol
+        (sig_ba / (ba - const_ba))^2 +             # Error from ba
         (re * const_vol / (vol - const_vol))^2 +   # Error from const_vol
         (re * const_ba / (ba - const_ba))^2        # Error from const_ba
     )
+    # Calculate error propagation for tariff number
     sig_t <- sqrt((coef_a1 * sig_a1)^2 + (a1 * re * coef_a1)^2)
 
     return(list(tariff=tariff, sigma_tariff=sig_t))
@@ -90,7 +104,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
 #' @export
 #' @aliases conifer_tariff
 #'
-conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0.025) {
+conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re = 0.025) {
 
   # Check inputs
   if (!is.numeric(height) | any(height < 0, na.rm = TRUE) |
@@ -101,37 +115,45 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0
     stop("Input vectors for spcode, height & dbh must have the same length.")
   }
 
+  # Lookup coefficients for tariff equation by spcode in tariff_coniferdf
   lookup_index <- match(spcode, tariff_coniferdf$abbreviation)
   tc <- tariff_coniferdf[lookup_index, ]
 
-  # Missing species codes
+  # Get a list of spcodes with missing coefficients
   missing_species <- is.na(tc$abbreviation)
 
+  # If there are any spcodes with missing coefficients
   if (any(missing_species)) {
 
-    # Find substitute species
+    # Lookup using the short species code
     subcode <- lookup_df$single[match(spcode[missing_species], lookup_df$short)]
     sub_index <- match(subcode, tariff_coniferdf$abbreviation)
     tc[missing_species, ] <- tariff_coniferdf[sub_index, ]
 
-    # Completely missing species
+    # If still missing, then use Norway spruce coefficients for the conifer
     still_missing <- is.na(tc$abbreviation)
     tc[still_missing, ] <- tariff_coniferdf[tariff_coniferdf$abbreviation == "NS", ]
 
+    # Output a warning message that we used the general coefficients
     unique_missing <- unique(spcode[still_missing])
     if (length(unique_missing) > 0) {
       warning(paste(paste(as.character(unique_missing), collapse = ", "),
                     "species codes not found, general conifer code used."))}
   }
 
+  # Calculate conifer tariff number using coefficients stored in tc
   tariff <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
 
-  if(!is.na(re_h)){
+  # If re_h is specified and not null, then calculate the error
+  if(!is.null(re_h)){
+
+    # Check inputs for calculating the error
     if(!is.numeric(re_dbh) || any(re_dbh<0))stop("must provide a numeric and positive re_dbh with re_h")
     if(!is.numeric(re_h) || any(re_h<0))stop("must provide a numeric and positive re_h with re_dbh")
     if (re_dbh > 1 || re_dbh > 1 || re_h > 1 || re_h > 1)
       warning("Relative errors indicate high uncertainty to measured value")
 
+    # Propagate the error using error_product formula
     sigma <- sqrt(
       (tc$a1 * re)^2 +
         error_product(tc$a2, tc$a2 * re, height, re_h * height) +
@@ -168,46 +190,52 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0
 #' @export
 #' @aliases broadleaf_tariff
 #'
-broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = 0.1, re = 0.025) {
+broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re = 0.025) {
 
-  # Check inputs
+  # Check inputs are numeric and positive
   if (!is.numeric(height) | any(height < 0, na.rm = TRUE) |
       !is.numeric(dbh) | any(dbh < 0, na.rm = TRUE)){
     stop("dbh must be numeric and positive")
   }
 
+  # Check input lengths are the same
   if (!(length(spcode) == length(height) && length(height) == length(dbh))) {
     stop("Input vectors for spcode, height & dbh must have the same length.")
   }
 
+  # Lookup coefficients for tariff equation by spcode in tariff_broaddf
   lookup_index <- match(spcode, tariff_broaddf$abbreviation)
   tb <- tariff_broaddf[lookup_index, ]
 
-  # Missing species codes
+  # Get a list of spcodes with missing coefficients
   missing_species <- is.na(tb$abbreviation)
 
+  # If there are any spcodes with missing coefficients
   if (any(missing_species)) {
-    # Find substitute species
+
+    # Lookup using the short species code
     subcode <- lookup_df$single[match(spcode[missing_species], lookup_df$short)]
     sub_index <- match(subcode, tariff_broaddf$abbreviation)
     tb[missing_species, ] <- tariff_broaddf[sub_index, ]
 
-    # Missing species
+    # If still missing, then use Birch coefficients for the broadleaf tree
     still_missing <- is.na(tb$abbreviation)
     tb[still_missing, ] <- tariff_broaddf[tariff_broaddf$abbreviation == "BI", ]
 
-    # Warning
+    # Output a warning message that we used the general coefficients
     unique_missing <- unique(spcode[still_missing])
     if (length(unique_missing) > 0) {
       warning(paste(paste(as.character(unique_missing), collapse = ", "),
                     "species codes not found, general broadleaf code used."))}
   }
 
-  # Tariff Calculation
+  # Calculate tariff number using coefficients stored in tb
   tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
 
-  # Relative errors
-  if (!is.na(re_dbh)) {
+  # If re_h is specified and not null, then calculate the error
+  if (!is.null(re_dbh)) {
+
+    # Check inputs for calculating the error
     if (!is.numeric(re_dbh) || any(re_dbh < 0, na.rm = TRUE)){
       stop("must provide a numeric and positive re_dbh with re_h")}
     if (!is.numeric(re_h) || any(re_h < 0, na.rm = TRUE)){
@@ -215,6 +243,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = 0.1, re = 
     if (any(re_dbh > 1, na.rm = TRUE) || any(re_h > 1, na.rm = TRUE)){
       warning("Relative errors indicate high uncertainty to measured value")}
 
+    # Propagate the error using error_product formula
     sigma <- sqrt((re * tb$a1)^2 +
                     error_product(tb$a2, re*tb$a2, height, re_h*height) +
                     error_product(tb$a3, re*tb$a3, dbh, re_dbh*dbh) +
@@ -248,43 +277,58 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NA, re_h = 0.1, re = 
 #' @export
 #' @aliases stand_tariff
 #'
-stand_tariff <- function(spcode, height, re_h = NA, re=0.025) {
+stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
+
+  # Check height is numeric and positive
   if(!is.numeric(height) || any(height < 0, na.rm = TRUE))
     stop("height must be numeric and positive")
 
+  # Lookup coefficients for tariff equation by spcode in tarif2heightdf
   lookup_index <- match(spcode, tarif2heightdf$abbreviation)
   rec <- tarif2heightdf[lookup_index, ]
 
-  # Missing Species Codes
+  # Get a list of spcodes with missing coefficients
   missing_species <- is.na(rec$abbreviation)
 
+  # If there are any spcodes with missing coefficients
   if(any(missing_species)) {
-    # Find substitute species using lookup table
+
+    # Lookup using the short species code
     subcode <- lookup_df$stand[match(spcode[missing_species], lookup_df$short)]
     sub_index <- match(subcode, tarif2heightdf$abbreviation)
     rec[missing_species, ] <- tarif2heightdf[sub_index, ]
 
-    # Completely missing species
+    # Still missing list
     still_missing <- is.na(rec$abbreviation)
 
-    # If species are still missing after lookup, stop execution
+    # If species are still missing after lookup, produce error message
     if(any(still_missing)) {
       warning(paste(paste(unique(spcode[still_missing]), collapse = ", "),
                     "species codes not found"))}
   }
+  # Calculate tariff number using coefficients stored in rec
   tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * height^2)
 
-  if(!anyNA(re_h)){
+  # If re_h is specified and not null, then calculate the error
+  if(!is.null(re_h)){
+
+    # Check inputs for calculating the error
     if(!is.numeric(re_h) || any(re_h<0))stop("re_h must be numeric and positive")
     if (re_h > 1 || re_h > 1)
       warning("Relative error indicate high uncertainty to measured value")
 
+    # Propagate the error using error_product formula
     sigma <- sqrt((rec$a1 * re)^2 +
                     error_product(rec$a2, rec$a2 * re, height, re_h*height))
 
-    if (any(rec$a3 != 0, na.rm = TRUE)) { # Include the quadratic term if rec$a3 is nonzero
+    # If rec$a3 is not equal to zero and included in the formula then
+    if (any(rec$a3 != 0, na.rm = TRUE)) {
+
+      # Calculate the error for the quadratic term in the formula
       quad <- error_product(rec$a3, rec$a3 * re, height, re_h*height)
+      # For the terms with rec$a3 = 0, set the quad term to 0
       quad[is.na(quad)] <- 0
+      # Propagate terms using addition equation and sum errors
       sigma <- sqrt(sigma^2 + quad)
     }
 
@@ -294,10 +338,10 @@ stand_tariff <- function(spcode, height, re_h = NA, re=0.025) {
   }
 }
 
-############# FC tariff number by stand height (WCC Eq 4) ################
-#' @title Tariff number by stand height
-#' @description Use the estimated stand top height to calculate the stand
-#' tariff number.
+############# FC tariff number depending on inputs ################
+#' @title Calculate tariff numbers for list of trees
+#' @description Depending on inputs, calcualte the tariff number using either
+#' stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param spcode species code (short)
 #' @param height tree height in metres
@@ -319,27 +363,37 @@ stand_tariff <- function(spcode, height, re_h = NA, re=0.025) {
 #' @aliases tariffs
 #'
 tariffs <- function(spcode, height, dbh = NULL, type = NA, re_h = NA, re_dbh = 0.05, re = 0.025) {
+
+  # Check spcode is a character
   if (!is.character(spcode)) warning("spcode must be characters")
 
+  # Set n as the length of height input
   n <- length(height)
+  # Check that input lengths are consistent
   if (!(length(spcode) == n || (length(dbh) == n && anyNA(dbh)))) {
     stop("Input vectors (spcode, height, dbh) must have the same length.")
   }
 
-  # Lookup type
-  lookup_index <- match(spcode, lookup_df$short)
-  lookup_type <- lookup_df$type[lookup_index]
+  # Lookup type (conifer or broadleaf classification) using lookup_df
+  lookup_index <- match(spcode, lookup_df$short) # index lookup for efficiency
+  lookup_type <- lookup_df$type[lookup_index]  # list of types
+  # Set use_original to if lookup_type is NA or 'any' from lookup_df
   use_original <- is.na(lookup_type) | lookup_type == "any"
+  # If use_original is NA or 'any' then use the input classification type
   type <- ifelse(use_original, type, lookup_type)
 
-  # Initialize output
+  # Initialise an output data frame
   results <- data.frame(tariff = rep(NA, n))
+  # If re_h is NA then create df for the error
   error <- !(is.na(re_h) | is.na(re_dbh) | is.na(re))
   if (error) results$sigma <- rep(NA, n)
 
-  # Vectorized Tariff Calculation
+  # Logical lists to know which function to use
+  # NA_type is TRUE if type is NA or equal to 'any'
   NA_ty <- is.na(type)   | type == "NA" | type == "any"
+  # NA_sp is TRUE if spcode is NA or equal to 'MX'
   NA_sp <- is.na(spcode) | spcode == "NA" | spcode == "MX"
+  # sp_ty ######****** todo
   sp_ty <- !(NA_sp & NA_ty)
   h_d <- !(is.na(dbh) & is.na(height))
 
@@ -538,8 +592,13 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
 #' @examples
-#' error_product(5, 0.01, 10, 0.1)
-#' error_product(5, 0.01, 10, 0.1, 5, 0.01)
+#' a = 5 ; sig_a = 0.01
+#' b = 10 ; sig_b = 0.1
+#' error_product(a, sig_a, b, sig_b)
+#' c = 12 ; sig_c = 0.05
+#' error_product(a, sig_a, b, sig_b, c, sig_c)
+#' # error for a quotient
+#' error_product(a, sig_a, b, sig_b, fn = a/b)
 #' @export
 #' @aliases error_product
 #'
