@@ -58,7 +58,7 @@ ui <- fluidPage(
                  p("To use the app:"),
                  p("1a. Either upload a csv file with columns for `name` (either botanical or common), `dbh` (cm), `height` (m) and type (broadleaf or confier. This is optional as it is a fall back if the species name is not found)."),
                  p("b. Or input single tree data in the fields and click Calculate."),
-                 p("2. Use the 'Output all data' checkbox to toggle all output data or just carbon estimates. Above-ground carbon (AGC) is outputted in tonnes, along with the propagated error estimate, sig_AGC which is an estimate for sigma of AGC. The plotted error bars represent AGC + or - sig_AGC."))
+                 p("2. Use the 'Output all data' checkbox to toggle all output data or just carbon estimates. Above-ground carbon is outputted in tonnes (AGC_WCC_t), along with the propagated error estimate (sig_AGC) which is an estimate for sigma of AGC. The plotted error bars represent AGC_WCC_t ± sig_AGC"))
       )
     )
   )
