@@ -45,7 +45,7 @@ ui <- fluidPage(
       #textInput("re_dbh", "Relative error for dbh (%)", value = "0.05"),
       #textInput("re_h", "Relative error for height (%)", value = "0.1"),
       #textInput("re", "Relative error for coefficients (%)", value = "0.025"),
-      checkboxInput("output_all", "Output all data", value = TRUE),
+      checkboxInput("output_all", "Output all data", value = FALSE),
       checkboxInput("plot_carbon", "Plot Carbon", value = TRUE),
       actionButton("calculate", "Calculate"),
       downloadButton("download", "Download Results")

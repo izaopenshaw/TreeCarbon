@@ -1900,6 +1900,11 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @importFrom utils data
 #' @examples
 #' allometries("Quercus", "robur", 20, 10)
+alos <- allometries(genus, species, dbh, height, type = NA, method ="IPCC2",
+            output.all = TRUE, returnv = "AGC", nsg = NA,
+            region = "Europe", biome = "temperate",
+            coords = c(-0.088837,51.071610), re_dbh = 0.05,
+            re_h = 0.1, re = 0.025, sig_nsg = 0.09413391)
 #' @export
 #'
 allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
@@ -1942,7 +1947,7 @@ allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
     }
 
   } else {
-    WCC <- WCC[, !colnames(WCC) %in% c("name", "dbh", "height")]
+    WCC <- WCC[, !colnames(WCC) %in% c("name", "height")]
   }
 
   allo <- allo[, !colnames(allo) %in% c("Genus", "Species", "DBH")]
