@@ -662,7 +662,6 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 #' @examples
 #' woodbiomass(10, 0.56, 5)
 #' @export
-#' @aliases woodbiomass
 #'
 woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) {
 
@@ -1193,7 +1192,7 @@ lookupcode <- function(name, type = NA, code = "short", returnv = "all") {
 #' @importFrom utils data
 #' @import remotes
 #' @examples
-#' fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
+#' fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE) # todo
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc('beech', 72, 24, nsg = wd$meanWD)
@@ -1863,8 +1862,8 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @description  Function that inputs tree species code, dbh, height and method
 #' for converting biomass to carbon, and returns the carbon estimate
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
-#' @param Genus First part of Species binomial
-#' @param Species Second part of Species binomial
+#' @param genus First part of Species binomial
+#' @param species Second part of Species binomial
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
 #' @param height in metres
@@ -1880,6 +1879,7 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @param re relative error of coefficients (default = 2.5%)
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
+#' @param returnv either 'AGC' or 'AGB' for above ground carbon or biomass, respectively
 #' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
 #' a list of tariff number, merchantable volume (metres cubed), stem volume
 #' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
@@ -1900,11 +1900,6 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @importFrom utils data
 #' @examples
 #' allometries("Quercus", "robur", 20, 10)
-alos <- allometries(genus, species, dbh, height, type = NA, method ="IPCC2",
-            output.all = TRUE, returnv = "AGC", nsg = NA,
-            region = "Europe", biome = "temperate",
-            coords = c(-0.088837,51.071610), re_dbh = 0.05,
-            re_h = 0.1, re = 0.025, sig_nsg = 0.09413391)
 #' @export
 #'
 allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
@@ -1964,7 +1959,7 @@ allometries <- function(genus, species, dbh, height, type = NA, method ="IPCC2",
     df$AGC_allodb_t <- allo$AGC
     df$AGC_Bunce_t <- bunce$AGC
 
-    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg", "DBH")]
+    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg")]
 
     if(!anyNA(allo$sig_AGC)){
       df$sig_allodb <- allo$sig_AGC

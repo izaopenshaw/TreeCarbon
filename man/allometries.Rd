@@ -24,6 +24,10 @@ allometries(
 )
 }
 \arguments{
+\item{genus}{First part of Species binomial}
+
+\item{species}{Second part of Species binomial}
+
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{in metres}
@@ -33,6 +37,8 @@ allometries(
 \item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
 
 \item{output.all}{if TRUE outputs all data from processing, else just outputs carbon estimates}
+
+\item{returnv}{either 'AGC' or 'AGB' for above ground carbon or biomass, respectively}
 
 \item{nsg}{nominal specific gravity. Optionally specified, else will use that
 given by the WCC}
@@ -51,10 +57,6 @@ coordinates for each tree of longitude and latitude}
 \item{re}{relative error of coefficients (default = 2.5\%)}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
-
-\item{Genus}{First part of Species binomial}
-
-\item{Species}{Second part of Species binomial}
 }
 \value{
 either Above ground carbon, AGC in tonnes, or if output.all = TRUE,

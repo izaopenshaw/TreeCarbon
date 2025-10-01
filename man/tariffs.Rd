@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{tariffs}
 \alias{tariffs}
-\title{Tariff number by stand height}
+\title{Calculate tariff numbers for list of trees}
 \usage{
 tariffs(
   spcode,
@@ -34,8 +34,8 @@ either tariff number or if re_h is provided, then returns a list
 of the tariff number and uncertainty
 }
 \description{
-Use the estimated stand top height to calculate the stand
-tariff number.
+Depending on inputs, calcualte the tariff number using either
+stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
 }
 \examples{
 tariffs("OK", height= 10, dbh = 20)

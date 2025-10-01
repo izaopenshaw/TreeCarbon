@@ -43,8 +43,13 @@ Calculates sigma squared for f when either f = a * b, f = a / b
 or f = a * b * c, f = a / b * c, f = a * b / c
 }
 \examples{
-error_product(5, 0.01, 10, 0.1)
-error_product(5, 0.01, 10, 0.1, 5, 0.01)
+a = 5 ; sig_a = 0.01
+b = 10 ; sig_b = 0.1
+error_product(a, sig_a, b, sig_b)
+c = 12 ; sig_c = 0.05
+error_product(a, sig_a, b, sig_b, c, sig_c)
+# error for a quotient
+error_product(a, sig_a, b, sig_b, fn = a/b)
 }
 \references{
 Taylor, J. R. (1997). An Introduction to Error Analysis: The

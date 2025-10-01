@@ -7,13 +7,13 @@
 tariff_vol_area(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025)
 }
 \arguments{
-\item{vol}{tree volume in metres cubed}
+\item{vol}{tree volume (metres cubed)}
 
-\item{dbh}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height (centimetres)}
 
 \item{sig_vol}{sigma for tree volume (optional)}
 
-\item{re_dbh}{relative measurement error for diameter at breast height (optional)}
+\item{re_dbh}{relative measurement error for diameter at breast height (default is 2.5\%)}
 
 \item{re}{relative error of coefficients (default = 2.5\%)}
 }

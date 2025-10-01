@@ -4,7 +4,7 @@
 \alias{stand_tariff}
 \title{Tariff number by stand height}
 \usage{
-stand_tariff(spcode, height, re_h = NA, re = 0.025)
+stand_tariff(spcode, height, re_h = NULL, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code}

@@ -6,7 +6,7 @@
 sample tree. Species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.}
 \usage{
-conifer_tariff(spcode, height, dbh, re_h = NA, re_dbh = 0.05, re = 0.025)
+conifer_tariff(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code (single)}
