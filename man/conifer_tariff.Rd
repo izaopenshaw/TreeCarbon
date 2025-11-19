@@ -3,7 +3,7 @@
 \name{conifer_tariff}
 \alias{conifer_tariff}
 \title{Conifer tree tariff number
-sample tree. Species-specific estimates of a1 – a3 are found in the
+sample tree. species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.}
 \usage{
 conifer_tariff(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re = 0.025)
@@ -27,7 +27,7 @@ tariff number and an estimate for sigma
 }
 \description{
 Conifer tree tariff number
-sample tree. Species-specific estimates of a1 – a3 are found in the
+sample tree. species-specific estimates of a1 – a3 are found in the
 R data file, 'tariff_coniferdf'.
 }
 \examples{

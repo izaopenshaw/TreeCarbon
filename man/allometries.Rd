@@ -9,24 +9,24 @@ allometries(
   species,
   dbh,
   height,
-  type = NA,
+  type = NULL,
   method = "IPCC2",
   output.all = FALSE,
   returnv = "AGC",
-  nsg = NA,
   region = "Europe",
   biome = "temperate",
   coords = c(-0.088837, 51.07161),
   re_dbh = 0.05,
   re_h = 0.1,
   re = 0.025,
+  nsg = NULL,
   sig_nsg = 0.09413391
 )
 }
 \arguments{
-\item{genus}{First part of Species binomial}
+\item{genus}{First part of species binomial}
 
-\item{species}{Second part of Species binomial}
+\item{species}{Second part of species binomial}
 
 \item{dbh}{diameter at breast height in centimetres}
 
@@ -40,9 +40,6 @@ allometries(
 
 \item{returnv}{either 'AGC' or 'AGB' for above ground carbon or biomass, respectively}
 
-\item{nsg}{nominal specific gravity. Optionally specified, else will use that
-given by the WCC}
-
 \item{region}{of the World. See ?getWoodDensity for the list of regions}
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
@@ -55,6 +52,9 @@ coordinates for each tree of longitude and latitude}
 \item{re_h}{relative error of height measurement, single value}
 
 \item{re}{relative error of coefficients (default = 2.5\%)}
+
+\item{nsg}{nominal specific gravity. Optionally specified, else will use that
+given by the WCC}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
 }
@@ -83,7 +83,7 @@ allodb: An R package for biomass estimation at globally distributed
 extratropical forest plots. Methods in Ecology and Evolution, 11(10),
 1273-1280
 Bunce, R. G. H. "Biomass and Production of Trees in a Mixed Deciduous
-Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry
+Woodland: I. Girth and height as Parameters for the Estimation of Tree Dry
 Weight" (1968)
 }
 \author{

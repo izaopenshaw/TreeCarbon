@@ -13,7 +13,7 @@ broadleaf_tariff(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re = 0.025)
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{re_dbh}{relative error for DBH/percentage measurement error (optional)}
+\item{re_dbh}{relative error for dbh/percentage measurement error (optional)}
 
 \item{re_h}{relative error of height measurement (optional)}
 
@@ -25,7 +25,7 @@ tariff number and an estimate for sigma
 }
 \description{
 Use dbh and tree height to derive the tariff number of each
-sample tree. Species-specific estimates of a1 – a4 are found in the
+sample tree. species-specific estimates of a1 – a4 are found in the
 R data file, 'tariff_broaddf'.
 }
 \examples{

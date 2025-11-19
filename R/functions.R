@@ -897,11 +897,11 @@ ctoco2e <- function(carbon) {
 #'   \item `"Thomas"`: Lookup by type and biome (Thomas & Martin, 2012).
 #' }
 #' Method defining carbon volatile fraction (CF) see CVF_df.RData
-#' [1: Matthews, 1993] "Matthews1": Simplest, CF = 50%.
+#'`[1: Matthews, 1993]` "Matthews1": Simplest, CF = 50%.
 #' "Matthews2": CF based on type (broadleaf or conifer)
-#' [2: IPCC, 2006] "IPCC1": CF = 47.7%
+#' `[2: IPCC, 2006]` "IPCC1": CF = 47.7%
 #' "IPCC2": Lookup CF by type and biome
-#' [3: Thomas and Martin, 2012] "Thomas": Lookup by type and biome
+#' `[3: Thomas and Martin, 2012]` "Thomas": Lookup by type and biome
 #'
 #' @param type Character vector. `"broadleaf"` or `"conifer"`. Required for
 #' `"Matthews2"`, `"IPCC2"`, or `"Thomas"`.
@@ -916,21 +916,21 @@ ctoco2e <- function(carbon) {
 #'
 #' @references
 #' Thomas, S.C., & Martin, A.R. (2012). Carbon content of tree tissues: A synthesis.
-#' *Forests, 3*(2), 332-352. \doi{10.3390/f3020332}
+#' Forests, 3(2), 332-352. \doi{10.3390/f3020332}
 #'
-#' IPCC. (2006). Forest lands. *Intergovernmental Panel on Climate Change Guidelines*
+#' IPCC. (2006). Forest lands. Intergovernmental Panel on Climate Change Guidelines
 #' for National Greenhouse Gas Inventories, Volume 4, p. 83.
 #'
-#' Matthews, G.A.R. (1993). *The Carbon Content of Trees.* Forestry Commission Technical
+#' Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical
 #' Paper 4, Forestry Commission, Edinburgh, 21 pp. ISBN: 0-85538-317-8.
 #'
-#' [1] Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
+#' `[1]` Thomas, Sean C., and Adam R. Martin. "Carbon content of tree
 #' tissues: a synthesis." Forests 3.2 (2012): 332-352.
 #'  https://www.mdpi.com/1999-4907/3/2/332.
-#' [2] IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
+#' `[2]` IPCC. Forest lands. Intergovernmental Panel on Climate Change Guidelines
 #'  for National Greenhouse Gas Inventories; Institute for Global Environmental
 #'   Strategies (IGES): Hayama,Japan, 2006; Volume 4, p. 83.
-#' [3] Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
+#' `[3]` Matthews, G.A.R. (1993) The Carbon Content of Trees. Forestry Commission
 #'  Technical Paper 4. Forestry Commission, Edinburgh. 21pp. ISBN: 0-85538-317-8
 #' @examples
 #' # Basic conversion using IPCC2 method
@@ -938,7 +938,7 @@ ctoco2e <- function(carbon) {
 #'
 #' # Vectorized conversion with uncertainty
 #' biomass2c(biomass=c(0.5, 0.75, 2, 7), method = "IPCC2",
-#' type = rep("broadleaf", 4), sig_biomass = rep(0.2, 4), biome = "temperate")
+#' type = rep("broadleaf", 4), biome = "temperate", sig_biomass = rep(0.2, 4))
 #'
 #' @importFrom utils globalVariables
 #' @aliases biomass2c
@@ -1441,7 +1441,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
     convert <- type[tall_id] %in% class
     if (any(convert, na.rm = TRUE)) {
       AGC <- biomass2c(AGB[convert], method, type[tall_id][convert],
-                        sig_AGB[convert], biome)
+                       biome, sig_AGB[convert])
       r$AGC_WCC_t[tall_id][convert] <- AGC$AGC
       r$sig_AGC[tall_id][convert] <- AGC$sig_AGC
     } else {
@@ -1957,23 +1957,23 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   if (!is.numeric(height) | any(height < 0, na.rm = TRUE))
     stop("height must be numeric and positive")
 
-  if (!is.numeric(coords) || length(coords) != 2)
-    stop("coords must be a numeric vector of length 2 (longitude, latitude).")
+  if (!is.numeric(coords) || length(coords) != 2) {
+    stop("coords must be a numeric vector of length 2 (longitude, latitude).")}
 
   error_terms <- c(re_dbh, re_h, re, sig_nsg)
-  if (anyNA(error_terms) || !is.numeric(error_terms) || any(error_terms < 0))
-    stop("Error terms (re_dbh, re_h, re, sig_nsg) must be postive and numeric.")
+  if(anyNA(error_terms) || !is.numeric(error_terms) || any(error_terms < 0)){
+    stop("Error terms (re_dbh, re_h, re, sig_nsg) must be postive and numeric.")}
 
-  if (!is.character(region) || !is.character(biome))
-    stop("region and biome must be character strings.")
+  if (!is.character(region) || !is.character(biome)){
+    stop("region and biome must be character strings.")}
 
-  if(anyNA(genus) || anyNA(species) || anyNA(dbh) || anyNA(height))
-    warning("Entries will be skipped if Genus, Species, dbh or height is NA")
+  if(anyNA(genus) || anyNA(species) || anyNA(dbh) || anyNA(height)) {
+    warning("Entries will be skipped if Genus, Species, dbh or height is NA")}
 
   # ==== Calculate AGB ====
   # Using the BIOMASS package
   bio <- suppressMessages(suppressWarnings(    # as can't be changed within this function
-    biomass(dbh, height, genus, species, coords, region, output.all = TRUE)))
+    BIOMASS(dbh, height, genus, species, coords, region, output.all = TRUE)))
 
   if(!output.all){ bio <- bio[, c(1:7, 14)]}
 
@@ -2039,9 +2039,9 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
     # Calculate carbon in tonnes
     suppressWarnings({
-      df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome = biome)
-      allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, df$allodb_sigma*0.001, biome)
-      bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, AGB_Bunce_kg$sigma, biome)
+      df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome)
+      allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, biome, df$allodb_sigma*0.001)
+      bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
     })
 
     # Extract carbon and input in df
@@ -2050,10 +2050,10 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
     df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg")]
 
-    if(!anyNA(allo$sig_AGC)){
-      df$sig_allodb <- allo$sig_AGC
-      df$sig_Bunce <- bunce$sig_AGC
-    }
+    #if(!anyNA(allo$sig_AGC)){
+    df$sig_allodb <- allo$sig_AGC
+    df$sig_Bunce <- bunce$sig_AGC
+    #}
   } else {
     colnames(df)[colnames(df) == "WCC"] <- "AGB_WCC_t"
   }

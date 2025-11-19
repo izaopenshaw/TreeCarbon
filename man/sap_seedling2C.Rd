@@ -4,7 +4,7 @@
 \alias{sap_seedling2C}
 \title{Seedlings and saplings to carbon}
 \usage{
-sap_seedling2C(heightincm, type, re_h = NA, re = 0.025)
+sap_seedling2C(heightincm, type, re_h = NULL, re = 0.025)
 }
 \arguments{
 \item{heightincm}{tree height in centimetres}

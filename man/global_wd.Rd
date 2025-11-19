@@ -2,12 +2,14 @@
 % Please edit documentation in R/functions.R
 \name{global_wd}
 \alias{global_wd}
-\title{Global Wood Density Lookup}
+\title{Retrieves wood density values (g/cm^3) from the Global Wood Density Database
+based on binomial name and a specified region.
+If no value exists for a species in a region, it calculates a mean based on available data from broader categories (global species mean, genus in region, genus globally, family in region, family globally).}
 \usage{
 global_wd(binomial, region = "World")
 }
 \arguments{
-\item{binomial}{Character vector of binomial names (Genus species).}
+\item{binomial}{Character vector of binomial names (genus species).}
 
 \item{region}{A single character string specifying the region to match.
 Choose from: "Africa (extratropical)", "Africa (tropical)", "Australia",

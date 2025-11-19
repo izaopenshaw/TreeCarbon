@@ -4,14 +4,14 @@
 \alias{allodb}
 \title{Estimate Tree Carbon using allodb package functions}
 \usage{
-allodb(DBH, Genus, Species, coords, output.all = TRUE, new.eqtable = NULL)
+allodb(dbh, genus, species, coords, output.all = TRUE, new.eqtable = NULL)
 }
 \arguments{
-\item{DBH}{Diameter at breast height (cm)}
+\item{dbh}{Diameter at breast height (cm)}
 
-\item{Genus}{First part of Species binomial}
+\item{genus}{First part of species binomial}
 
-\item{Species}{Second part of Species binomial}
+\item{species}{Second part of species binomial}
 
 \item{coords}{either a vector of coordinates of the site or a matrix of
 coordinates for each tree of longitude and latitude}
@@ -22,8 +22,8 @@ coordinates for each tree of longitude and latitude}
 }
 \value{
 Above-ground Biomass in kg. If output.all = TRUE then returns columns
-'DBH', 'Genus', 'Species', 'AGB_allodb_kg', 'allodb_a', 'allodb_b',
-'allodb_sigma' (where AGB = a*DBH^b+e {e ~ N(0,sigma^2}).
+'dbh', 'genus', 'species', 'AGB_allodb_kg', 'allodb_a', 'allodb_b',
+'allodb_sigma' (where AGB = a*dbh^b+e {e ~ N(0,sigma^2}).
 }
 \description{
 Use the aalodb R package to calculate carbon

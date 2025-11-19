@@ -4,7 +4,7 @@
 \alias{lookupcode}
 \title{Lookup species code}
 \usage{
-lookupcode(name, type = NA, code = "short", returnv = "all")
+lookupcode(name, type = NULL, code = "short", returnv = "all")
 }
 \arguments{
 \item{name}{name of species (common or botanical). See lookup_df.Rda}
@@ -18,7 +18,7 @@ column names from lookup_df.Rda}
 spname and matchtype for checking}
 }
 \value{
-Species code
+species code
 }
 \description{
 Function that looks up species codes for Woodland Carbon Code

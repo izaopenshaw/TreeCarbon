@@ -21,7 +21,7 @@ of the tariff number and an estimate of sigma for tariff number
 }
 \description{
 Use the estimated stand top height to calculate the stand
-tariff number.
+tariff number based on species-specific coefficients.
 }
 \examples{
 stand_tariff("OK", height = 10)

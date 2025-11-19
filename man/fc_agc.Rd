@@ -8,11 +8,11 @@ fc_agc(
   name,
   dbh,
   height,
-  type = NA,
+  type = NULL,
   method = "IPCC2",
   biome = "temperate",
   output.all = TRUE,
-  nsg = NA
+  nsg = NULL
 )
 }
 \arguments{
@@ -24,7 +24,7 @@ fc_agc(
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
-\item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
+\item{method}{method of converting biomass to carbon. Both 'Thomas' or 'IPCC2' require type.}
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
@@ -44,7 +44,7 @@ Function that inputs tree species code, dbh, height and method
 for converting biomass to carbon, and returns the carbon estimate
 }
 \examples{
-fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE) # todo
+fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc('beech', 72, 24, nsg = wd$meanWD)

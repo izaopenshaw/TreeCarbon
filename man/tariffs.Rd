@@ -8,8 +8,8 @@ tariffs(
   spcode,
   height,
   dbh = NULL,
-  type = NA,
-  re_h = NA,
+  type = NULL,
+  re_h = NULL,
   re_dbh = 0.05,
   re = 0.025
 )
@@ -38,10 +38,10 @@ Depending on inputs, calcualte the tariff number using either
 stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
 }
 \examples{
-tariffs("OK", height= 10, dbh = 20)
+tariffs(spcode = "OK", height= 10, dbh = 20)
 tariffs("OK", 10, 20, re_h = 0.1, re_dbh = 0.05)
-tariffs(c("OK","NS", "NS", "SP", "SP"), c(10,10,5,10,10), c(20,20,10,20,NA),
- re_h = 0.01, re_dbh = 0.05)
+tariffs(spcode = c("OK","NS", "NS", "SP", "SP"), height = c(10,10,5,10,10),
+dbh = c(20,20,10,20,NA), re_h = 0.01, re_dbh = 0.05)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

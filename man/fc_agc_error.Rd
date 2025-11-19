@@ -8,14 +8,14 @@ fc_agc_error(
   name,
   dbh,
   height,
-  type = NA,
+  type = NULL,
   method = "IPCC2",
   biome = "temperate",
   output.all = TRUE,
   re_dbh = 0.05,
   re_h = 0.1,
   re = 0.025,
-  nsg = NA,
+  nsg = NULL,
   sig_nsg = 0.09413391
 )
 }
