@@ -954,18 +954,20 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
                                          paste(valid_methods, collapse = ", "))
   # Check type given method
   if (method %in% c("Matthews2", "IPCC2", "Thomas")){
-    if(anyNA(type) || any(!type %in% c("broadleaf", "conifer")))
-    warning ("Skipping any calculations where type is not defined as 'broadleaf'
-    or 'conifer' as required for chosen method")
-
-    if(length(type) != length(biomass))
-      stop("'type' and 'biomass' must have the same length.")
+    if(is.null(type) || anyNA(type) || any(!type %in% c("broadleaf", "conifer"))) {
+      warning ("Using method = 'IPCC1' for any trees where type is undefined
+               (type is required for the chosen method)")
+    } else {
+      if(length(type) != length(biomass))
+        stop("'type' and 'biomass' must have the same length.")
+    }
 
     # Check biome given method
     valid_biome <- c("tropical", "temperate", "subtropical", "boreal")
     if (method %in% c("IPCC2", "Thomas") & !(biome %in% valid_biome))
       stop("Invalid biome. Choose from: ", paste(valid_biome, collapse = ", "))
   }
+
   # Check biomass
   if(any(!is.numeric(biomass)))stop("biomass values must be numeric & positive")
 
@@ -988,6 +990,8 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
   } else if (method == "Matthews2") {
     # Get index values depending on type
     index <- match(type, CF_data$type)
+
+    # Change to a percentage
     CF <- CF_data$CVF[index] / 100
 
   } else {
@@ -1001,6 +1005,13 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
       CF <- CF_data$CVF[index] / 100
       sig_CF <- CF_data$confidence[index] / 100 / 1.96
 
+  }
+  # If CF is not matched, then use IPCC1
+  IPCC1 <- CVF_df$CVF[CVF_df$method == "IPCC1"]/100
+  if (length(CF) == 0) {
+    CF <- IPCC1
+  } else {
+    CF[is.na(CF)] <- IPCC1
   }
 
   # Calculate AGC (carbon)
@@ -1211,7 +1222,7 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @param name species name, either binomial or common
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
-#' @param height in metres
+#' @param height tree height in metres
 #' @param method method of converting biomass to carbon. Both 'Thomas' or 'IPCC2' require type.
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param output.all if TRUE (default) outputs all data from processing, else outputs carbon estimate
@@ -1333,7 +1344,7 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 #' @param name species name, either binomial or common
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
-#' @param height in metres
+#' @param height tree height in metres
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param output.all if TRUE outputs all data from processing, else just outputs carbon estimates
@@ -1520,7 +1531,7 @@ pro_error_carbon <- function(vol,sig_vol,den,sig_den,biom,biomsd,nruns=10000,
 #' @author Isabel Openshaw. I.Openshaw@kew.org
 #' @param name species name (common or binomial)
 #' @param type 'broadleaf' or 'conifer' (optional)
-#' @param dbh diameter at breast height (todo units)
+#' @param dbh diameter at breast height (cm)
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
 #' @param re  relative error of coefficients (default = 2.5%)
 #' @return  biomass in kg
@@ -1574,8 +1585,8 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025) {
 #'
 #' @title Estimate Tree Carbon using Biomass package functions
 #' @description Using the Biomass package to calculate carbon
-#' @param dbh Diameter at breast height (todo units)
-#' @param height height of tree (optional, if not specified will estimate height)
+#' @param dbh Diameter at breast height (cm)
+#' @param height height of tree in meteres (if not specified will estimate height)
 #' @param genus First part of species binomial
 #' @param species Second part of species binomial
 #' @param coords either a vector of coordinates of the site or a matrix of
@@ -1607,12 +1618,10 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
   }
 
   # Input validation
-  if (!is.numeric(dbh)) stop("'dbh' must be numeric.")
+  if (!is.numeric(dbh) | !is.numeric(height))
+    stop("'dbh' and 'height' must be numeric.")
   if (!is.character(genus) || !is.character(species)) {
     stop("'genus' and 'species' must be character vectors.")
-  }
-  if (!is.null(height) && !is.numeric(height)) {
-    stop("'height' must be numeric or NULL.")
   }
   if (!is.numeric(coords) || length(coords) != 2) {
     stop("'coords' must be a numeric vector of latitude and longitude.")
@@ -1629,6 +1638,11 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 
   df <- data.frame(dbh = dbh, height = height, genus = genus, species = species,
                    stringsAsFactors = FALSE)
+
+  # If height not inputted, generate dbh x height model
+  if (anyNA(height) | length(is.na(height)) > 15) {
+    HDmodel <- modelHD(D = dbh, H = height, method = "log2", drawGraph=TRUE)
+  }
 
   # Correct taxonomic names
   correct <- BIOMASS::correctTaxo(genus = genus, species = species)
@@ -2022,19 +2036,16 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   } else {
     WCC <- WCC[, !colnames(WCC) %in% c("name", "height")]
   }
-  allo <- allo[, !colnames(allo) %in% c("Genus", "Species", "DBH")]
+  allo <- allo[, !colnames(allo) %in% c("genus", "species", "dbh")]
   df <- cbind(bio, allo, WCC)
 
   # ==== Convert Biomass to Carbon ====
-
   if(returnv == "AGC"){
     colnames(df)[colnames(df) == "WCC"] <- "AGC_WCC_t"
 
     # Output one warning message for missing entries that will be skipped
     if (any(is.na(type0) | !type0 %in% c("broadleaf", "conifer"))) {
-      warning("Skipping entries that have no defined 'type' which is required
-              for the chosen biomass to carbon conversion method,
-              method = 'Matthews1' or 'IPCC1' don't require type.")
+      warning("Skipping entries with undefined 'type', see biomass2c function.")
     }
 
     # Calculate carbon in tonnes
