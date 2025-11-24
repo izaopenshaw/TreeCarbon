@@ -1599,6 +1599,11 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025) {
 #' columns 'Wood_Density', 'Wood_Density_sd', 'height_est', 'RSE'
 #' (Residual Standard Error of the model), 'height_1' (which is inputed height
 #' filled in with height estimate where missing).
+#' @param HDmethod If there are missing height variables, the function will
+#' predict height using a height diameter model. This model is custom if there
+#' are over 15 height measurements inputted, in which case you can choose a
+#' model fit for this from, HD_method = c("log2","weibull","log1","exp","lin")
+#' See BIOMASS::modelHD for more.
 #' @importFrom utils install.packages
 #' @import remotes
 #' @references Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault
@@ -1611,15 +1616,15 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025) {
 #' @aliases biomass
 #' @export
 #'
-BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World", output.all = TRUE) {
-  # Ensure the required package is installed
-  if (nchar(system.file(package = 'BIOMASS')) == 0) {
-    utils::install.packages("BIOMASS", dependencies = TRUE)
-  }
+BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World", output.all = TRUE, HD_method = ("log2")) {
 
-  # Input validation
-  if (!is.numeric(dbh) | !is.numeric(height))
-    stop("'dbh' and 'height' must be numeric.")
+  #### Input validation ####
+  if(!is.numeric(dbh))stop("dbh must be numeric vector of tree diameters (cm).")
+
+  if (!is.null(height) && !is.numeric(height))
+    stop("`height` must be a numeric vector of tree heights (m), or NULL for
+         height prediction.")
+
   if (!is.character(genus) || !is.character(species)) {
     stop("'genus' and 'species' must be character vectors.")
   }
@@ -1636,40 +1641,75 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
     stop("Lengths of 'dbh', 'genus', and 'species' must be equal.")
   }
 
+  #### Build output dataframe ####
   df <- data.frame(dbh = dbh, height = height, genus = genus, species = species,
                    stringsAsFactors = FALSE)
 
-  # If height not inputted, generate dbh x height model
-  if (anyNA(height) | length(is.na(height)) > 15) {
-    HDmodel <- modelHD(D = dbh, H = height, method = "log2", drawGraph=TRUE)
+  #### Correct taxonomic names ####
+  correct <- BIOMASS::correctTaxo(genus = genus, species = species, useCache= T)
+
+  if(any(correct$nameModified == "TRUE", na.rm = TRUE)){
+
+    df$genus_input <- genus
+    df$species_input <- species
+    df$genus <- correct$genusCorrected
+    df$species <- correct$speciesCorrected
+    df$Modified <- correct$nameModified
   }
 
-  # Correct taxonomic names
-  correct <- BIOMASS::correctTaxo(genus = genus, species = species)
-  df$genus_corrected <- correct$genusCorrected
-  df$species_corrected <- correct$speciesCorrected
-  df$Modified <- correct$nameModified
+  #### Get wood density ####
+  wd_cache <- new.env(parent = emptyenv())
 
-  # Get wood density
-  wd <- BIOMASS::getWoodDensity(df$genus_corrected, df$species, region = region)
+  get_wd_cached <- function(gen, sp, region) {
+    key <- paste(gen, sp, region, sep = "|")
+    if (!exists(key, wd_cache)) {
+      wd_cache[[key]] <- BIOMASS::getWoodDensity(gen, sp, region = region)
+    }
+    wd_cache[[key]]
+  }
+
+  wd <- get_wd_cached(df$genus, df$species, region)
+
   df$Wood_Density <- wd$meanWD
   df$Wood_Density_sd <- wd$sdWD
   df$Family <- wd$family
 
-  # Get height estimates (if height is not provided)
-  h <- BIOMASS::retrieveH(D = as.numeric(df$dbh), coord = coords)
-  df$RSE <- h$RSE
-  df$height_est <- h[["H"]]
+  #### Estimate height ####
 
-  # Combine height data with height estimates
-  df$height_1 <- ifelse(is.na(df$height), df$height_est, df$height)
+  # If there are missing height entries
+  if(anyNA(height)){
 
-  # Calculate Above-Ground Biomass (AGB)
-  df$AGB_Biomass_kg <- BIOMASS::computeAGB(
-    D = as.numeric(df$dbh),
-    WD = as.numeric(df$Wood_Density),
-    H = df$height_1
-  ) * 1000
+    # Inititialse which model to use
+    Hmodel <- "none"
+
+    # All tree heights are NA or there are <= 15 height measurements
+    if (is.null(height) |all(is.na(height)) | sum(!is.na(df$height)) <= 15) {
+      # Use global model
+      h <- BIOMASS::retrieveH(D = df$dbh, coord = coords)
+      df$height_pred <- h$H
+
+    # Else if tree heights > 15, generate dbh x height model
+    } else {
+
+      # Use linear modelling
+      HDmodel <- try(BIOMASS::modelHD(D = df$dbh, H = df$height,
+                                      method = HD_method), silent = TRUE)
+
+      if (inherits(HDmodel, "try-error")) {
+        method <- "global"
+      } else {
+        df$height_pred <- predict(HDmodel$model, newdata = data.frame(D = dbh))
+      }
+    }
+
+    # Combine height data with height estimates
+    df$height_input <- df$height
+    df$height <- ifelse(is.na(df$height), df$height_pred, df$height)
+  }
+
+  #### Calculate Above-Ground Biomass (AGB) ####
+  df$AGB_Biomass_kg <- BIOMASS::computeAGB(D = as.numeric(df$dbh),
+                        WD = as.numeric(df$Wood_Density), H = df$height) * 1000
 
   # Output results
   if (output.all) {
@@ -1989,12 +2029,14 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   bio <- suppressMessages(suppressWarnings(    # as can't be changed within this function
     BIOMASS(dbh, height, genus, species, coords, region, output.all = TRUE)))
 
-  if(!output.all){ bio <- bio[, c(1:7, 14)]}
-
-  # Use Biomass package to check spelling of species name's
+  # If spelling has been modified, use these corrections
   if(any(bio$Modified == TRUE, na.rm = TRUE)){
     genus <- bio$Genus_corrected
     species <- bio$Species_corrected
+
+  } else { # If not remove from output
+    bio <- bio[, !colnames(bio) %in% c("genus_corrected", "species_corrected",
+                                       "Modified")]
   }
   name <- paste(genus, species)
 
@@ -2003,7 +2045,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
     WCC <- suppressWarnings(fc_agc_error(name, dbh, height, type, method,
                                          biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg))
   } else if((method %in% c("Matthews1", "Matthews2", "IPCC1"))) {
-    WCC <- suppressWarnings(fc_agc(paste(genus, species), dbh, height, type,
+    WCC <- suppressWarnings(fc_agc(name, dbh, height, type,
                                    method, output.all = TRUE))
   } else {
     stop("Invalid method specified. Chose from 'Thomas', 'IPCC2', 'Matthews1',
@@ -2021,8 +2063,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   # Bunce
   AGB_Bunce_kg <- suppressWarnings(Bunce(name, dbh, re_dbh, re))
 
-  # ==== Clean columns for data output ====
-  # Reduce columns if not outputting all data
+  # ==== Create data frame to output ====
   if(!output.all){
     allo <- allo[, !colnames(allo) %in% c("allodb_a", "allodb_b")]
 
@@ -2033,15 +2074,17 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
       WCC <- WCC[, colnames(WCC) == c("AGB_WCC_t")]
     }
 
+    bio1 <- data.frame(Family = bio$Family, B_Wood_Density = bio$Wood_Density,
+                       B_WD_sd = bio$Wood_Density_sd, RSE = bio$RSE)
+
+    df <- data.frame(Genus = genus, Species = species, dbh, allo, WCC)
+
   } else {
-    WCC <- WCC[, !colnames(WCC) %in% c("name", "height")]
-  }
-  allo <- allo[, !colnames(allo) %in% c("genus", "species", "dbh")]
-  df <- cbind(bio, allo, WCC)
+    df <- data.frame(Genus = genus, Species = species, dbh, allo, WCC)
+    }
 
   # ==== Convert Biomass to Carbon ====
   if(returnv == "AGC"){
-    colnames(df)[colnames(df) == "WCC"] <- "AGC_WCC_t"
 
     # Output one warning message for missing entries that will be skipped
     if (any(is.na(type0) | !type0 %in% c("broadleaf", "conifer"))) {
@@ -2050,22 +2093,28 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
     # Calculate carbon in tonnes
     suppressWarnings({
-      df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome)
-      allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, biome, df$allodb_sigma*0.001)
-      bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
-    })
+    df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome)
+    allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, biome, df$allodb_sigma*0.001)
+    bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
+  })
 
     # Extract carbon and input in df
     df$AGC_allodb_t <- allo$AGC
     df$AGC_Bunce_t <- bunce$AGC
 
-    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg")]
+    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg", "allodb_sigma")]
 
-    #if(!anyNA(allo$sig_AGC)){
-    df$sig_allodb <- allo$sig_AGC
-    df$sig_Bunce <- bunce$sig_AGC
-    #}
+    df$sig_allodb_C <- allo$sig_AGC
+    df$sig_Bunce_C <- bunce$sig_AGC
+
+      # Clean column names
+    colnames(df)[colnames(df) == "WCC"] <- "AGC_WCC_t"
+    colnames(df)[colnames(df) == "sig_AGC"] <- "sig_WCC_C"
+
   } else {
+    df$AGB_Bunce_t <- AGB_Bunce_kg$biomass/1000
+    df$sig_Bunce_B <- AGB_Bunce_kg$sigma/1000
+
     colnames(df)[colnames(df) == "WCC"] <- "AGB_WCC_t"
   }
 

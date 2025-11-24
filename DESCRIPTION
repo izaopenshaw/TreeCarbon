@@ -30,9 +30,6 @@ Suggests:
     knitr,
     rmarkdown,
     testthat,
-    allodb,
-    BIOMASS,
-    shiny,
     httr2
     (>= 3.0.0)
 Config/testthat/edition: 3
@@ -43,5 +40,8 @@ Imports:
     stringr,
     utils,
     stats,
-    remotes
+    remotes,
+    allodb,
+    BIOMASS,
+    shiny
 LazyData: true
