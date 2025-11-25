@@ -1662,7 +1662,7 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
     Hmodel <- "none"
 
     # All tree heights are NA or there are <= 15 height measurements
-    if (is.null(height) |all(is.na(height)) | sum(!is.na(df$height)) <= 15) {
+    if (is.null(height) | all(is.na(height)) | sum(!is.na(df$height)) <= 15) {
       # Use global model
       h <- BIOMASS::retrieveH(D = df$dbh, coord = coords)
       df$height_pred <- h$H
@@ -1675,7 +1675,10 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
                                       method = HD_method), silent = TRUE)
 
       if (inherits(HDmodel, "try-error")) {
-        method <- "global"
+        # Fallback to global if local model fails
+        h <- BIOMASS::retrieveH(D = df$dbh, coord = coords)
+        df$height_pred <- h$H
+
       } else {
         df$height_pred <- predict(HDmodel$model, newdata = data.frame(D = dbh))
       }
@@ -2023,11 +2026,14 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   }
 
   # ==== Calculate AGB ====
+  #### allodb package ####
+  allo <- allodb(dbh, genus, species, coords, TRUE)
+
   #### BIOMASS package ####
-  bio <- suppressMessages(
-    #suppressWarnings(
-    BIOMASS(dbh, height, genus, species, coords, region, output.all = TRUE))
-    #)
+  bio <- suppressMessages(BIOMASS(dbh, height, genus, species, coords, region,
+                                  output.all = TRUE))
+  #### Bunce ####
+  AGB_Bunce_kg <- suppressWarnings(Bunce(name, dbh, re_dbh, re))
 
   #### Woodland Carbon Code ####
   name <- paste(genus, species)
@@ -2048,12 +2054,6 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
                   as.character(type), as.character(WCC$type))
   WCC$AGB_WCC_t <- WCC$crownbiomass_t + WCC$stembiomass_t
 
-  #### allodb package ####
-  allo <- allodb(dbh, genus, species, coords, TRUE)
-
-  #### Bunce ####
-  AGB_Bunce_kg <- suppressWarnings(Bunce(name, dbh, re_dbh, re))
-
   # ==== Convert Biomass to Carbon ====
   if(returnv == "AGC"){
 
@@ -2064,8 +2064,8 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
     # Calculate carbon in tonnes
     suppressWarnings({
-      bio_AGC <- biomass2c(bio$AGB_Biomass_kg*0.001, method, type0, biome)
       allo_AGC <- biomass2c(allo$AGB_allodb_kg*0.001, method, type0, biome, allo$allodb_sigma*0.001)
+      bio_AGC <- biomass2c(bio$AGB_Biomass_kg*0.001, method, type0, biome)
       bunce_AGC <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
     })
 
@@ -2073,17 +2073,17 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
    df <- data.frame(genus, species, family = bio$Family, dbh, height,
             allodb_C_t = allo_AGC$AGC,  allodb_C_sig = allo_AGC$sig_AGC,
             biomass_C_t = bio_AGC,      biomass_C_sig = bio_AGC,
+            Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC,
             WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC,
-            Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC)
+            )
 
   } else {
 
   df <- data.frame(genus, species, family = bio$Family, dbh, height,
    allodb_B_t = allo$AGB_allodb_kg/1000,  allodb_B_sig = allo$allodb_sigma/1000,
    biomass_B_t = bio$AGB_Biomass_kg/1000, biomass_B_sig=bio$AGB_Biomass_kg/1000,
-   WCC_B_t = WCC$AGB_WCC_t,               WCC_B_sig = WCC$sig_AGC,
-   Bunce_B_t = AGB_Bunce_kg$biomass/1000, Bunce_B_sig = AGB_Bunce_kg$sigma/1000)
-
+   Bunce_B_t = AGB_Bunce_kg$biomass/1000, Bunce_B_sig = AGB_Bunce_kg$sigma/1000,
+   WCC_B_t = WCC$AGB_WCC_t,               WCC_B_sig = WCC$sig_AGC)
   }
 
   # If height was predicted add these columns
