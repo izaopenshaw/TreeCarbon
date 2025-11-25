@@ -1616,7 +1616,8 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025) {
 #' @aliases biomass
 #' @export
 #'
-BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World", output.all = TRUE, HD_method = ("log2")) {
+BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World",
+                    output.all = TRUE, HD_method = ("log2")) {
 
   #### Input validation ####
   if(!is.numeric(dbh))stop("dbh must be numeric vector of tree diameters (cm).")
@@ -1642,33 +1643,11 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
   }
 
   #### Build output dataframe ####
-  df <- data.frame(dbh = dbh, height = height, genus = genus, species = species,
-                   stringsAsFactors = FALSE)
+  df <- data.frame(dbh = dbh, height = height, genus = as.character(genus),
+                   species = as.character(species), stringsAsFactors = FALSE)
 
-  #### Correct taxonomic names ####
-  correct <- BIOMASS::correctTaxo(genus = genus, species = species, useCache= T)
-
-  if(any(correct$nameModified == "TRUE", na.rm = TRUE)){
-
-    df$genus_input <- genus
-    df$species_input <- species
-    df$genus <- correct$genusCorrected
-    df$species <- correct$speciesCorrected
-    df$Modified <- correct$nameModified
-  }
-
-  #### Get wood density ####
-  wd_cache <- new.env(parent = emptyenv())
-
-  get_wd_cached <- function(gen, sp, region) {
-    key <- paste(gen, sp, region, sep = "|")
-    if (!exists(key, wd_cache)) {
-      wd_cache[[key]] <- BIOMASS::getWoodDensity(gen, sp, region = region)
-    }
-    wd_cache[[key]]
-  }
-
-  wd <- get_wd_cached(df$genus, df$species, region)
+  #### Fetch wood density ####
+  wd <- BIOMASS::getWoodDensity(df$genus, df$species, region = region)
 
   df$Wood_Density <- wd$meanWD
   df$Wood_Density_sd <- wd$sdWD
@@ -1958,19 +1937,23 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
 #' @param height in metres
-#' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
-#' @param output.all if TRUE outputs all data from processing, else just outputs carbon estimates
+#' @param method method of converting biomass to carbon. Either 'Thomas' or
+#' 'IPCC2' has the error associated and "Matthews1", "Matthews2" or "IPCC1" do not.
 #' @param region of the World. See ?getWoodDensity for the list of regions
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param coords either a vector of coordinates of the site or a matrix of
 #' coordinates for each tree of longitude and latitude
-#' @param re_dbh relative measurement error for diameter at breast height, single value
+#' @param re_dbh relative measurement error for diameter at breast height,
+#' single value
 #' @param re_h relative error of height measurement, single value
 #' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
 #' @param re relative error of coefficients (default = 2.5%)
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @param returnv either 'AGC' or 'AGB' for above ground carbon or biomass, respectively
+#' @param returnv either 'AGC' or 'AGB' for above ground carbon or biomass,
+#' respectively
+#' @param checkTaxo If TRUE then BIOMASS::correctTaxo will check spelling of
+#' species name. This is included in output if there were modifications made.
 #' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
 #' a list of tariff number, merchantable volume (metres cubed), stem volume
 #' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
@@ -1994,10 +1977,10 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' @export
 #'
 allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2",
-                        output.all = FALSE, returnv = "AGC",
-                        region = "Europe", biome = "temperate",
+                        returnv = "AGC", region = "Europe", biome = "temperate",
                         coords = c(-0.088837,51.071610), re_dbh = 0.05,
-                        re_h = 0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391){
+                        re_h = 0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
+                        checkTaxo = FALSE){
 
   # ==== Input checks ====
   if (!is.character(genus) || !is.character(species))
@@ -2021,26 +2004,34 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   if (!is.character(region) || !is.character(biome)){
     stop("region and biome must be character strings.")}
 
-  if(anyNA(genus) || anyNA(species) || anyNA(dbh) || anyNA(height)) {
-    warning("Entries will be skipped if Genus, Species, dbh or height is NA")}
+  #### Check spelling ####
+  if(checkTaxo){
+
+    correct <- BIOMASS::correctTaxo(genus = genus, species = species, useCache = TRUE)
+
+    # Proceed if any taxa were corrected
+    modified_names <- any(correct$nameModified == "TRUE", na.rm = TRUE)
+    if (modified_names) {
+
+      # Store original and corrected values
+      genus_input   <- genus
+      species_input <- species
+      genus         <- correct$genusCorrected
+      species       <- correct$speciesCorrected
+      name_modified      <- correct$nameModified
+    }
+  }
 
   # ==== Calculate AGB ====
-  # Using the BIOMASS package
-  bio <- suppressMessages(suppressWarnings(    # as can't be changed within this function
-    BIOMASS(dbh, height, genus, species, coords, region, output.all = TRUE)))
+  #### BIOMASS package ####
+  bio <- suppressMessages(
+    #suppressWarnings(
+    BIOMASS(dbh, height, genus, species, coords, region, output.all = TRUE))
+    #)
 
-  # If spelling has been modified, use these corrections
-  if(any(bio$Modified == TRUE, na.rm = TRUE)){
-    genus <- bio$Genus_corrected
-    species <- bio$Species_corrected
-
-  } else { # If not remove from output
-    bio <- bio[, !colnames(bio) %in% c("genus_corrected", "species_corrected",
-                                       "Modified")]
-  }
+  #### Woodland Carbon Code ####
   name <- paste(genus, species)
 
-  # Woodland Carbon Code
   if(method %in% c("Thomas", "IPCC2")){ # These methods contain errors for biomass conversion
     WCC <- suppressWarnings(fc_agc_error(name, dbh, height, type, method,
                                          biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg))
@@ -2057,31 +2048,11 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
                   as.character(type), as.character(WCC$type))
   WCC$AGB_WCC_t <- WCC$crownbiomass_t + WCC$stembiomass_t
 
-  # allodb package
+  #### allodb package ####
   allo <- allodb(dbh, genus, species, coords, TRUE)
 
-  # Bunce
+  #### Bunce ####
   AGB_Bunce_kg <- suppressWarnings(Bunce(name, dbh, re_dbh, re))
-
-  # ==== Create data frame to output ====
-  if(!output.all){
-    allo <- allo[, !colnames(allo) %in% c("allodb_a", "allodb_b")]
-
-    if(returnv == "AGC"){
-      WCC <- WCC[, colnames(WCC) %in% c("AGC_WCC_t", "sig_AGC")]
-
-    } else {
-      WCC <- WCC[, colnames(WCC) == c("AGB_WCC_t")]
-    }
-
-    bio1 <- data.frame(Family = bio$Family, B_Wood_Density = bio$Wood_Density,
-                       B_WD_sd = bio$Wood_Density_sd, RSE = bio$RSE)
-
-    df <- data.frame(Genus = genus, Species = species, dbh, allo, WCC)
-
-  } else {
-    df <- data.frame(Genus = genus, Species = species, dbh, allo, WCC)
-    }
 
   # ==== Convert Biomass to Carbon ====
   if(returnv == "AGC"){
@@ -2093,32 +2064,49 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
     # Calculate carbon in tonnes
     suppressWarnings({
-    df$AGC_biomass_t <- biomass2c(df$AGB_Biomass_kg*0.001, method, type0, biome)
-    allo <- biomass2c(df$AGB_allodb_kg*0.001, method, type0, biome, df$allodb_sigma*0.001)
-    bunce <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
-  })
+      bio_AGC <- biomass2c(bio$AGB_Biomass_kg*0.001, method, type0, biome)
+      allo_AGC <- biomass2c(allo$AGB_allodb_kg*0.001, method, type0, biome, allo$allodb_sigma*0.001)
+      bunce_AGC <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
+    })
 
-    # Extract carbon and input in df
-    df$AGC_allodb_t <- allo$AGC
-    df$AGC_Bunce_t <- bunce$AGC
-
-    df <- df[, !colnames(df) %in% c("AGB_allodb_kg", "AGB_Biomass_kg", "allodb_sigma")]
-
-    df$sig_allodb_C <- allo$sig_AGC
-    df$sig_Bunce_C <- bunce$sig_AGC
-
-      # Clean column names
-    colnames(df)[colnames(df) == "WCC"] <- "AGC_WCC_t"
-    colnames(df)[colnames(df) == "sig_AGC"] <- "sig_WCC_C"
+   # Output data frame
+   df <- data.frame(genus, species, family = bio$Family, dbh, height,
+            allodb_C_t = allo_AGC$AGC,  allodb_C_sig = allo_AGC$sig_AGC,
+            biomass_C_t = bio_AGC,      biomass_C_sig = bio_AGC,
+            WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC,
+            Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC)
 
   } else {
-    df$AGB_Bunce_t <- AGB_Bunce_kg$biomass/1000
-    df$sig_Bunce_B <- AGB_Bunce_kg$sigma/1000
 
-    colnames(df)[colnames(df) == "WCC"] <- "AGB_WCC_t"
+  df <- data.frame(genus, species, family = bio$Family, dbh, height,
+   allodb_B_t = allo$AGB_allodb_kg/1000,  allodb_B_sig = allo$allodb_sigma/1000,
+   biomass_B_t = bio$AGB_Biomass_kg/1000, biomass_B_sig=bio$AGB_Biomass_kg/1000,
+   WCC_B_t = WCC$AGB_WCC_t,               WCC_B_sig = WCC$sig_AGC,
+   Bunce_B_t = AGB_Bunce_kg$biomass/1000, Bunce_B_sig = AGB_Bunce_kg$sigma/1000)
+
   }
 
-  colnames(df)[colnames(df) == "sig_AGC"] <- "sig_WCC"
+  # If height was predicted add these columns
+  if('height_pred' %in% names(bio)){
+    df$input_height = bio$height_input
+    df$pred_height = bio$height_pred
+  }
+
+  # If spelling was checked and modified, then add to output
+  if(checkTaxo){
+    if(modified_names){
+      df$input_genus <- genus_input
+      df$input_species <- species_input
+      df$name_modified <- name_modified
+    }
+  }
+
+  # If type not entered then provide WCC calculations (used in biomass2c fn)
+  if(is.null(type) | anyNA(type)){
+    df$type <- type0
+    df$input_type <- type
+
+  }
 
   return(df)
 
