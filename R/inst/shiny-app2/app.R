@@ -4,7 +4,6 @@ library(shiny)
 library(ggplot2)
 library(TreeCarbon)
 
-
 ui <- fluidPage(
   titlePanel("Tree Above Ground Carbon: Allometry Comparison"),
   sidebarLayout(

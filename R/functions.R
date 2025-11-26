@@ -1957,10 +1957,9 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 #' respectively
 #' @param checkTaxo If TRUE then BIOMASS::correctTaxo will check spelling of
 #' species name. This is included in output if there were modifications made.
-#' @returns either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
-#' a list of tariff number, merchantable volume (metres cubed), stem volume
-#' (metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
-#' (tonnes) and root carbon (tonnes)
+#' @returns a dataframe with the inputs (with duplicated columns specifing
+#' if these were updated) and Above ground carbon, AGC in tonnes or above-ground
+#' biomass, AGB in tonnes for each allometric method
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #'  Carbon Assessment Protocol (v2. 0)." (2018).
 #' Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017).
@@ -1988,8 +1987,6 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   # ==== Input checks ====
   if (!is.character(genus) || !is.character(species))
     stop("genus and species must be character strings.")
-
-  if (!is.logical(output.all)) stop("output.all must be TRUE or FALSE.")
 
   if (!is.numeric(dbh) | any(dbh < 0, na.rm = TRUE))
     stop("dbh must be numeric and positive")
@@ -2033,11 +2030,10 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   bio <- suppressMessages(BIOMASS(dbh, height, genus, species, coords, region,
                                   output.all = TRUE))
   #### Bunce ####
+  name <- paste(genus, species)
   AGB_Bunce_kg <- suppressWarnings(Bunce(name, dbh, re_dbh, re))
 
   #### Woodland Carbon Code ####
-  name <- paste(genus, species)
-
   if(method %in% c("Thomas", "IPCC2")){ # These methods contain errors for biomass conversion
     WCC <- suppressWarnings(fc_agc_error(name, dbh, height, type, method,
                                          biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg))
@@ -2074,7 +2070,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
             allodb_C_t = allo_AGC$AGC,  allodb_C_sig = allo_AGC$sig_AGC,
             biomass_C_t = bio_AGC,      biomass_C_sig = bio_AGC,
             Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC,
-            WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC,
+            WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC
             )
 
   } else {
@@ -2312,5 +2308,4 @@ MC_propagate <- function(fn, inputs, N = 5000, corr_matrix = NULL, extra_args = 
   )
   return(result)
 }
-
 
