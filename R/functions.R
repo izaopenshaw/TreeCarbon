@@ -1984,7 +1984,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
                         re_h = 0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
                         checkTaxo = FALSE){
 
-  # ==== Input checks ====
+  # ==== Input checks =====
   if (!is.character(genus) || !is.character(species))
     stop("genus and species must be character strings.")
 
