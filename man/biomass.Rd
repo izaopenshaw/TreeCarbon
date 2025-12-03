@@ -12,13 +12,14 @@ BIOMASS(
   species,
   coords,
   region = "World",
-  output.all = TRUE
+  output.all = TRUE,
+  HD_method = ("log2")
 )
 }
 \arguments{
-\item{dbh}{Diameter at breast height (todo units)}
+\item{dbh}{Diameter at breast height (cm)}
 
-\item{height}{height of tree (optional, if not specified will estimate height)}
+\item{height}{height of tree in meteres (if not specified will estimate height)}
 
 \item{genus}{First part of species binomial}
 
@@ -30,6 +31,12 @@ coordinates for each tree of longitude and latitude}
 \item{region}{of the World. See ?getWoodDensity for the list of regions}
 
 \item{output.all}{if TRUE outputs all data from processing, else just outputs carbon figures}
+
+\item{HDmethod}{If there are missing height variables, the function will
+predict height using a height diameter model. This model is custom if there
+are over 15 height measurements inputted, in which case you can choose a
+model fit for this from, HD_method = c("log2","weibull","log1","exp","lin")
+See BIOMASS::modelHD for more.}
 }
 \value{
 Above-ground Biomass in kg. If output.all = FALSE, then returns

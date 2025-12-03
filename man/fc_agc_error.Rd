@@ -24,7 +24,7 @@ fc_agc_error(
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{height}{in metres}
+\item{height}{tree height in metres}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 

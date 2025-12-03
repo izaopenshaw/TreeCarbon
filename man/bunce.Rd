@@ -9,7 +9,7 @@ Bunce(name, dbh, type = NULL, re_dbh = NULL, re = 0.025)
 \arguments{
 \item{name}{species name (common or binomial)}
 
-\item{dbh}{diameter at breast height (todo units)}
+\item{dbh}{diameter at breast height (cm)}
 
 \item{type}{'broadleaf' or 'conifer' (optional)}
 

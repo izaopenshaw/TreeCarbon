@@ -11,7 +11,6 @@ allometries(
   height,
   type = NULL,
   method = "IPCC2",
-  output.all = FALSE,
   returnv = "AGC",
   region = "Europe",
   biome = "temperate",
@@ -20,7 +19,8 @@ allometries(
   re_h = 0.1,
   re = 0.025,
   nsg = NULL,
-  sig_nsg = 0.09413391
+  sig_nsg = 0.09413391,
+  checkTaxo = FALSE
 )
 }
 \arguments{
@@ -34,11 +34,11 @@ allometries(
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
-\item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
+\item{method}{method of converting biomass to carbon. Either 'Thomas' or
+'IPCC2' has the error associated and "Matthews1", "Matthews2" or "IPCC1" do not.}
 
-\item{output.all}{if TRUE outputs all data from processing, else just outputs carbon estimates}
-
-\item{returnv}{either 'AGC' or 'AGB' for above ground carbon or biomass, respectively}
+\item{returnv}{either 'AGC' or 'AGB' for above ground carbon or biomass,
+respectively}
 
 \item{region}{of the World. See ?getWoodDensity for the list of regions}
 
@@ -47,7 +47,8 @@ allometries(
 \item{coords}{either a vector of coordinates of the site or a matrix of
 coordinates for each tree of longitude and latitude}
 
-\item{re_dbh}{relative measurement error for diameter at breast height, single value}
+\item{re_dbh}{relative measurement error for diameter at breast height,
+single value}
 
 \item{re_h}{relative error of height measurement, single value}
 
@@ -57,12 +58,14 @@ coordinates for each tree of longitude and latitude}
 given by the WCC}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
+
+\item{checkTaxo}{If TRUE then BIOMASS::correctTaxo will check spelling of
+species name. This is included in output if there were modifications made.}
 }
 \value{
-either Above ground carbon, AGC in tonnes, or if output.all = TRUE,
-a list of tariff number, merchantable volume (metres cubed), stem volume
-(metres cubed), stem biomass (tonnes), stem carbon (tonnes), canopy carbon
-(tonnes) and root carbon (tonnes)
+a dataframe with the inputs (with duplicated columns specifing
+if these were updated) and Above ground carbon, AGC in tonnes or above-ground
+biomass, AGB in tonnes for each allometric method
 }
 \description{
 Function that inputs tree species code, dbh, height and method
