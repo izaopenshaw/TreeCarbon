@@ -424,8 +424,8 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
   # Apply Tariff Functions Using the Helper Function
   if (any(conifer_indices, na.rm = TRUE)) {
     tariff_output <- suppressWarnings(
-    conifer_tariff(spcode[conifer_indices], height[conifer_indices],
-                   dbh[conifer_indices], re_h, re_dbh, re))
+      conifer_tariff(spcode[conifer_indices], height[conifer_indices],
+                     dbh[conifer_indices], re_h, re_dbh, re))
     results <- process_result(tariff_output, conifer_indices, results, error)
   }
   if (any(broadleaf_indices, na.rm = TRUE)) {
@@ -501,22 +501,22 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
   if(is.null(sig_tariff)) {
     return(vol)
   } else {
-      if(!is.numeric(re_dbh)||re_dbh<0){stop("'re_dbh' must be positive & numeric")}
-      if (re_dbh > 1 || re_dbh > 1){
-        warning("Relative errors indicate high uncertainty to measured value")
-      }
-
-      sig_ba <- (pi * dbh / 20000) * re_dbh * dbh
-      sig_a2 <- k1 * sig_tariff
-      sig_a1 <- sqrt(
-        (k3 - k1 * k4)^2 * sig_tariff^2 +
-          (k4 * sig_a2)^2
-      )
-      sigma <- sqrt(sig_a1^2 + (ba * sig_a2)^2 + (a2 * sig_ba)^2)
-
-      result <- list(volume = vol, sigma = sigma)
-      return(result)
+    if(!is.numeric(re_dbh)||re_dbh<0){stop("'re_dbh' must be positive & numeric")}
+    if (re_dbh > 1 || re_dbh > 1){
+      warning("Relative errors indicate high uncertainty to measured value")
     }
+
+    sig_ba <- (pi * dbh / 20000) * re_dbh * dbh
+    sig_a2 <- k1 * sig_tariff
+    sig_a1 <- sqrt(
+      (k3 - k1 * k4)^2 * sig_tariff^2 +
+        (k4 * sig_a2)^2
+    )
+    sigma <- sqrt(sig_a1^2 + (ba * sig_a2)^2 + (a2 * sig_ba)^2)
+
+    result <- list(volume = vol, sigma = sigma)
+    return(result)
+  }
 }
 
 ############# FC stem tree volume ################
@@ -558,7 +558,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
     if (re > 1) warning("Relative errors indicate high uncertainty to measured value")
     if (!is.numeric(sig_mtreevol) || any(sig_mtreevol < 0, na.rm = TRUE)) {
       stop("sig_mtreevol must be numeric and positive")
-      }
+    }
   }
 
   # Round dbh values
@@ -566,7 +566,7 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 
   # Lookup conversion factor (cf) for dbh between 7 and 33, otherwise set to 1
   cf <- ifelse(is.na(dbh), NA, ifelse(dbh >= 7 & dbh < 33,
-               stemvoldf$X[match(dbh, stemvoldf$dbh..cm.)], 1))
+                                      stemvoldf$X[match(dbh, stemvoldf$dbh..cm.)], 1))
 
   # Compute stem volume
   stemvol <- ifelse(is.na(cf), NA, cf * mtreevol)
@@ -686,11 +686,11 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
 
   if(is.null(sig_treevol)) {
     return(woodbio)
-    } else {
-      if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
-        stop("'sig_treevol' must be positive & numeric")}
-      if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
-        stop("'sig_nsg' must be positive & numeric")}
+  } else {
+    if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
+      stop("'sig_treevol' must be positive & numeric")}
+    if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
+      stop("'sig_nsg' must be positive & numeric")}
 
     v <- !is.na(sig_treevol) & !is.na(treevol) & !is.na(nsg)
     sigma[v] <- error_product(treevol[v], sig_treevol[v], nsg[v], sig_nsg, returnv = "sigma")
@@ -769,14 +769,14 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
     sigma_dp <- dp * sqrt((rec_p * re_d)^2 + (log(dbh) * rec_p * re)^2)
     sigma <- ifelse(dbh <= 50,
                     error_product(rec_b1, rec_b1 * re, dp, sigma_dp),
-         sqrt((rec_A * re)^2 + (dbh * rec_b2 * re)^2 + (rec_b2 * dbh * re_d)^2))
+                    sqrt((rec_A * re)^2 + (dbh * rec_b2 * re)^2 + (rec_b2 * dbh * re_d)^2))
 
     return(data.frame(spcode=spcode, dbh=dbh, biomass=biomass, sigma=sigma))
 
   } else {
 
     return(biomass)
-   }
+  }
 }
 
 ############# FC Root Biomass (WCC Eq 8 & 9) ################
@@ -951,7 +951,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
   # Check methods
   valid_methods <- c("Matthews1", "Matthews2", "IPCC1", "IPCC2", "Thomas")
   if (!method %in% valid_methods) stop("Invalid method. Choose from: ",
-                                         paste(valid_methods, collapse = ", "))
+                                       paste(valid_methods, collapse = ", "))
   # Check type given method
   if (method %in% c("Matthews2", "IPCC2", "Thomas")){
     if(is.null(type) || anyNA(type) || any(!type %in% c("broadleaf", "conifer"))) {
@@ -995,15 +995,15 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
     CF <- CF_data$CVF[index] / 100
 
   } else {
-      # Check biome
-      if(!all(biome %in% CF_data$biome)) {
-        stop("Invalid biome for the chosen method. Choose from: ",
-             paste(unique(CF_data$biome), collapse = ", "))
-      }
-      CF_data <- CF_data[CF_data$biome == biome, ]
-      index <- match(type, CF_data$type)
-      CF <- CF_data$CVF[index] / 100
-      sig_CF <- CF_data$confidence[index] / 100 / 1.96
+    # Check biome
+    if(!all(biome %in% CF_data$biome)) {
+      stop("Invalid biome for the chosen method. Choose from: ",
+           paste(unique(CF_data$biome), collapse = ", "))
+    }
+    CF_data <- CF_data[CF_data$biome == biome, ]
+    index <- match(type, CF_data$type)
+    CF <- CF_data$CVF[index] / 100
+    sig_CF <- CF_data$confidence[index] / 100 / 1.96
 
   }
   # If CF is not matched, then use IPCC1
@@ -1021,7 +1021,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
   if (!is.null(sig_biomass) & method %in% c("Thomas", "IPCC2")) {
     if (length(sig_biomass) != length(biomass)){
       stop("Length of sig_biomass must match biomass length.")
-      }
+    }
     #sigma_AGC <- AGC * sqrt((sig_biomass / biomass)^2 + (re / 100)^2)
     sigma_AGC <- error_product(biomass, sig_biomass, CF, sig_CF, returnv = "sigma")
 
@@ -1055,8 +1055,8 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
 #'
 sap_seedling2C <- function(heightincm, type, re_h = NULL, re = 0.025) {
   if (!is.numeric(heightincm)){
-     stop("Argument 'heightincm' must be numeric.")
-   }
+    stop("Argument 'heightincm' must be numeric.")
+  }
   if (any(heightincm < 1 | heightincm > 1000, na.rm=TRUE)){
     warning("heightincm is only defined for values between 1 and 1000 cm.")
   }
@@ -1070,8 +1070,8 @@ sap_seedling2C <- function(heightincm, type, re_h = NULL, re = 0.025) {
     if (is.na(h) | is.na(t) | h < 1 | h > 1000) return(NA)
 
     if          (t == "broadleaf") {   data <- seedlings_broad
-      } else if (t == "conifer") {     data <- seedlings_conifer
-      } else {                         return(NA) }
+    } else if (t == "conifer") {     data <- seedlings_conifer
+    } else {                         return(NA) }
 
     lower_bound <- utils::tail(data[data$height.cm <= h, ], 1)
     upper_bound <- utils::head(data[data$height.cm >= h, ], 1)
@@ -1079,14 +1079,14 @@ sap_seedling2C <- function(heightincm, type, re_h = NULL, re = 0.025) {
     if (nrow(lower_bound) == 0 || nrow(upper_bound) == 0) return(NA)
 
     if (lower_bound$height.cm == upper_bound$height.cm) {
-        carbon_value <- lower_bound$Carbon.kg
+      carbon_value <- lower_bound$Carbon.kg
     } else {
-        h_diff <- upper_bound$height.cm - lower_bound$height.cm
-        carbon_diff <- upper_bound$Carbon.kg - lower_bound$Carbon.kg
-        proportion <- (h - lower_bound$height.cm) / h_diff
-        carbon_value <- lower_bound$Carbon.kg + proportion * carbon_diff
+      h_diff <- upper_bound$height.cm - lower_bound$height.cm
+      carbon_diff <- upper_bound$Carbon.kg - lower_bound$Carbon.kg
+      proportion <- (h - lower_bound$height.cm) / h_diff
+      carbon_value <- lower_bound$Carbon.kg + proportion * carbon_diff
     }
-  return(carbon_value)
+    return(carbon_value)
   }
 
   results <- mapply(sapling_carbon, heightincm, type, SIMPLIFY = FALSE)
@@ -1095,16 +1095,16 @@ sap_seedling2C <- function(heightincm, type, re_h = NULL, re = 0.025) {
   colnames(df) <- c("carbon")
 
   if (!is.na(re_h)) {
-      if (!is.numeric(re_h) | re_h < 0 | !is.numeric(re) | re < 0) {
-        stop("'re' and 're_h' must be numeric and positive")
-      }
-
-      carbon_sd <- 10 * re * df$carbon
-
-      return(list(carbon = df$carbon, sd = carbon_sd))
-  } else {
-      return(df$carbon)
+    if (!is.numeric(re_h) | re_h < 0 | !is.numeric(re) | re < 0) {
+      stop("'re' and 're_h' must be numeric and positive")
     }
+
+    carbon_sd <- 10 * re * df$carbon
+
+    return(list(carbon = df$carbon, sd = carbon_sd))
+  } else {
+    return(df$carbon)
+  }
 }
 
 ############# FC Lookup species Code ################
@@ -1245,7 +1245,7 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @aliases fc_agc
 #'
 fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
-                    "temperate", output.all = TRUE, nsg = NULL){
+                     "temperate", output.all = TRUE, nsg = NULL){
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
   if (!is.logical(output.all) || length(output.all) != 1) {
@@ -1285,7 +1285,7 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
   # ==== Small Trees ====
   # Get indicies for trees with height < 10 or dbh < 7m
   small_id <- type %in% class & !is.na(height) & (!is.na(dbh) & dbh < 7 |
-                                                   is.na(dbh) & height < 10)
+                                                    is.na(dbh) & height < 10)
   # For small trees, calculate carbon using sapling function
   if (any(small_id, na.rm = TRUE)) {
     carbon <- sap_seedling2C(heightincm = height[small_id] * 100, type[small_id])
@@ -1466,9 +1466,9 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
       rootbio <- rootbiomass(rec$Root[tall_id], dbh[tall_id], re_dbh)
 
       r[tall_id, c("tariff", "sig_tariff",
-        "mercvol_m.3", "sig_mercvol", "stemvol_m.3", "sig_stemvol",
-        "stembiomass_t", "sig_stembiomass", "crownbiomass_t", "sig_crownbiomass",
-        "rootbiomass_t", "sig_rootbiomass")] <-
+                   "mercvol_m.3", "sig_mercvol", "stemvol_m.3", "sig_stemvol",
+                   "stembiomass_t", "sig_stembiomass", "crownbiomass_t", "sig_crownbiomass",
+                   "rootbiomass_t", "sig_rootbiomass")] <-
         list(tariff$tariff, tariff$sigma,
              mercvol$volume, mercvol$sigma, stemvol$stemvolume, stemvol$sigma,
              woodbio$woodbiomass, woodbio$sigma, crownbio$biomass,
@@ -1667,7 +1667,7 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
       h <- BIOMASS::retrieveH(D = df$dbh, coord = coords)
       df$height_pred <- h$H
 
-    # Else if tree heights > 15, generate dbh x height model
+      # Else if tree heights > 15, generate dbh x height model
     } else {
 
       # Use linear modelling
@@ -1691,7 +1691,7 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 
   #### Calculate Above-Ground Biomass (AGB) ####
   df$AGB_Biomass_kg <- BIOMASS::computeAGB(D = as.numeric(df$dbh),
-                        WD = as.numeric(df$Wood_Density), H = df$height) * 1000
+                                           WD = as.numeric(df$Wood_Density), H = df$height) * 1000
 
   # Output results
   if (output.all) {
@@ -2065,21 +2065,21 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
       bunce_AGC <- biomass2c(AGB_Bunce_kg$biomass*0.001, method, type0, biome, AGB_Bunce_kg$sigma)
     })
 
-   # Output data frame
-   df <- data.frame(genus, species, family = bio$Family, dbh, height,
-            allodb_C_t = allo_AGC$AGC,  allodb_C_sig = allo_AGC$sig_AGC,
-            biomass_C_t = bio_AGC,      biomass_C_sig = bio_AGC,
-            Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC,
-            WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC
-            )
+    # Output data frame
+    df <- data.frame(genus, species, family = bio$Family, dbh, height,
+                     allodb_C_t = allo_AGC$AGC,  allodb_C_sig = allo_AGC$sig_AGC,
+                     biomass_C_t = bio_AGC,      biomass_C_sig = bio_AGC,
+                     Bunce_C_t = bunce_AGC$AGC,  Bunce_C_sig = bunce_AGC$sig_AGC,
+                     WCC_C_t = WCC$AGB_WCC_t,    WCC_C_sig = WCC$sig_AGC
+    )
 
   } else {
 
-  df <- data.frame(genus, species, family = bio$Family, dbh, height,
-   allodb_B_t = allo$AGB_allodb_kg/1000,  allodb_B_sig = allo$allodb_sigma/1000,
-   biomass_B_t = bio$AGB_Biomass_kg/1000, biomass_B_sig=bio$AGB_Biomass_kg/1000,
-   Bunce_B_t = AGB_Bunce_kg$biomass/1000, Bunce_B_sig = AGB_Bunce_kg$sigma/1000,
-   WCC_B_t = WCC$AGB_WCC_t,               WCC_B_sig = WCC$sig_AGC)
+    df <- data.frame(genus, species, family = bio$Family, dbh, height,
+                     allodb_B_t = allo$AGB_allodb_kg/1000,  allodb_B_sig = allo$allodb_sigma/1000,
+                     biomass_B_t = bio$AGB_Biomass_kg/1000, biomass_B_sig=bio$AGB_Biomass_kg/1000,
+                     Bunce_B_t = AGB_Bunce_kg$biomass/1000, Bunce_B_sig = AGB_Bunce_kg$sigma/1000,
+                     WCC_B_t = WCC$AGB_WCC_t,               WCC_B_sig = WCC$sig_AGC)
   }
 
   # If height was predicted add these columns
@@ -2308,4 +2308,3 @@ MC_propagate <- function(fn, inputs, N = 5000, corr_matrix = NULL, extra_args = 
   )
   return(result)
 }
-

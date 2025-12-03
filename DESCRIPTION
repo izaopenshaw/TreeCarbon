@@ -30,8 +30,13 @@ Suggests:
     knitr,
     rmarkdown,
     testthat,
-    httr2
-    (>= 3.0.0)
+    httr2 (>= 3.0.0),
+    shinydashboard,
+    plotly,
+    DT,
+    shinyBS,
+    tidyr,
+    writexl
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Depends: 
@@ -43,5 +48,8 @@ Imports:
     remotes,
     allodb,
     BIOMASS,
-    shiny
+    shiny,
+    ggplot2,
+    scales,
+    RColorBrewer
 LazyData: true

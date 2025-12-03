@@ -371,14 +371,3 @@ plot_allometry_comparison <- function(results_df, plot_type = "bar", returnv = "
     return(p)
   }
 }
-
-
-
-
-results <- allometries(c("Quercus","Quercus"), c("robur","robur"), c(20, 30), c(10, 15))
-compare_methods(results, "AGC")
-plot_allometry_comparison(results, "bar", "AGC", interactive = FALSE)
-
-results <- allometries(c("Quercus","Quercus"), c("robur","robur"), c(20, 30), c(10, 15), returnv = "AGB")
-compare_methods(results, "AGB")
-plot_allometry_comparison(results, "bar", "AGB", interactive = FALSE)
