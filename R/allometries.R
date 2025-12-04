@@ -254,13 +254,14 @@ add_error_bars <- function(p, plot_df, show_errors, position = NULL, width = 0.1
     return(p)
   }
 
-  # Build errorbar call
+  # Build errorbar call - use linewidth (not size) for ggplot2 3.4.0+
+  # Also set inherit.aes = FALSE and specify required aesthetics to avoid inheriting size from points
   errorbar_aes <- aes(ymin = ymin, ymax = ymax)
 
   if (is.null(position)) {
-    p <- p + geom_errorbar(errorbar_aes, width = width, na.rm = TRUE)
+    p <- p + geom_errorbar(errorbar_aes, width = width, linewidth = 0.5, na.rm = TRUE)
   } else {
-    p <- p + geom_errorbar(errorbar_aes, position = position, width = width, na.rm = TRUE)
+    p <- p + geom_errorbar(errorbar_aes, position = position, width = width, linewidth = 0.5, na.rm = TRUE)
   }
 
   return(p)
@@ -627,20 +628,19 @@ plot_allometries <- function(results_df, plot_type = "bar", returnv = "AGC",
     error_position <- jitter_setup$error_position
     error_width <- jitter_setup$error_width
 
-    # Determine point aesthetics based on size_scale
+    # Build geom_point based on size_scale
     if (is.null(size_scale)) {
-      point_aes <- aes()
-      point_size_val <- point_size
+      p <- ggplot(plot_df, aes(DBH, value, colour = method)) +
+        geom_point(position = point_position, size = point_size)
     } else if (size_scale == "Height") {
-      point_aes <- aes(size = Height)
-      point_size_val <- NULL
+      p <- ggplot(plot_df, aes(DBH, value, colour = method, size = Height)) +
+        geom_point(position = point_position)
     } else {
-      point_aes <- aes(size = DBH)
-      point_size_val <- NULL
+      p <- ggplot(plot_df, aes(DBH, value, colour = method, size = DBH)) +
+        geom_point(position = point_position)
     }
 
-    p <- ggplot(plot_df, aes(DBH, value, colour = method)) +
-      geom_point(mapping = point_aes, position = point_position, size = point_size_val) +
+    p <- p +
       scale_color_manual(values = method_colors) +
       labs(x = "DBH (cm)", y = y_label, title = paste("Above Ground", returnv, "Estimates by DBH"))
     p <- add_error_bars(p, plot_df, show_errors,
@@ -654,54 +654,57 @@ plot_allometries <- function(results_df, plot_type = "bar", returnv = "AGC",
     error_position <- jitter_setup$error_position
     error_width <- jitter_setup$error_width
 
-    # Determine point aesthetics based on size_scale
+    # Build geom_point based on size_scale
     if (is.null(size_scale)) {
-      point_aes <- aes()
-      point_size_val <- point_size
+      p <- ggplot(plot_df, aes(Height, value, colour = method)) +
+        geom_point(position = point_position, size = point_size)
     } else if (size_scale == "Height") {
-      point_aes <- aes(size = Height)
-      point_size_val <- NULL
+      p <- ggplot(plot_df, aes(Height, value, colour = method, size = Height)) +
+        geom_point(position = point_position)
     } else {
-      point_aes <- aes(size = DBH)
-      point_size_val <- NULL
+      p <- ggplot(plot_df, aes(Height, value, colour = method, size = DBH)) +
+        geom_point(position = point_position)
     }
 
-    p <- ggplot(plot_df, aes(Height, value, colour = method)) +
-      geom_point(mapping = point_aes, position = point_position, size = point_size_val) +
+    p <- p +
       scale_color_manual(values = method_colors) +
       labs(x = "Height (m)", y = y_label, title = paste("Above Ground", returnv, "Estimates by Height"))
     p <- add_error_bars(p, plot_df, show_errors,
                         position = error_position,
                         width = error_width)
   } else if (plot_type == "tree_index") {
-    # Use position_dodge to separate methods at each tree index
+    # Use position_dodge (or jitterdodge if jitter enabled) to separate methods at each tree index
     # Calculate dodge width based on number of methods
     n_methods <- length(unique(plot_df$method))
     dodge_width <- min(0.3, 0.5 / n_methods)
 
-    # Determine point aesthetics based on size_scale
-    if (is.null(size_scale)) {
-      point_aes <- aes()
-      point_size_val <- point_size
-    } else if (size_scale == "Height") {
-      point_aes <- aes(size = Height)
-      point_size_val <- NULL
+    # Set up position based on jitter parameter
+    if (jitter) {
+      point_position <- position_jitterdodge(jitter.width = 0.1, dodge.width = dodge_width, seed = 123)
+      error_position <- position_dodge(width = dodge_width)
     } else {
-      point_aes <- aes(size = DBH)
-      point_size_val <- NULL
+      point_position <- position_dodge(width = dodge_width)
+      error_position <- position_dodge(width = dodge_width)
     }
 
-    p <- ggplot(plot_df, aes(as.factor(tree), value, colour = method)) +
-      geom_point(
-        mapping = point_aes,
-        position = position_dodge(width = dodge_width),
-        size = point_size_val
-      ) +
+    # Build geom_point based on size_scale
+    if (is.null(size_scale)) {
+      p <- ggplot(plot_df, aes(as.factor(tree), value, colour = method)) +
+        geom_point(position = point_position, size = point_size)
+    } else if (size_scale == "Height") {
+      p <- ggplot(plot_df, aes(as.factor(tree), value, colour = method, size = Height)) +
+        geom_point(position = point_position)
+    } else {
+      p <- ggplot(plot_df, aes(as.factor(tree), value, colour = method, size = DBH)) +
+        geom_point(position = point_position)
+    }
+
+    p <- p +
       scale_color_manual(values = method_colors) +
       scale_x_discrete(name = "Tree Index") +
       labs(y = y_label, title = paste("Above Ground", returnv, "Estimates Across Allometric Methods by Tree Index"))
     p <- add_error_bars(p, plot_df, show_errors,
-                        position = position_dodge(width = dodge_width),
+                        position = error_position,
                         width = 0.2)
   } else if (plot_type == "density") {
     # Density plot showing distribution of estimates for each method

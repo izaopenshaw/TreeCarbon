@@ -197,9 +197,10 @@ ui <- dashboardPage(
                 valueBoxOutput("total_carbon"),
                 valueBoxOutput("avg_carbon")
               ),
+              # Warnings panel - only shown when there are warnings
+              uiOutput("warnings_panel"),
               fluidRow(
                 box(title = "Plot Options", width = 3, status = "info", solidHeader = TRUE,
-                    h5("Plot Type", style = "font-weight: bold;"),
                     selectInput("plot_type", "Plot Type:",
                                 choices = c("Bar graph (sum)" = "bar",
                                             "Scatter with index" = "tree_index",
@@ -215,9 +216,8 @@ ui <- dashboardPage(
                       checkboxInput("log_scale", "Log scale", value = FALSE)
                     ),
                     hr(),
-                    h5("Point Options", style = "font-weight: bold;"),
                     conditionalPanel(
-                      condition = "input.plot_type == 'dbh' || input.plot_type == 'height'",
+                      condition = "input.plot_type == 'dbh' || input.plot_type == 'height' || input.plot_type == 'tree_index'",
                       checkboxInput("jitter", "Jitter points", value = TRUE)
                     ),
                     conditionalPanel(
@@ -443,6 +443,9 @@ server <- function(input, output, session) {
   # Store cumulative data
   cumulative_data <- reactiveValues(data = NULL)
 
+  # Store warnings from calculations
+  calculation_warnings <- reactiveValues(warnings = character())
+
   # CSV size limit: 10MB, 1000 rows
   max_file_size <- 10 * 1024 * 1024  # 10MB
   max_rows <- 1000
@@ -541,30 +544,33 @@ server <- function(input, output, session) {
           return(NULL)
         }
 
-        # Handle type column
+        # Handle type column - use from CSV if available, otherwise use user-selected type
         if ("type" %in% colnames(df)) {
-          df$type <- ifelse(df$type == "NA" | is.na(df$type), NA, df$type)
+          tree_types <- df$type
         } else {
-          df$type <- NA
+          tree_types <- type_val
         }
 
-        # Process rows
-        result_list <- list()
+        # Process all rows at once (vectorized) instead of row-by-row
         n_rows <- nrow(df)
-        errors <- 0
 
-        for (i in 1:n_rows) {
-          incProgress(1/n_rows, detail = paste("Processing tree", i, "of", n_rows))
+        incProgress(0.5, detail = "Calculating allometries for all trees...")
 
-          tree_type <- if (is.na(df$type[i]) || df$type[i] == "NA") type_val else df$type[i]
-          if (!is.null(tree_type) && tree_type == "NA") tree_type <- NULL
+        # Use environment to capture warnings reliably
+        warn_env <- new.env()
+        warn_env$warnings <- character()
 
-          result_list[[i]] <- tryCatch({
-            allometries(genus = as.character(df$genus[i]),
-                        species = as.character(df$species[i]),
-                        dbh = df$dbh[i],
-                        height = df$height[i],
-                        type = tree_type,
+        # Set warning option to capture all warnings
+        old_warn <- getOption("warn")
+        options(warn = 1)  # Immediate warnings
+
+        result <- tryCatch(
+          withCallingHandlers({
+            allometries(genus = as.character(df$genus),
+                        species = as.character(df$species),
+                        dbh = df$dbh,
+                        height = df$height,
+                        type = tree_types,
                         method = input$method,
                         returnv = input$returnv,
                         region = input$region,
@@ -576,54 +582,111 @@ server <- function(input, output, session) {
                         nsg = nsg_val,
                         sig_nsg = input$sig_nsg,
                         checkTaxo = input$checkTaxo)
-          }, error = function(e) {
-            errors <<- errors + 1
-            # Return NA row
-            result_cols <- if (input$returnv == "AGC") {
-              c("genus", "species", "dbh", "height", "WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
-            } else {
-              c("genus", "species", "dbh", "height", "WCC_B_t", "biomass_B_t", "allodb_B_t", "Bunce_B_t")
-            }
-            result_df <- data.frame(matrix(NA, nrow = 1, ncol = length(result_cols)))
-            colnames(result_df) <- result_cols
-            result_df$genus <- df$genus[i]
-            result_df$species <- df$species[i]
-            result_df$dbh <- df$dbh[i]
-            result_df$height <- df$height[i]
-            result_df
-          })
+          },
+          warning = function(w) {
+            warn_env$warnings <- c(warn_env$warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+          },
+          message = function(m) {
+            warn_env$warnings <- c(warn_env$warnings, paste("Note:", conditionMessage(m)))
+            invokeRestart("muffleMessage")
+          }),
+          error = function(e) {
+            warn_env$warnings <- c(warn_env$warnings, paste("Error:", e$message))
+            showNotification(paste("Error processing data:", e$message), type = "error", duration = 10)
+            return(NULL)
+          }
+        )
+
+        # Restore warning option
+        options(warn = old_warn)
+
+        # Store unique warnings and show notifications
+        captured_warnings <- warn_env$warnings
+        if (length(captured_warnings) > 0) {
+          unique_warnings <- unique(captured_warnings)
+          calculation_warnings$warnings <- unique_warnings
+          # Show each unique warning as a notification
+          for (w in unique_warnings) {
+            showNotification(w, type = "warning", duration = 15)
+          }
+        } else {
+          calculation_warnings$warnings <- character()
         }
 
-        if (errors > 0) {
-          showNotification(paste("Warning:", errors, "tree(s) had errors"), type = "warning", duration = 5)
-        }
+        incProgress(1, detail = "Done!")
 
-        result <- do.call(rbind, result_list)
-        showNotification(paste("Processed", n_rows - errors, "tree(s)"), type = "message", duration = 3)
+        if (!is.null(result)) {
+          showNotification(paste("Successfully processed", n_rows, "tree(s)"), type = "message", duration = 3)
+        }
         return(result)
       })
     } else {
       # Single tree
       withProgress(message = "Calculating...", value = 0, {
         incProgress(0.5)
-        result <- allometries(genus = input$genus,
-                              species = input$species,
-                              dbh = input$dbh,
-                              height = input$height,
-                              type = type_val,
-                              method = input$method,
-                              returnv = input$returnv,
-                              region = input$region,
-                              biome = input$biome,
-                              coords = coords,
-                              re_dbh = input$re_dbh / 100,
-                              re_h = input$re_h / 100,
-                              re = input$re / 100,
-                              nsg = nsg_val,
-                              sig_nsg = input$sig_nsg,
-                              checkTaxo = input$checkTaxo)
+
+        # Use environment to capture warnings reliably
+        warn_env <- new.env()
+        warn_env$warnings <- character()
+
+        # Set warning option to capture all warnings
+        old_warn <- getOption("warn")
+        options(warn = 1)  # Immediate warnings
+
+        result <- tryCatch(
+          withCallingHandlers({
+            allometries(genus = input$genus,
+                        species = input$species,
+                        dbh = input$dbh,
+                        height = input$height,
+                        type = type_val,
+                        method = input$method,
+                        returnv = input$returnv,
+                        region = input$region,
+                        biome = input$biome,
+                        coords = coords,
+                        re_dbh = input$re_dbh / 100,
+                        re_h = input$re_h / 100,
+                        re = input$re / 100,
+                        nsg = nsg_val,
+                        sig_nsg = input$sig_nsg,
+                        checkTaxo = input$checkTaxo)
+          },
+          warning = function(w) {
+            warn_env$warnings <- c(warn_env$warnings, conditionMessage(w))
+            invokeRestart("muffleWarning")
+          },
+          message = function(m) {
+            warn_env$warnings <- c(warn_env$warnings, paste("Note:", conditionMessage(m)))
+            invokeRestart("muffleMessage")
+          }),
+          error = function(e) {
+            warn_env$warnings <- c(warn_env$warnings, paste("Error:", e$message))
+            showNotification(paste("Error:", e$message), type = "error", duration = 10)
+            return(NULL)
+          }
+        )
+
+        # Restore warning option
+        options(warn = old_warn)
+
+        # Store unique warnings and show notifications
+        captured_warnings <- warn_env$warnings
+        if (length(captured_warnings) > 0) {
+          unique_warnings <- unique(captured_warnings)
+          calculation_warnings$warnings <- unique_warnings
+          for (w in unique_warnings) {
+            showNotification(w, type = "warning", duration = 15)
+          }
+        } else {
+          calculation_warnings$warnings <- character()
+        }
+
         incProgress(1)
-        showNotification("Calculation complete!", type = "message", duration = 2)
+        if (!is.null(result)) {
+          showNotification("Calculation complete!", type = "message", duration = 2)
+        }
         return(result)
       })
     }
@@ -643,6 +706,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$clear, {
     cumulative_data$data <- NULL
+    calculation_warnings$warnings <- character()
   })
 
   # Current data
@@ -703,6 +767,36 @@ server <- function(input, output, session) {
     !is.null(df) && is.data.frame(df) && nrow(df) > 0
   })
   outputOptions(output, "has_data", suspendWhenHidden = FALSE)
+
+  # Warnings panel display
+  output$warnings_panel <- renderUI({
+    warnings <- calculation_warnings$warnings
+    if (length(warnings) == 0) return(NULL)
+
+    # Create a formatted list of warnings
+    warning_items <- lapply(warnings, function(w) {
+      tags$li(
+        tags$span(icon("exclamation-circle"), style = "color: #f39c12; margin-right: 8px;"),
+        w
+      )
+    })
+
+    fluidRow(
+      box(title = "Warnings & Notes", width = 12, status = "warning", solidHeader = TRUE,
+          collapsible = TRUE, collapsed = FALSE,
+          tags$div(
+            tags$p(tags$strong(paste(length(warnings), "warning(s) from last calculation:")),
+                   style = "margin-bottom: 10px;"),
+            tags$ul(warning_items, style = "list-style-type: none; padding-left: 0;"),
+            tags$hr(),
+            tags$p(
+              tags$em("These warnings indicate potential data quality issues. Results may still be valid, but review carefully."),
+              style = "color: #666; font-size: 0.9em;"
+            )
+          )
+      )
+    )
+  })
 
   # Summary boxes
   output$total_trees <- renderValueBox({
@@ -796,10 +890,11 @@ server <- function(input, output, session) {
                         "light" = ggplot2::theme_light,
                         "dark" = ggplot2::theme_dark,
                         ggplot2::theme_minimal)
-    jitter_val <- if (input$plot_type == "dbh" || input$plot_type == "height") {
+    jitter_val <- if (input$plot_type == "dbh" || input$plot_type == "height" || input$plot_type == "tree_index") {
       if (is.null(input$jitter)) TRUE else input$jitter
     } else TRUE
 
+    # Create plot object
     p <- plot_allometries(df, input$plot_type, input$returnv,
                           input$show_errors, TRUE,
                           log_scale = input$log_scale,
@@ -811,12 +906,41 @@ server <- function(input, output, session) {
                           point_size = input$point_size,
                           x_min = x_min_val, x_max = x_max_val,
                           y_min = y_min_val, y_max = y_max_val)
+
     if (is.null(p)) {
       if (requireNamespace("plotly", quietly = TRUE)) {
         return(plotly::layout(plotly::plotly_empty(), title = "No data available to plot"))
       }
       return(NULL)
     }
+
+    # Capture warnings during plotly conversion/rendering
+    plot_warnings <- character()
+    result <- withCallingHandlers({
+      # For plotly, the warnings happen during ggplotly build
+      if (inherits(p, "plotly")) {
+        p
+      } else {
+        # Build the plot to trigger any ggplot warnings
+        ggplot2::ggplot_build(p)
+        p
+      }
+    }, warning = function(w) {
+      plot_warnings <<- c(plot_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
+
+    # Show plot warnings as notifications
+    if (length(plot_warnings) > 0) {
+      unique_warnings <- unique(plot_warnings)
+      # Append to existing warnings
+      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", unique_warnings))
+      calculation_warnings$warnings <- unique(all_warnings)
+      for (w in unique_warnings) {
+        showNotification(paste("Plot:", w), type = "warning", duration = 10)
+      }
+    }
+
     # Log scale is handled in plot_allometries function (only for scatter plots)
     p
   })
@@ -846,10 +970,11 @@ server <- function(input, output, session) {
                         "light" = ggplot2::theme_light,
                         "dark" = ggplot2::theme_dark,
                         ggplot2::theme_minimal)
-    jitter_val <- if (input$plot_type == "dbh" || input$plot_type == "height") {
+    jitter_val <- if (input$plot_type == "dbh" || input$plot_type == "height" || input$plot_type == "tree_index") {
       if (is.null(input$jitter)) TRUE else input$jitter
     } else TRUE
 
+    # Create plot object first
     p <- plot_allometries(df, input$plot_type, input$returnv,
                           input$show_errors, FALSE,
                           log_scale = input$log_scale,
@@ -861,11 +986,35 @@ server <- function(input, output, session) {
                           point_size = input$point_size,
                           x_min = x_min_val, x_max = x_max_val,
                           y_min = y_min_val, y_max = y_max_val)
+
     if (is.null(p)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "No data available to plot") +
                theme_void())
     }
+
+    # Capture warnings during plot BUILD (ggplot_build triggers the warnings)
+    plot_warnings <- character()
+    withCallingHandlers({
+      # Build the plot - this triggers "Removed X rows" warnings
+      ggplot2::ggplot_build(p)
+    }, warning = function(w) {
+      plot_warnings <<- c(plot_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
+
+    # Show plot warnings as notifications
+    if (length(plot_warnings) > 0) {
+      unique_warnings <- unique(plot_warnings)
+      # Append to existing warnings
+      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", unique_warnings))
+      calculation_warnings$warnings <- unique(all_warnings)
+      for (w in unique_warnings) {
+        showNotification(paste("Plot:", w), type = "warning", duration = 10)
+      }
+    }
+
+    # Return the plot for Shiny to render
     p
   })
 

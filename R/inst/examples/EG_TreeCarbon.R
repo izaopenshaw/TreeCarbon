@@ -5,6 +5,12 @@ devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE) # force = TRUE 
 # Load package
 library(TreeCarbon)
 
+#======= Example data set =======
+setwd("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents")
+eg <- read.csv("example_data.csv")
+
+als <- allometries(eg$genus, eg$species, eg$dbh, eg$height, eg$type)
+
 #======= Simulation data set =======
 dbhs <- seq(6,100,1)
 n <- length(dbhs)
