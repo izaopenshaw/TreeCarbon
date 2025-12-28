@@ -11,6 +11,14 @@ eg <- read.csv("example_data.csv")
 
 als <- allometries(eg$genus, eg$species, eg$dbh, eg$height, eg$type)
 
+genus <- eg$genus
+species <- eg$species
+dbh <- eg$dbh
+height <- eg$height
+type <- eg$type
+method ="IPCC2" ; returnv = "AGC" ; region = "Europe"
+biome = "temperate" ; coords = c(-0.088837,51.071610) ; re_dbh = 0.05 ; re_h = 0.1; re = 0.025; nsg = NULL; sig_nsg = 0.09413391; checkTaxo = FALSE
+
 #======= Simulation data set =======
 dbhs <- seq(6,100,1)
 n <- length(dbhs)

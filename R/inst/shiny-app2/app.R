@@ -26,9 +26,6 @@ if (requireNamespace("shinyBS", quietly = TRUE)) {
 } else {
   warning("shinyBS not installed. Tooltips will not work.")
 }
-if (requireNamespace("RColorBrewer", quietly = TRUE)) {
-  library(RColorBrewer)
-}
 if (requireNamespace("scales", quietly = TRUE)) {
   library(scales)
 }
@@ -72,6 +69,14 @@ ui <- dashboardPage(
         .help-icon { cursor: pointer; color: #337ab7; }
         .shiny-notification { position: fixed; top: calc(50% - 50px); left: calc(50% - 200px); }
         .tooltip-inner { white-space: nowrap; max-width: 500px; }
+        .fa-question-circle {
+          color: #6c757d;
+          cursor: help;
+          margin-left: 5px;
+          font-size: 0.9em;
+        }
+        .fa-question-circle:hover { color: #007bff; }
+        .box-title .fa-question-circle { font-weight: normal; }
       "))
     ),
     tabItems(
@@ -178,6 +183,9 @@ ui <- dashboardPage(
                       )
                     },
                     hr(),
+                    checkboxInput("calc_stats", "Calculate comparison statistics", value = FALSE),
+                    helpText("Compare estimates across allometric methods (WCC, BIOMASS, allodb, Bunce)"),
+                    hr(),
                     actionButton("calculate", "Calculate", class = "btn-primary btn-lg"),
                     actionButton("clear", "Clear Results", class = "btn-warning")
                 )
@@ -197,8 +205,6 @@ ui <- dashboardPage(
                 valueBoxOutput("total_carbon"),
                 valueBoxOutput("avg_carbon")
               ),
-              # Warnings panel - only shown when there are warnings
-              uiOutput("warnings_panel"),
               fluidRow(
                 box(title = "Plot Options", width = 3, status = "info", solidHeader = TRUE,
                     selectInput("plot_type", "Plot Type:",
@@ -242,7 +248,7 @@ ui <- dashboardPage(
                           selectInput("color_scheme", "Color scheme:",
                                       choices = c("Default" = "default",
                                                   "Viridis" = "viridis",
-                                                  "ColorBrewer" = "brewer"),
+                                                  "Colorblind-friendly" = "colorblind"),
                                       selected = "default"),
                           selectInput("plot_theme", "Plot theme:",
                                       choices = c("Minimal" = "minimal",
@@ -279,6 +285,8 @@ ui <- dashboardPage(
                     uiOutput("plot_ui")
                 )
               ),
+              # Warnings panel - shown below the graph when there are warnings
+              uiOutput("warnings_panel"),
               fluidRow(
                 box(title = "Data Filters & Plot Dimensions", width = 12, status = "warning", solidHeader = TRUE, collapsible = TRUE, collapsed = TRUE,
                     fluidRow(
@@ -336,21 +344,73 @@ ui <- dashboardPage(
       ),
       # Statistics Tab
       tabItem(tabName = "stats",
-              fluidRow(
-                box(title = "Summary Statistics by Method", width = 6, status = "primary", solidHeader = TRUE,
-                    DT::dataTableOutput("summary_stats")
-                ),
-                box(title = "Method Agreement", width = 6, status = "primary", solidHeader = TRUE,
-                    DT::dataTableOutput("method_agreement")
+              conditionalPanel(
+                condition = "!input.calc_stats",
+                fluidRow(
+                  box(title = "Statistics Not Enabled", width = 12, status = "warning", solidHeader = TRUE,
+                      p("To view comparison statistics, enable 'Calculate comparison statistics' in the Input & Calculation tab and click Calculate.")
+                  )
                 )
               ),
-              fluidRow(
-                box(title = "Mean Differences Matrix", width = 6, status = "info", solidHeader = TRUE,
-                    DT::dataTableOutput("mean_differences")
+              conditionalPanel(
+                condition = "input.calc_stats",
+                fluidRow(
+                  box(title = "Filter Methods for Comparison", width = 12, status = "warning", solidHeader = TRUE,
+                      checkboxGroupInput("stats_filter_methods", "Select methods to compare:",
+                                         choices = c("WCC" = "WCC", "BIOMASS" = "BIOMASS",
+                                                     "allodb" = "allodb", "Bunce" = "Bunce"),
+                                         selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
+                                         inline = TRUE)
+                  )
                 ),
-                box(title = "Correlation Matrix", width = 6, status = "info", solidHeader = TRUE,
-                    helpText("Note: Correlation matrix requires multiple trees for meaningful comparison. For single trees, correlation is always 1."),
-                    DT::dataTableOutput("correlation_matrix")
+                fluidRow(
+                  box(title = tags$span("Method Comparison Boxplot ",
+                                        tags$i(class = "fa fa-question-circle",
+                                               title = "Shows the distribution of estimates from each allometric method. Compare medians (middle line), spread (box height = IQR), and outliers (points). Methods with similar distributions produce comparable estimates.")),
+                      width = 12, status = "primary", solidHeader = TRUE,
+                      helpText("Distribution of carbon/biomass estimates across all trees for each allometric method. Wider boxes indicate more variability."),
+                      plotOutput("method_boxplot", height = "400px")
+                  )
+                ),
+                fluidRow(
+                  box(title = tags$span("Bland-Altman Plots ",
+                                        tags$i(class = "fa fa-question-circle",
+                                               title = "Bland-Altman plots visualize agreement between two methods. X-axis: mean of both methods. Y-axis: difference between methods. The blue line shows bias (systematic difference). Red dashed lines show 95% limits of agreement. Points should scatter randomly around zero if methods agree well.")),
+                      width = 12, status = "success", solidHeader = TRUE,
+                      helpText(tags$strong("How to interpret:"), " Each point is one tree. The blue line = mean bias. Red dashed lines = 95% limits of agreement (\u00B11.96 SD). Good agreement: points scattered evenly around zero, narrow limits."),
+                      helpText(tags$strong("Warning signs:"), " Trend in points = proportional bias (methods disagree more at higher/lower values). Wide limits = poor reliability."),
+                      uiOutput("ba_comparison_ui"),
+                      plotOutput("bland_altman_plot", height = "400px")
+                  )
+                ),
+                fluidRow(
+                  box(title = tags$span("Bland-Altman Metrics ",
+                                        tags$i(class = "fa fa-question-circle",
+                                               title = "Bias: Average difference between methods (positive = Method 1 higher). Limits of Agreement (LoA): 95% of differences fall within these bounds. Narrower LoA = better agreement. % Within LoA: Should be ~95% if data is normally distributed.")),
+                      width = 12, status = "success", solidHeader = TRUE,
+                      helpText(tags$strong("Bias:"), " Mean difference between methods. Ideally close to 0."),
+                      helpText(tags$strong("Lower/Upper LoA:"), " 95% limits of agreement (Bias \u00B1 1.96\u00D7SD). Narrower = more consistent agreement."),
+                      DT::dataTableOutput("bland_altman_table")
+                  )
+                ),
+                fluidRow(
+                  box(title = tags$span("Normalized Differences ",
+                                        tags$i(class = "fa fa-question-circle",
+                                               title = "Normalized difference scales the comparison relative to estimate magnitude: (Method1 - Method2)/(Method1 + Method2). Values range -1 to +1. Near 0 = good agreement. Useful when comparing trees of different sizes.")),
+                      width = 12, status = "info", solidHeader = TRUE,
+                      helpText("Normalized difference: (AGB\u2081 - AGB\u2082) / (AGB\u2081 + AGB\u2082). Values range from -1 to 1, where 0 = perfect agreement."),
+                      helpText("Reference: Neumann et al. (2022) European Journal of Forest Research"),
+                      plotOutput("normalized_diff_plot", height = "400px")
+                  )
+                ),
+                fluidRow(
+                  box(title = tags$span("Normalized Differences Summary ",
+                                        tags$i(class = "fa fa-question-circle",
+                                               title = "Mean: Average normalized difference (0 = no systematic bias). SD: Spread of differences (lower = more consistent). Interpretation thresholds: <0.05 good, 0.05-0.15 moderate, >0.15 large difference.")),
+                      width = 12, status = "info", solidHeader = TRUE,
+                      helpText("Mean and SD of normalized differences for each method pair. Interpretation: |Mean| < 0.05 = Good, < 0.15 = Moderate, \u2265 0.15 = Large difference."),
+                      DT::dataTableOutput("normalized_diff_table")
+                  )
                 )
               )
       ),
@@ -434,6 +494,11 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+
+  # Helper function to strip ANSI color codes from strings
+  strip_ansi <- function(x) {
+    gsub("\033\\[[0-9;]*m", "", x)
+  }
 
   # Add tooltips (if shinyBS is available)
   if (requireNamespace("shinyBS", quietly = TRUE)) {
@@ -605,9 +670,11 @@ server <- function(input, output, session) {
         captured_warnings <- warn_env$warnings
         if (length(captured_warnings) > 0) {
           unique_warnings <- unique(captured_warnings)
-          calculation_warnings$warnings <- unique_warnings
+          # Strip ANSI codes before storing
+          clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
+          calculation_warnings$warnings <- clean_warnings
           # Show each unique warning as a notification
-          for (w in unique_warnings) {
+          for (w in clean_warnings) {
             showNotification(w, type = "warning", duration = 15)
           }
         } else {
@@ -675,8 +742,10 @@ server <- function(input, output, session) {
         captured_warnings <- warn_env$warnings
         if (length(captured_warnings) > 0) {
           unique_warnings <- unique(captured_warnings)
-          calculation_warnings$warnings <- unique_warnings
-          for (w in unique_warnings) {
+          # Strip ANSI codes before storing
+          clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
+          calculation_warnings$warnings <- clean_warnings
+          for (w in clean_warnings) {
             showNotification(w, type = "warning", duration = 15)
           }
         } else {
@@ -773,6 +842,7 @@ server <- function(input, output, session) {
     warnings <- calculation_warnings$warnings
     if (length(warnings) == 0) return(NULL)
 
+    # Warnings are already cleaned of ANSI codes when stored
     # Create a formatted list of warnings
     warning_items <- lapply(warnings, function(w) {
       tags$li(
@@ -894,18 +964,25 @@ server <- function(input, output, session) {
       if (is.null(input$jitter)) TRUE else input$jitter
     } else TRUE
 
-    # Create plot object
-    p <- plot_allometries(df, input$plot_type, input$returnv,
-                          input$show_errors, TRUE,
-                          log_scale = input$log_scale,
-                          color_scheme = input$color_scheme,
-                          font_size = input$font_size,
-                          size_scale = size_scale_val,
-                          theme = theme_val,
-                          jitter = jitter_val,
-                          point_size = input$point_size,
-                          x_min = x_min_val, x_max = x_max_val,
-                          y_min = y_min_val, y_max = y_max_val)
+    # Capture all warnings from plot creation and rendering
+    plot_warnings <- character()
+
+    p <- withCallingHandlers({
+      plot_allometries(df, input$plot_type, input$returnv,
+                       input$show_errors, TRUE,
+                       log_scale = input$log_scale,
+                       color_scheme = input$color_scheme,
+                       font_size = input$font_size,
+                       size_scale = size_scale_val,
+                       theme = theme_val,
+                       jitter = jitter_val,
+                       point_size = input$point_size,
+                       x_min = x_min_val, x_max = x_max_val,
+                       y_min = y_min_val, y_max = y_max_val)
+    }, warning = function(w) {
+      plot_warnings <<- c(plot_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
 
     if (is.null(p)) {
       if (requireNamespace("plotly", quietly = TRUE)) {
@@ -914,16 +991,11 @@ server <- function(input, output, session) {
       return(NULL)
     }
 
-    # Capture warnings during plotly conversion/rendering
-    plot_warnings <- character()
-    result <- withCallingHandlers({
-      # For plotly, the warnings happen during ggplotly build
-      if (inherits(p, "plotly")) {
-        p
-      } else {
+    # Also capture warnings during plot build/render
+    withCallingHandlers({
+      if (!inherits(p, "plotly")) {
         # Build the plot to trigger any ggplot warnings
         ggplot2::ggplot_build(p)
-        p
       }
     }, warning = function(w) {
       plot_warnings <<- c(plot_warnings, conditionMessage(w))
@@ -933,10 +1005,12 @@ server <- function(input, output, session) {
     # Show plot warnings as notifications
     if (length(plot_warnings) > 0) {
       unique_warnings <- unique(plot_warnings)
+      # Strip ANSI codes
+      clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
       # Append to existing warnings
-      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", unique_warnings))
+      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", clean_warnings))
       calculation_warnings$warnings <- unique(all_warnings)
-      for (w in unique_warnings) {
+      for (w in clean_warnings) {
         showNotification(paste("Plot:", w), type = "warning", duration = 10)
       }
     }
@@ -974,18 +1048,25 @@ server <- function(input, output, session) {
       if (is.null(input$jitter)) TRUE else input$jitter
     } else TRUE
 
-    # Create plot object first
-    p <- plot_allometries(df, input$plot_type, input$returnv,
-                          input$show_errors, FALSE,
-                          log_scale = input$log_scale,
-                          color_scheme = input$color_scheme,
-                          font_size = input$font_size,
-                          size_scale = size_scale_val,
-                          theme = theme_val,
-                          jitter = jitter_val,
-                          point_size = input$point_size,
-                          x_min = x_min_val, x_max = x_max_val,
-                          y_min = y_min_val, y_max = y_max_val)
+    # Capture all warnings from plot creation and rendering
+    plot_warnings <- character()
+
+    p <- withCallingHandlers({
+      plot_allometries(df, input$plot_type, input$returnv,
+                       input$show_errors, FALSE,
+                       log_scale = input$log_scale,
+                       color_scheme = input$color_scheme,
+                       font_size = input$font_size,
+                       size_scale = size_scale_val,
+                       theme = theme_val,
+                       jitter = jitter_val,
+                       point_size = input$point_size,
+                       x_min = x_min_val, x_max = x_max_val,
+                       y_min = y_min_val, y_max = y_max_val)
+    }, warning = function(w) {
+      plot_warnings <<- c(plot_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
 
     if (is.null(p)) {
       return(ggplot() +
@@ -993,10 +1074,8 @@ server <- function(input, output, session) {
                theme_void())
     }
 
-    # Capture warnings during plot BUILD (ggplot_build triggers the warnings)
-    plot_warnings <- character()
+    # Also capture warnings during plot BUILD (ggplot_build triggers the "Removed X rows" warnings)
     withCallingHandlers({
-      # Build the plot - this triggers "Removed X rows" warnings
       ggplot2::ggplot_build(p)
     }, warning = function(w) {
       plot_warnings <<- c(plot_warnings, conditionMessage(w))
@@ -1006,10 +1085,12 @@ server <- function(input, output, session) {
     # Show plot warnings as notifications
     if (length(plot_warnings) > 0) {
       unique_warnings <- unique(plot_warnings)
+      # Strip ANSI codes
+      clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
       # Append to existing warnings
-      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", unique_warnings))
+      all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", clean_warnings))
       calculation_warnings$warnings <- unique(all_warnings)
-      for (w in unique_warnings) {
+      for (w in clean_warnings) {
         showNotification(paste("Plot:", w), type = "warning", duration = 10)
       }
     }
@@ -1128,51 +1209,435 @@ server <- function(input, output, session) {
     }
   })
 
-  # Comparison statistics
+  # Comparison statistics - only calculate when checkbox is enabled
   comparison_stats <- reactive({
+    if (!input$calc_stats) return(NULL)
     df <- current_data()
     if (is.null(df) || nrow(df) == 0) return(NULL)
     compare_methods(df, input$returnv)
   })
 
-  output$summary_stats <- DT::renderDataTable({
-    stats <- comparison_stats()
-    if (is.null(stats)) return(data.frame(Message = "No statistics available"))
-    # Round to 4 decimal places
-    stats$summary_stats$Value <- round(stats$summary_stats$Value, 4)
-    DT::datatable(stats$summary_stats, options = list(pageLength = 10))
-  })
-
-  output$method_agreement <- DT::renderDataTable({
-    stats <- comparison_stats()
-    if (is.null(stats)) return(data.frame(Message = "No statistics available"))
-    # Round to 4 decimal places
-    stats$method_agreement$Mean_Abs_Diff <- round(stats$method_agreement$Mean_Abs_Diff, 4)
-    stats$method_agreement$Correlation <- round(stats$method_agreement$Correlation, 4)
-    DT::datatable(stats$method_agreement, options = list(pageLength = 10, digits = 4))
-  })
-
-  output$mean_differences <- DT::renderDataTable({
-    stats <- comparison_stats()
-    if (is.null(stats)) return(data.frame(Message = "No statistics available"))
-    # Round to 4 decimal places and convert to data frame
-    diff_df <- as.data.frame(round(stats$mean_differences, 4))
-    DT::datatable(diff_df, options = list(pageLength = 10, digits = 4))
-  })
-
-  output$correlation_matrix <- DT::renderDataTable({
-    stats <- comparison_stats()
-    if (is.null(stats)) return(data.frame(Message = "No statistics available"))
-    # Note: Correlation matrix is often = 1 for single tree comparisons, less informative
-    # Only show if we have multiple trees
-    df <- current_data()
-    if (is.null(df) || nrow(df) <= 1) {
-      return(data.frame(Note = "Correlation matrix requires multiple trees for meaningful comparison"))
+  # Boxplot comparing methods
+  output$method_boxplot <- renderPlot({
+    if (!input$calc_stats) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Enable 'Calculate comparison statistics' to view") +
+               theme_void())
     }
-    cor_df <- as.data.frame(round(stats$correlation_matrix, 4))
-    DT::datatable(cor_df, options = list(pageLength = 10, digits = 4))
+
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No data available") +
+               theme_void())
+    }
+
+    # Get selected methods from filter
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Select at least one method to compare") +
+               theme_void())
+    }
+
+    # Determine which columns to use based on selection
+    if (input$returnv == "AGC") {
+      method_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+      y_label <- "Carbon (tonnes)"
+    } else {
+      method_map <- c("WCC" = "WCC_B_t", "BIOMASS" = "biomass_B_t", "allodb" = "allodb_B_t", "Bunce" = "Bunce_B_t")
+      y_label <- "Biomass (tonnes)"
+    }
+
+    # Filter to selected methods
+    method_cols <- method_map[selected_methods]
+
+    # Get available columns
+    avail_cols <- intersect(method_cols, colnames(df))
+    if (length(avail_cols) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No method data available") +
+               theme_void())
+    }
+
+    # Reshape data for boxplot
+    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS", "allodb_C_t" = "allodb", "Bunce_C_t" = "Bunce",
+                      "WCC_B_t" = "WCC", "biomass_B_t" = "BIOMASS", "allodb_B_t" = "allodb", "Bunce_B_t" = "Bunce")
+
+    plot_data <- data.frame()
+    for (col in avail_cols) {
+      temp <- data.frame(
+        Method = method_names[col],
+        Value = df[[col]]
+      )
+      plot_data <- rbind(plot_data, temp)
+    }
+
+    # Remove NAs
+    plot_data <- plot_data[!is.na(plot_data$Value), ]
+
+    if (nrow(plot_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No valid data to plot") +
+               theme_void())
+    }
+
+    # Create boxplot
+    ggplot(plot_data, aes(x = Method, y = Value, fill = Method)) +
+      geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+      geom_jitter(width = 0.2, alpha = 0.5, size = 2) +
+      scale_fill_manual(values = c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
+                                   "allodb" = "#009E73", "Bunce" = "#CC79A7")) +
+      labs(x = "Allometric Method", y = y_label,
+           title = "Distribution of Estimates by Method") +
+      theme_minimal(base_size = 14) +
+      theme(legend.position = "none",
+            plot.title = element_text(hjust = 0.5, face = "bold"))
   })
 
+  # Calculate normalized differences for all method pairs
+  normalized_diffs <- reactive({
+    if (!input$calc_stats) return(NULL)
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) return(NULL)
+
+    # Get selected methods from filter
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) < 2) return(NULL)
+
+    # Determine which columns to use based on selection
+    if (input$returnv == "AGC") {
+      method_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    } else {
+      method_map <- c("WCC" = "WCC_B_t", "BIOMASS" = "biomass_B_t", "allodb" = "allodb_B_t", "Bunce" = "Bunce_B_t")
+    }
+
+    # Filter to selected methods
+    method_cols <- method_map[selected_methods]
+
+    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS", "allodb_C_t" = "allodb", "Bunce_C_t" = "Bunce",
+                      "WCC_B_t" = "WCC", "biomass_B_t" = "BIOMASS", "allodb_B_t" = "allodb", "Bunce_B_t" = "Bunce")
+
+    avail_cols <- intersect(method_cols, colnames(df))
+    if (length(avail_cols) < 2) return(NULL)
+
+    # Calculate normalized differences for all pairs
+    diff_data <- data.frame()
+    for (i in 1:(length(avail_cols) - 1)) {
+      for (j in (i + 1):length(avail_cols)) {
+        col1 <- avail_cols[i]
+        col2 <- avail_cols[j]
+
+        vals1 <- df[[col1]]
+        vals2 <- df[[col2]]
+
+        # Calculate normalized difference: (AGB1 - AGB2) / (AGB1 + AGB2)
+        sum_vals <- vals1 + vals2
+        # Avoid division by zero
+        valid_idx <- !is.na(vals1) & !is.na(vals2) & sum_vals != 0
+
+        if (sum(valid_idx) > 0) {
+          norm_diff <- (vals1[valid_idx] - vals2[valid_idx]) / sum_vals[valid_idx]
+
+          pair_name <- paste0(method_names[col1], " vs ", method_names[col2])
+          temp <- data.frame(
+            Comparison = pair_name,
+            Method1 = method_names[col1],
+            Method2 = method_names[col2],
+            Normalized_Diff = norm_diff
+          )
+          diff_data <- rbind(diff_data, temp)
+        }
+      }
+    }
+
+    diff_data
+  })
+
+  # Plot normalized differences
+  output$normalized_diff_plot <- renderPlot({
+    # Check if at least 2 methods are selected
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) < 2) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Select at least 2 methods to compare") +
+               theme_void())
+    }
+
+    diff_data <- normalized_diffs()
+
+    if (is.null(diff_data) || nrow(diff_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Not enough data to compare methods") +
+               theme_void())
+    }
+
+    # Create boxplot with reference line at 0
+    ggplot(diff_data, aes(x = Comparison, y = Normalized_Diff, fill = Comparison)) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "red", linewidth = 1) +
+      geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+      geom_jitter(width = 0.2, alpha = 0.4, size = 2) +
+      scale_fill_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f")) +
+      labs(x = "Method Comparison",
+           y = "Normalized Difference",
+           title = "Normalized Differences Between Allometric Methods",
+           subtitle = "Diff = (Method\u2081 - Method\u2082) / (Method\u2081 + Method\u2082)") +
+      coord_flip() +
+      theme_minimal(base_size = 14) +
+      theme(legend.position = "none",
+            plot.title = element_text(hjust = 0.5, face = "bold"),
+            plot.subtitle = element_text(hjust = 0.5, color = "gray40")) +
+      annotate("text", x = 0.5, y = -0.8, label = "\u2190 Method\u2082 higher", color = "gray50", size = 3) +
+      annotate("text", x = 0.5, y = 0.8, label = "Method\u2081 higher \u2192", color = "gray50", size = 3)
+  })
+
+  # Summary table of normalized differences
+  output$normalized_diff_table <- DT::renderDataTable({
+    # Check if at least 2 methods are selected
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) < 2) {
+      return(data.frame(Message = "Select at least 2 methods to compare"))
+    }
+
+    diff_data <- normalized_diffs()
+
+    if (is.null(diff_data) || nrow(diff_data) == 0) {
+      return(data.frame(Message = "Not enough data to compare methods"))
+    }
+
+    # Calculate summary statistics for each comparison
+    summary_df <- aggregate(Normalized_Diff ~ Comparison, data = diff_data, FUN = function(x) {
+      c(Mean = mean(x, na.rm = TRUE),
+        SD = sd(x, na.rm = TRUE),
+        Median = median(x, na.rm = TRUE),
+        N = length(x))
+    })
+
+    # Flatten the matrix result
+    summary_df <- cbind(summary_df[, 1, drop = FALSE], as.data.frame(summary_df$Normalized_Diff))
+    colnames(summary_df) <- c("Comparison", "Mean", "SD", "Median", "N")
+
+    # Round values
+    summary_df$Mean <- round(summary_df$Mean, 4)
+    summary_df$SD <- round(summary_df$SD, 4)
+    summary_df$Median <- round(summary_df$Median, 4)
+
+    # Add interpretation
+    summary_df$Interpretation <- ifelse(abs(summary_df$Mean) < 0.05, "Good agreement",
+                                        ifelse(abs(summary_df$Mean) < 0.15, "Moderate difference",
+                                               "Large difference"))
+
+    DT::datatable(summary_df, options = list(pageLength = 10, dom = 't'),
+                  rownames = FALSE)
+  })
+
+  # Dynamic dropdown for Bland-Altman comparison based on selected methods
+  output$ba_comparison_ui <- renderUI({
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) < 2) {
+      return(helpText("Select at least 2 methods above to enable comparisons"))
+    }
+
+    # Generate all pairwise comparisons
+    comparisons <- c()
+    for (i in 1:(length(selected_methods) - 1)) {
+      for (j in (i + 1):length(selected_methods)) {
+        comparisons <- c(comparisons, paste0(selected_methods[i], " vs ", selected_methods[j]))
+      }
+    }
+
+    selectInput("ba_comparison", "Select method pair to compare:",
+                choices = comparisons,
+                selected = comparisons[1])
+  })
+
+  # Bland-Altman data calculation
+  bland_altman_data <- reactive({
+    if (!input$calc_stats) return(NULL)
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) return(NULL)
+
+    # Parse selected comparison
+    comparison <- input$ba_comparison
+    methods <- strsplit(comparison, " vs ")[[1]]
+    if (length(methods) != 2) return(NULL)
+
+    # Map method names to column names
+    if (input$returnv == "AGC") {
+      method_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    } else {
+      method_map <- c("WCC" = "WCC_B_t", "BIOMASS" = "biomass_B_t", "allodb" = "allodb_B_t", "Bunce" = "Bunce_B_t")
+    }
+
+    col1 <- method_map[methods[1]]
+    col2 <- method_map[methods[2]]
+
+    if (!(col1 %in% colnames(df)) || !(col2 %in% colnames(df))) return(NULL)
+
+    vals1 <- df[[col1]]
+    vals2 <- df[[col2]]
+
+    # Calculate Bland-Altman values
+    valid_idx <- !is.na(vals1) & !is.na(vals2)
+    if (sum(valid_idx) < 2) return(NULL)
+
+    vals1 <- vals1[valid_idx]
+    vals2 <- vals2[valid_idx]
+
+    mean_vals <- (vals1 + vals2) / 2
+    diff_vals <- vals1 - vals2
+
+    # Calculate metrics
+    bias <- mean(diff_vals, na.rm = TRUE)
+    sd_diff <- sd(diff_vals, na.rm = TRUE)
+    lower_loa <- bias - 1.96 * sd_diff
+    upper_loa <- bias + 1.96 * sd_diff
+
+    # Count within limits
+    within_loa <- sum(diff_vals >= lower_loa & diff_vals <= upper_loa)
+    pct_within <- 100 * within_loa / length(diff_vals)
+
+    list(
+      mean_vals = mean_vals,
+      diff_vals = diff_vals,
+      bias = bias,
+      sd_diff = sd_diff,
+      lower_loa = lower_loa,
+      upper_loa = upper_loa,
+      pct_within = pct_within,
+      n = length(diff_vals),
+      method1 = methods[1],
+      method2 = methods[2]
+    )
+  })
+
+  # Bland-Altman plot
+  output$bland_altman_plot <- renderPlot({
+    ba_data <- bland_altman_data()
+
+    if (is.null(ba_data)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Not enough data for Bland-Altman analysis") +
+               theme_void())
+    }
+
+    plot_df <- data.frame(
+      Mean = ba_data$mean_vals,
+      Difference = ba_data$diff_vals
+    )
+
+    # Create Bland-Altman plot
+    ggplot(plot_df, aes(x = Mean, y = Difference)) +
+      # Reference line at zero
+      geom_hline(yintercept = 0, linetype = "dotted", color = "gray50", linewidth = 0.5) +
+      # Bias line
+      geom_hline(yintercept = ba_data$bias, color = "#2171b5", linewidth = 1) +
+      # Limits of agreement
+      geom_hline(yintercept = ba_data$lower_loa, linetype = "dashed", color = "#cb181d", linewidth = 0.8) +
+      geom_hline(yintercept = ba_data$upper_loa, linetype = "dashed", color = "#cb181d", linewidth = 0.8) +
+      # Points
+      geom_point(alpha = 0.6, size = 3, color = "#2c7bb6") +
+      # Labels for lines
+      annotate("text", x = max(plot_df$Mean) * 0.98, y = ba_data$bias,
+               label = paste0("Bias: ", round(ba_data$bias, 4)),
+               hjust = 1, vjust = -0.5, color = "#2171b5", fontface = "bold", size = 4) +
+      annotate("text", x = max(plot_df$Mean) * 0.98, y = ba_data$upper_loa,
+               label = paste0("+1.96 SD: ", round(ba_data$upper_loa, 4)),
+               hjust = 1, vjust = -0.5, color = "#cb181d", size = 3.5) +
+      annotate("text", x = max(plot_df$Mean) * 0.98, y = ba_data$lower_loa,
+               label = paste0("-1.96 SD: ", round(ba_data$lower_loa, 4)),
+               hjust = 1, vjust = 1.5, color = "#cb181d", size = 3.5) +
+      # Shaded region for limits of agreement
+      annotate("rect", xmin = -Inf, xmax = Inf,
+               ymin = ba_data$lower_loa, ymax = ba_data$upper_loa,
+               alpha = 0.1, fill = "#2171b5") +
+      labs(
+        x = paste0("Mean of ", ba_data$method1, " and ", ba_data$method2, " (tonnes)"),
+        y = paste0("Difference (", ba_data$method1, " - ", ba_data$method2, ") (tonnes)"),
+        title = paste0("Bland-Altman Plot: ", ba_data$method1, " vs ", ba_data$method2),
+        subtitle = paste0("n = ", ba_data$n, " trees | ", round(ba_data$pct_within, 1), "% within limits of agreement")
+      ) +
+      theme_minimal(base_size = 14) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40")
+      )
+  })
+
+  # Bland-Altman metrics table
+  output$bland_altman_table <- DT::renderDataTable({
+    if (!input$calc_stats) {
+      return(data.frame(Message = "Enable statistics to view"))
+    }
+
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) {
+      return(data.frame(Message = "No data available"))
+    }
+
+    # Get selected methods
+    selected_methods <- input$stats_filter_methods
+    if (is.null(selected_methods) || length(selected_methods) < 2) {
+      return(data.frame(Message = "Select at least 2 methods"))
+    }
+
+    # Map method names to column names
+    if (input$returnv == "AGC") {
+      method_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    } else {
+      method_map <- c("WCC" = "WCC_B_t", "BIOMASS" = "biomass_B_t", "allodb" = "allodb_B_t", "Bunce" = "Bunce_B_t")
+    }
+
+    # Calculate Bland-Altman metrics for all selected pairs
+    results <- data.frame()
+    for (i in 1:(length(selected_methods) - 1)) {
+      for (j in (i + 1):length(selected_methods)) {
+        m1 <- selected_methods[i]
+        m2 <- selected_methods[j]
+        col1 <- method_map[m1]
+        col2 <- method_map[m2]
+
+        if (!(col1 %in% colnames(df)) || !(col2 %in% colnames(df))) next
+
+        vals1 <- df[[col1]]
+        vals2 <- df[[col2]]
+
+        valid_idx <- !is.na(vals1) & !is.na(vals2)
+        if (sum(valid_idx) < 2) next
+
+        vals1 <- vals1[valid_idx]
+        vals2 <- vals2[valid_idx]
+
+        diff_vals <- vals1 - vals2
+        bias <- mean(diff_vals, na.rm = TRUE)
+        sd_diff <- sd(diff_vals, na.rm = TRUE)
+        lower_loa <- bias - 1.96 * sd_diff
+        upper_loa <- bias + 1.96 * sd_diff
+
+        within_loa <- sum(diff_vals >= lower_loa & diff_vals <= upper_loa)
+        pct_within <- 100 * within_loa / length(diff_vals)
+
+        results <- rbind(results, data.frame(
+          Comparison = paste0(m1, " vs ", m2),
+          N = length(diff_vals),
+          Bias = round(bias, 4),
+          SD = round(sd_diff, 4),
+          Lower_LoA = round(lower_loa, 4),
+          Upper_LoA = round(upper_loa, 4),
+          Pct_Within_LoA = round(pct_within, 1)
+        ))
+      }
+    }
+
+    if (nrow(results) == 0) {
+      return(data.frame(Message = "No valid comparisons available"))
+    }
+
+    colnames(results) <- c("Comparison", "N", "Bias", "SD", "Lower LoA", "Upper LoA", "% Within LoA")
+
+    DT::datatable(results, options = list(pageLength = 10, dom = 't'),
+                  rownames = FALSE)
+  })
 
   # Export functions
   output$download_csv <- downloadHandler(

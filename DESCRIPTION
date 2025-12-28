@@ -50,6 +50,5 @@ Imports:
     BIOMASS,
     shiny,
     ggplot2,
-    scales,
-    RColorBrewer
+    scales
 LazyData: true

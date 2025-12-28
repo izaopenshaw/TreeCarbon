@@ -255,13 +255,17 @@ add_error_bars <- function(p, plot_df, show_errors, position = NULL, width = 0.1
   }
 
   # Build errorbar call - use linewidth (not size) for ggplot2 3.4.0+
-  # Also set inherit.aes = FALSE and specify required aesthetics to avoid inheriting size from points
-  errorbar_aes <- aes(ymin = ymin, ymax = ymax)
+  # Use inherit.aes = FALSE to prevent inheriting size aesthetic from points
+  # Then explicitly specify x and y aesthetics from the plot data
 
   if (is.null(position)) {
-    p <- p + geom_errorbar(errorbar_aes, width = width, linewidth = 0.5, na.rm = TRUE)
+    p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                           inherit.aes = TRUE,
+                           width = width, linewidth = 0.5, size = NULL, na.rm = TRUE)
   } else {
-    p <- p + geom_errorbar(errorbar_aes, position = position, width = width, linewidth = 0.5, na.rm = TRUE)
+    p <- p + geom_errorbar(aes(ymin = ymin, ymax = ymax),
+                           inherit.aes = TRUE,
+                           position = position, width = width, linewidth = 0.5, size = NULL, na.rm = TRUE)
   }
 
   return(p)
@@ -285,7 +289,7 @@ add_error_bars <- function(p, plot_df, show_errors, position = NULL, width = 0.1
 #' @param log_scale Logical, whether to use logarithmic scale on y-axis. Only applies to scatter plots (dbh, height),
 #'   not bar plots, density plots, or residual plots (default: FALSE)
 #' @param color_scheme Character string specifying the color scheme. Options: "default" (ggplot2 default colors),
-#'   "viridis" (viridis color palette), or "brewer" (RColorBrewer Set2 palette) (default: "default")
+#'   "viridis" (viridis color palette), or "colorblind" (Okabe-Ito colorblind-friendly palette) (default: "default")
 #' @param font_size Numeric value specifying the base font size for plot text in points (default: 12)
 #' @param size_scale Character string or NULL. For scatter plots, specifies variable to map point size to:
 #'   "Height" maps size to height values, "DBH" maps size to DBH values, or NULL/"none" for fixed size points (default: NULL)
@@ -314,7 +318,6 @@ add_error_bars <- function(p, plot_df, show_errors, position = NULL, width = 0.1
 #'   is available to plot or if no matching method columns are found in the results data frame.
 #' @import ggplot2
 #' @importFrom scales viridis_pal
-#' @importFrom RColorBrewer brewer.pal
 #' @examples
 #' results <- allometries(c("Quercus","Quercus"), c("robur","robur"), c(20, 30), c(10, 15))
 #' plot_allometries(results, "bar", "AGC", interactive = FALSE)
@@ -368,7 +371,7 @@ plot_allometries <- function(results_df, plot_type = "bar", returnv = "AGC",
   }
 
   # Check color_scheme
-  valid_color_schemes <- c("default", "viridis", "brewer")
+  valid_color_schemes <- c("default", "viridis", "colorblind")
   if (!is.character(color_scheme) || length(color_scheme) != 1 || !color_scheme %in% valid_color_schemes) {
     stop("'color_scheme' must be one of: ", paste(valid_color_schemes, collapse = ", "))
   }
@@ -572,8 +575,11 @@ plot_allometries <- function(results_df, plot_type = "bar", returnv = "AGC",
   # Define color schemes
   if (color_scheme == "viridis") {
     method_colors <- scales::viridis_pal()(length(unique(plot_df$method)))
-  } else if (color_scheme == "brewer") {
-    method_colors <- RColorBrewer::brewer.pal(max(3, length(unique(plot_df$method))), "Set2")[1:length(unique(plot_df$method))]
+  } else if (color_scheme == "colorblind") {
+    # Okabe-Ito colorblind-friendly palette (no package required)
+    okabe_ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+    n_methods <- length(unique(plot_df$method))
+    method_colors <- okabe_ito[1:min(n_methods, length(okabe_ito))]
   } else {
     # Default colors
     method_colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b")
@@ -734,22 +740,20 @@ plot_allometries <- function(results_df, plot_type = "bar", returnv = "AGC",
       x_label <- "Method"
     }
 
-    # Determine point aesthetics based on size_scale
-    if (is.null(size_scale)) {
-      point_aes <- aes()
-      point_size_val <- point_size
-    } else if (size_scale == "Height") {
-      point_aes <- aes(size = Height)
-      point_size_val <- NULL
-    } else {
-      point_aes <- aes(size = DBH)
-      point_size_val <- NULL
-    }
-
     if (x_var == "mean_value") {
       # Scatter plot of residuals vs mean value
-      p <- ggplot(plot_df, aes(x = .data[["mean_value"]], y = .data[["residual"]], colour = method)) +
-        geom_point(mapping = point_aes, size = point_size_val) +
+      # Build plot based on size_scale - must not pass size=NULL when using size aesthetic
+      if (is.null(size_scale)) {
+        p <- ggplot(plot_df, aes(x = .data[["mean_value"]], y = .data[["residual"]], colour = method)) +
+          geom_point(size = point_size)
+      } else if (size_scale == "Height") {
+        p <- ggplot(plot_df, aes(x = .data[["mean_value"]], y = .data[["residual"]], colour = method, size = Height)) +
+          geom_point()
+      } else {
+        p <- ggplot(plot_df, aes(x = .data[["mean_value"]], y = .data[["residual"]], colour = method, size = DBH)) +
+          geom_point()
+      }
+      p <- p +
         geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
         scale_color_manual(values = method_colors) +
         labs(x = x_label, y = paste("Residual (", y_label, ")"),
