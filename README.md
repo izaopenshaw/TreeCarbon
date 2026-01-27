@@ -1,15 +1,10 @@
 # TreeCarbon: UK tree allometrics in R
 # Version 1.0
 ## Goal
-The goal of TreeCarbon is to estimate the carbon from diameter at breast height (DBH) measurements and tree species information using allometry from the Woodland Carbon Code Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0)." (2018), allodb.R, BIOMASS.R and Bunce (1968). The package also propagates error for estimates.
+The goal of **TreeCarbon** is to estimate the carbon from diameter at breast height (DBH) measurements and tree species information using allometry from the Woodland Carbon Code Jenkins, Thomas AR, et al. "FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0)." (2018), allodb.R, BIOMASS.R and Bunce (1968). The package also propagates error for estimates.
 ## Authors and contributors
 Authors: Isabel Openshaw and Justin Moat  
 Contributors: Phil Wilkes
-### Citation
-
-[update as needed]
-
-
 
 ## 1.0 Introduction
 
@@ -24,10 +19,7 @@ TreeCarbon includes uncertainty estimation routines and supports batch processin
 
 <!-- badges: start -->
 * 03/2025 version 1.0 release
-* 00/2024 Beta version released for testing within project
 <!-- badges: end -->
-
-
 
 ### 1.0.2	Script development  
 
@@ -47,17 +39,15 @@ devtools::install_github("gistin/TreeCarbon")
 This is a basic example which shows you how to use the most common problem features of this package:
 
 ``` r
+devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
+
 library(TreeCarbon)
-## example to calculate the above ground carbon for an English Oak(Quercus robur)
+## example to calculate the above ground carbon for a European Oak (Quercus robur)
 ## with DBH 75 cm and height of 25m, using the woodland carbon code V2.0
 fc_agc("Quercus robur", 75, 25, output.all = F)
 ```
 ## Detailed walk through
 ``` r
-#simple example
-devtools::install_github("gistin/TreeCarbon")
-
-library (TreeCarbon)
 #quick example
 fc_agc("Quercus robur", 75, 25, output.all = F)
 
@@ -124,19 +114,30 @@ This work is part of the Nature Unlock program at [Royal Botanic Gardens Kew](ht
 
 ## Main citations
 
-Bunce, R. G. H. (1968). Biomass and Production of Trees in a Mixed Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry Weight. The Journal of Ecology, 56(3), 759. [https://doi.org/10.2307/2258105](https://doi.org/10.2307/2258105)
+**Woodland Carbon Code (WCC):**
+> Jenkins, T.A.R., Mackie, E.D., Matthews, R.W., Miller, G., Randle, T.J., & White, M.E. (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). Forestry Commission. https://www.woodlandcarboncode.org.uk/
 
-Chave, J., Condit, R., Aguilar, S., Hernandez, A., Lao, S., & Perez, R. (2004). Error propagation and scaling for tropical forest biomass estimates. Philosophical Transactions of the Royal Society B. [https://doi.org/10.1098/rstb.2003.1425](https://doi.org/10.1098/rstb.2003.1425)
+**Bunce (1968):**
+> Bunce, R.G.H. (1968). Biomass and Production of Trees in a Mixed Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry Weight. *The Journal of Ecology*, 56(3), 759-775. https://doi.org/10.2307/2258105
 
-Gonzalez-Akre, E., Piponiot, C., Lepore, M., Herrmann, V., Lutz, J. A., Baltzer, J. L., Dick, C. W., Gilbert, G. S., He, F., Heym, M., Huerta, A. I., Jansen, P. A., Johnson, D. J., Knapp, N., Král, K., Lin, D., Malhi, Y., McMahon, S. M., Myers, J. A., … Anderson-Teixeira, K. J. (2022). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. Methods in Ecology and Evolution, 13(2), 330–338. [https://doi.org/10.1111/2041-210X.13756](https://doi.org/10.1111/2041-210X.13756)
+**BIOMASS R package:**
+> Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017). BIOMASS: An R package for estimating above-ground biomass and its uncertainty in tropical forests. *Methods in Ecology and Evolution*, 8(9), 1163-1167. https://doi.org/10.1111/2041-210X.12753
 
-Jenkins, T. A. R., Mackie, E. D., Matthews, R. W., Miller, G., Randle, T. J., & White, M. E. (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). [https://www.woodlandcarboncode.org.uk/images/PDFs/WCC_CarbonAssessmentProtocol_V2.0_March2018.pdf](https://www.woodlandcarboncode.org.uk/images/PDFs/WCC_CarbonAssessmentProtocol_V2.0_March2018.pdf)
+**allodb R package:**
+> Gonzalez-Akre, E., Piponiot, C., Lepore, M., et al. (2022). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. *Methods in Ecology and Evolution*, 13(2), 330-338. https://doi.org/10.1111/2041-210X.13756
 
-Pachauri, R. K., Meyer, L. A., Barros V.R., Broome J., Cramer W., Christ R., Church J.A., Clarke L., Dahe Q., Dasgupta P., & Dubash N.K. (2014). IPCC, 2014: Climate Change 2014: Synthesis Report. Contribution of Working Groups I, II and III to the Fifth Assessment Report of the Intergovernmental Panel on Climate 
-Change. [https://www.ipcc.ch/pdf/assessment-report/ar5/syr/SYR_AR5_FINAL_full_wcover.pdf](https://www.ipcc.ch/pdf/assessment-report/ar5/syr/SYR_AR5_FINAL_full_wcover.pdf)
+**Chave pantropical allometry:**
+> Chave, J., Réjou-Méchain, M., Búrquez, A., et al. (2014). Improved allometric models to estimate the aboveground biomass of tropical trees. *Global Change Biology*, 20(10), 3177-3190. https://doi.org/10.1111/gcb.12629
 
-Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017). biomass: an r package for estimating above-ground biomass and its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9), 1163–1167. [https://doi.org/10.1111/2041-210X.12753](https://doi.org/10.1111/2041-210X.12753)
+**Error propagation methodology:**
+> Chave, J., Condit, R., Aguilar, S., et al. (2004). Error propagation and scaling for tropical forest biomass estimates. *Philosophical Transactions of the Royal Society B*, 359(1443), 409-420. https://doi.org/10.1098/rstb.2003.1425
+
+**Carbon content:**
+> Thomas, S.C., & Martin, A.R. (2012). Carbon content of tree tissues: A synthesis. *Forests*, 3(2), 332-352. https://doi.org/10.3390/f3020332
+
 
 ### Licence
 
-All code, paper and data is under the [Creative Commons CC-BY-NC-ND license](https://creativecommons.org/licenses/by-nc-nd/2.0/).
+This package is licensed under the [GNU General Public License v3.0 (GPL-3)](https://www.gnu.org/licenses/gpl-3.0.html). 
+
+You are free to use, modify, and distribute this software, provided that any derivative works are also licensed under GPL-3.

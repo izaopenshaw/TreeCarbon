@@ -20,7 +20,7 @@ Authors@R:
     )
 Description: This package inputs diameter at breast height (DBH) and species name,
     and estimates the total carbon stored by the tree using methodology from the Woodland Carbon Code (2021), allodb.R, BIOMASS.R, Bunce (1968). Error propagations are also included for precision of estimates. 
-License: GPL-3
+License: GPL-3 + file LICENSE
 URL: https://github.com/izaopenshaw/TreeCarbon
 BugReports: https://github.com/iopenshaw/WoodlandCarbonCode/issues
 Encoding: UTF-8
@@ -30,7 +30,9 @@ Suggests:
     knitr,
     rmarkdown,
     testthat,
+    MASS,
     httr2 (>= 3.0.0),
+    shiny,
     shinydashboard,
     plotly,
     DT,
@@ -48,7 +50,6 @@ Imports:
     remotes,
     allodb,
     BIOMASS,
-    shiny,
     ggplot2,
     scales
 LazyData: true

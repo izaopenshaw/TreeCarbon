@@ -235,6 +235,7 @@ ui <- dashboardPage(
                 box(title = "Plot Options", width = 3, status = "info", solidHeader = TRUE,
                     selectInput("plot_type", "Plot Type:",
                                 choices = c("Bar graph (sum)" = "bar",
+                                            "Boxplot by method" = "boxplot",
                                             "Scatter with index" = "tree_index",
                                             "Scatter with DBH" = "dbh",
                                             "Scatter with height" = "height"),
@@ -510,7 +511,7 @@ ui <- dashboardPage(
                 )
               ),
               fluidRow(
-                box(title = "Unit Conversion Reference", width = 12, status = "default", solidHeader = TRUE,
+                box(title = "Unit Conversion Reference", width = 12, status = "info", solidHeader = TRUE,
                     collapsible = TRUE, collapsed = TRUE,
                     tags$table(class = "table table-striped table-sm",
                                tags$thead(
@@ -659,6 +660,55 @@ ui <- dashboardPage(
                       helpText("Trees ranked by method sensitivity (highest CV first)"),
                       DT::dataTableOutput("sensitivity_per_tree_table")
                   )
+                )
+              ),
+              # Method comparison scatter plots
+              fluidRow(
+                box(title = "Method Comparison: Reference vs Other Methods", width = 12, 
+                    status = "primary", solidHeader = TRUE,
+                    p("Compare how each method's estimates relate to the reference method. ",
+                      "Points on the 1:1 line indicate perfect agreement."),
+                    fluidRow(
+                      column(4,
+                             radioButtons("scatter_view", "Display:",
+                                          choices = c("Combined (single plot)" = "single",
+                                                      "Faceted (one per method)" = "faceted"),
+                                          selected = "single", inline = TRUE)
+                      ),
+                      column(8,
+                             helpText("The reference method is selected above. Other methods are compared against it.")
+                      )
+                    ),
+                    conditionalPanel(
+                      condition = "input.scatter_view == 'single'",
+                      plotOutput("method_scatter_single", height = "450px")
+                    ),
+                    conditionalPanel(
+                      condition = "input.scatter_view == 'faceted'",
+                      plotOutput("method_scatter_faceted", height = "500px")
+                    )
+                )
+              ),
+              # Method correlation heatmap
+              fluidRow(
+                box(title = "Method Correlation Heatmap", width = 6, status = "success", solidHeader = TRUE,
+                    p("Shows correlation between per-tree carbon estimates across methods. ",
+                      "High correlation indicates methods rank trees similarly."),
+                    plotOutput("method_correlation_heatmap", height = "400px")
+                ),
+                box(title = "Correlation Interpretation", width = 6, status = "info", solidHeader = TRUE,
+                    h5("Understanding the Heatmap"),
+                    tags$ul(
+                      tags$li(tags$strong("r > 0.95:"), " Very strong agreement - methods rank trees nearly identically"),
+                      tags$li(tags$strong("r = 0.80-0.95:"), " Strong agreement - general pattern preserved"),
+                      tags$li(tags$strong("r = 0.60-0.80:"), " Moderate agreement - some disagreement in ranking"),
+                      tags$li(tags$strong("r < 0.60:"), " Weak agreement - methods fundamentally differ in how they rank trees")
+                    ),
+                    hr(),
+                    p(style = "font-size: 0.9em; color: #666;",
+                      tags$strong("Note:"), " High correlation does not mean methods give the same ",
+                      tags$em("values"), " - it means they ", tags$em("rank"), " trees similarly. ",
+                      "Two methods can be perfectly correlated (r=1) but still have different absolute values.")
                 )
               )
       ),
@@ -2569,6 +2619,203 @@ server <- function(input, output, session) {
       write.csv(summary_df, file, row.names = FALSE)
     }
   )
+
+  # ========== METHOD COMPARISON SCATTER PLOTS ==========
+  
+  # Method colors for consistency
+  method_colors <- c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
+                     "allodb" = "#009E73", "Bunce" = "#CC79A7")
+  
+  # Single scatter plot: Reference method vs all others
+  output$method_scatter_single <- renderPlot({
+    result <- sensitivity_results$result
+    df <- current_data()
+    
+    if (is.null(result) || is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+    
+    ref_method <- input$sens_reference
+    all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
+    other_methods <- setdiff(all_methods, ref_method)
+    
+    # Map method names to column names
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+                 "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    
+    ref_col <- col_map[ref_method]
+    if (!ref_col %in% colnames(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
+               theme_void())
+    }
+    
+    # Build comparison data
+    scatter_data <- data.frame()
+    for (m in other_methods) {
+      m_col <- col_map[m]
+      if (m_col %in% colnames(df)) {
+        temp <- data.frame(
+          Reference = df[[ref_col]],
+          Comparison = df[[m_col]],
+          Method = m
+        )
+        scatter_data <- rbind(scatter_data, temp)
+      }
+    }
+    
+    if (nrow(scatter_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
+               theme_void())
+    }
+    
+    scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
+    
+    # Get max for equal axis
+    max_val <- max(c(scatter_data$Reference, scatter_data$Comparison), na.rm = TRUE) * 1.1
+    
+    ggplot(scatter_data, aes(x = Reference, y = Comparison, color = Method)) +
+      geom_point(alpha = 0.5, size = 2.5) +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40", linewidth = 1) +
+      geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+      scale_color_manual(values = method_colors[other_methods]) +
+      coord_fixed(ratio = 1, xlim = c(0, max_val), ylim = c(0, max_val)) +
+      labs(
+        title = paste("Method Comparison:", ref_method, "vs Other Methods"),
+        subtitle = "Dashed line = 1:1 (perfect agreement)",
+        x = paste(ref_method, "Carbon (tonnes)"),
+        y = "Other Method Carbon (tonnes)"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        legend.position = "bottom"
+      )
+  })
+  
+  # Faceted scatter plot: One panel per comparison method
+  output$method_scatter_faceted <- renderPlot({
+    result <- sensitivity_results$result
+    df <- current_data()
+    
+    if (is.null(result) || is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+    
+    ref_method <- input$sens_reference
+    all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
+    other_methods <- setdiff(all_methods, ref_method)
+    
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+                 "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    
+    ref_col <- col_map[ref_method]
+    if (!ref_col %in% colnames(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
+               theme_void())
+    }
+    
+    scatter_data <- data.frame()
+    for (m in other_methods) {
+      m_col <- col_map[m]
+      if (m_col %in% colnames(df)) {
+        temp <- data.frame(
+          Reference = df[[ref_col]],
+          Comparison = df[[m_col]],
+          Method = m
+        )
+        scatter_data <- rbind(scatter_data, temp)
+      }
+    }
+    
+    if (nrow(scatter_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
+               theme_void())
+    }
+    
+    scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
+    
+    ggplot(scatter_data, aes(x = Reference, y = Comparison)) +
+      geom_point(alpha = 0.5, size = 2, color = "#0072B2") +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red", linewidth = 1) +
+      geom_smooth(method = "lm", se = TRUE, color = "#D55E00", fill = "#D55E00", alpha = 0.2) +
+      facet_wrap(~ Method, scales = "free") +
+      labs(
+        title = paste("Method Comparison:", ref_method, "vs Each Method"),
+        subtitle = "Red dashed = 1:1 line; Orange = linear fit with 95% CI",
+        x = paste(ref_method, "Carbon (tonnes)"),
+        y = "Comparison Method Carbon (tonnes)"
+      ) +
+      theme_minimal(base_size = 11) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        strip.text = element_text(face = "bold", size = 11)
+      )
+  })
+  
+  # Method correlation heatmap
+  output$method_correlation_heatmap <- renderPlot({
+    df <- current_data()
+    
+    if (is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Calculate results first") +
+               theme_void())
+    }
+    
+    # Get carbon columns
+    carbon_cols <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+    available_cols <- carbon_cols[carbon_cols %in% colnames(df)]
+    
+    if (length(available_cols) < 2) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Need at least 2 methods for correlation") +
+               theme_void())
+    }
+    
+    # Build correlation matrix
+    carbon_matrix <- df[, available_cols, drop = FALSE]
+    
+    # Rename columns for display
+    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS", 
+                      "allodb_C_t" = "allodb", "Bunce_C_t" = "Bunce")
+    colnames(carbon_matrix) <- method_names[colnames(carbon_matrix)]
+    
+    cor_matrix <- cor(carbon_matrix, use = "pairwise.complete.obs")
+    
+    # Convert to long format
+    cor_long <- as.data.frame(as.table(cor_matrix))
+    colnames(cor_long) <- c("Method1", "Method2", "Correlation")
+    
+    ggplot(cor_long, aes(x = Method1, y = Method2, fill = Correlation)) +
+      geom_tile(color = "white", linewidth = 1) +
+      geom_text(aes(label = sprintf("%.2f", Correlation)), size = 5, fontface = "bold") +
+      scale_fill_gradient2(low = "#d62728", mid = "white", high = "#2ca02c",
+                           midpoint = 0.5, limits = c(0, 1), name = "r") +
+      labs(
+        title = "Correlation Between Methods",
+        subtitle = "Per-tree carbon estimates",
+        x = "", y = ""
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "right"
+      ) +
+      coord_fixed()
+  })
 
   # Export functions
   output$download_csv <- downloadHandler(

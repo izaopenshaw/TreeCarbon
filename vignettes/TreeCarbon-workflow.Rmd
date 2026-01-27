@@ -1,0 +1,860 @@
+---
+title: "TreeCarbon: A Complete Workflow Guide"
+author: "Isabel Openshaw & Justin Moat"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{TreeCarbon: A Complete Workflow Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+The **TreeCarbon** package provides multiple allometric methods for estimating tree 
+biomass and carbon storage. This vignette walks through complete workflows for:
+1. **Single tree** calculations
+2. **Batch processing** multiple trees
+3. **Comparing methods** and quantifying differences
+4. **Sensitivity analysis** - How sensitive is carbon to method choice?
+5. **Uncertainty estimation** across methods
+
+## Available Methods
+
+| Method | Region | Height Required | Key Reference |
+|--------|--------|-----------------|---------------|
+| **WCC** | UK temperate | Yes | Woodland Carbon Code (2021) |
+| **Bunce** | UK deciduous | No | Bunce (1968) |
+| **BIOMASS** | Pantropical | Optional* | Chave et al. (2014) |
+| **allodb** | Global extratropical | Optional | Gonzalez-Akre et al. (2022) |
+
+*Height estimated from coordinates if not provided.
+
+```{r load-package, message=FALSE, warning=FALSE}
+library(TreeCarbon)
+library(ggplot2)
+```
+
+---
+
+# Part 1: Single Tree Calculations
+
+## 1.1 Using the Woodland Carbon Code (WCC)
+
+The WCC method is the standard for UK woodland carbon accounting. It requires 
+species, DBH, and height.
+
+```{r single-wcc}
+# A single oak tree
+result_wcc <- fc_agc(
+  name = "Oak",
+  dbh = 45,        # cm
+  height = 18,     # m
+  type = "broadleaf"
+)
+
+print(result_wcc)
+```
+
+### With Full Metadata (Rich Output)
+
+Use `rich_output = TRUE` to get comprehensive metadata including assumptions,
+citations, and validity warnings:
+```{r single-wcc-rich}
+result_rich <- fc_agc(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  rich_output = TRUE
+)
+
+# View the complete result
+print(result_rich)
+```
+
+### With Uncertainty Propagation
+
+```{r single-wcc-error}
+result_error <- fc_agc_error(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  re_dbh = 0.025,   # 2.5% relative measurement error
+  re_h = 0.05       # 5% height measurement error
+)
+
+print(result_error[, c("name", "AGC_WCC_t", "sig_AGC")])
+
+# Calculate 95% confidence interval
+agc <- result_error$AGC_WCC_t
+sigma <- result_error$sig_AGC
+cat(sprintf("\nAGC: %.3f ± %.3f t (95%% CI: [%.3f, %.3f])\n",
+            agc, 1.96 * sigma, agc - 1.96*sigma, agc + 1.96*sigma))
+```
+
+## 1.2 Using the Bunce Equation (UK Deciduous)
+
+The Bunce (1968) method only requires DBH and species name - no height needed.
+
+```{r single-bunce}
+result_bunce <- Bunce(
+  name = "Oak",
+  dbh = 45,
+  re_dbh = 0.025  # Include measurement error
+)
+
+print(result_bunce)
+```
+
+```{r single-bunce-rich}
+# With rich metadata
+result_bunce_rich <- Bunce("Oak", dbh = 45, re_dbh = 0.025, rich_output = TRUE)
+print(result_bunce_rich)
+```
+
+## 1.3 Using BIOMASS (Pantropical)
+
+The BIOMASS package uses Chave et al. pantropical equations. Coordinates are
+required to retrieve environmental data for height estimation.
+
+```{r single-biomass, eval=requireNamespace("BIOMASS", quietly = TRUE)}
+# UK coordinates (Kew Gardens)
+coords <- c(-0.2915, 51.4787)
+
+result_biomass <- BIOMASS(
+  dbh = 45,
+  height = 18,
+  genus = "Quercus",
+  species = "robur",
+  coords = coords
+)
+
+print(result_biomass[, c("genus", "species", "dbh", "height", 
+                         "Wood_Density", "AGB_Biomass_kg")])
+
+# Convert to tonnes for comparison
+cat(sprintf("\nAGB: %.3f kg (%.4f t)\n", 
+            result_biomass$AGB_Biomass_kg,
+            result_biomass$AGB_Biomass_kg / 1000))
+```
+
+### BIOMASS with Monte Carlo Uncertainty
+
+```{r single-biomass-mc, eval=requireNamespace("BIOMASS", quietly = TRUE)}
+result_biomass_mc <- BIOMASS(
+  dbh = 45,
+  height = 18,
+  genus = "Quercus",
+  species = "robur",
+  coords = coords,
+  uncertainty = TRUE,
+  n_mc = 1000
+)
+## doesnt work due to uncertainty
+print(result_biomass_mc[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct",
+                             "AGB_CI_low_kg", "AGB_CI_high_kg")])
+```
+
+## 1.4 Using allodb (Global Extratropical)
+
+```{r single-allodb, eval=requireNamespace("allodb", quietly = TRUE)}
+result_allodb <- allodb(
+  dbh = 45,
+  genus = "Quercus",
+  species = "robur",
+  coords = c(-77.0, 38.9)  # Uses North American equations by default
+)
+
+print(result_allodb)
+```
+
+---
+
+# Part 2: Batch Processing Multiple Trees
+
+## 2.1 Creating Sample Data
+
+```{r batch-data}
+# Create a sample dataset of trees
+trees <- data.frame(
+  tree_id = 1:10,
+  species = c("Oak", "Beech", "Ash", "Birch", "Oak", 
+              "Sycamore", "Beech", "Oak", "Ash", "Birch"),
+  genus = c("Quercus", "Fagus", "Fraxinus", "Betula", "Quercus",
+            "Acer", "Fagus", "Quercus", "Fraxinus", "Betula"),
+  species_epithet = c("robur", "sylvatica", "excelsior", "pendula", "robur",
+                      "pseudoplatanus", "sylvatica", "robur", "excelsior", "pendula"),
+  dbh = c(45, 38, 52, 28, 61, 42, 35, 55, 48, 31),
+  height = c(18, 22, 24, 15, 26, 20, 19, 23, 21, 14),
+  type = rep("broadleaf", 10),
+  stringsAsFactors = FALSE
+)
+
+print(trees)
+```
+
+## 2.2 WCC Method for Multiple Trees
+
+```{r batch-wcc}
+# Apply WCC to all trees
+wcc_results <- fc_agc(
+  name = trees$species,
+  dbh = trees$dbh,
+  height = trees$height,
+  type = trees$type
+)
+
+# Add tree IDs
+wcc_results$tree_id <- trees$tree_id
+
+# Summary
+cat("=== WCC Results Summary ===\n")
+cat(sprintf("Total AGC: %.2f tonnes\n", sum(wcc_results$AGC_WCC_t, na.rm = TRUE)))
+cat(sprintf("Mean AGC per tree: %.3f tonnes\n", mean(wcc_results$AGC_WCC_t, na.rm = TRUE)))
+cat(sprintf("Range: %.3f - %.3f tonnes\n", 
+            min(wcc_results$AGC_WCC_t, na.rm = TRUE),
+            max(wcc_results$AGC_WCC_t, na.rm = TRUE)))
+```
+
+## 2.3 Bunce Method for Multiple Trees
+
+```{r batch-bunce}
+bunce_results <- Bunce(
+  name = trees$species,
+  dbh = trees$dbh,
+  re_dbh = 0.025
+)
+
+bunce_results$tree_id <- trees$tree_id
+
+# Convert to tonnes (Bunce returns kg)
+bunce_results$biomass_t <- bunce_results$biomass / 1000
+bunce_results$carbon_t <- bunce_results$biomass_t * 0.5  # 50% carbon fraction
+
+cat("=== Bunce Results Summary ===\n")
+cat(sprintf("Total Carbon: %.2f tonnes\n", sum(bunce_results$carbon_t, na.rm = TRUE)))
+```
+
+## 2.4 BIOMASS Method for Multiple Trees
+
+```{r batch-biomass, eval=requireNamespace("BIOMASS", quietly = TRUE)}
+coords <- c(-0.2915, 51.4787)  # Kew Gardens
+
+biomass_results <- BIOMASS(
+  dbh = trees$dbh,
+  height = trees$height,
+  genus = trees$genus,
+  species = trees$species_epithet,
+  coords = coords,
+  uncertainty = TRUE,
+  n_mc = 500
+)
+
+biomass_results$tree_id <- trees$tree_id
+
+# Convert to tonnes
+biomass_results$AGB_t <- biomass_results$AGB_Biomass_kg / 1000
+biomass_results$carbon_t <- biomass_results$AGB_t * 0.47  # IPCC carbon fraction
+
+cat("=== BIOMASS Results Summary ===\n")
+cat(sprintf("Total Carbon: %.2f tonnes\n", sum(biomass_results$carbon_t, na.rm = TRUE)))
+cat(sprintf("Mean CV: %.1f%%\n", mean(biomass_results$AGB_CV_pct, na.rm = TRUE)))
+```
+
+---
+
+# Part 3: Comparing Allometric Methods
+
+The `allometries()` function runs multiple methods simultaneously and allows
+direct comparison.
+
+## 3.1 Single Tree Comparison
+
+```{r compare-single}
+# Compare all methods for a single oak tree
+comparison <- allometries(
+  genus = "Quercus",
+  species = "robur",
+  dbh = 45,
+  height = 18,
+  coords = c(-0.2915, 51.4787),
+  returnv = "AGC"
+)
+
+print(comparison)
+```
+
+## 3.2 Using compare_allometries()
+
+The `compare_allometries()` function provides detailed statistics comparing
+methods.
+
+```{r compare-detailed}
+# Get allometries results first
+results <- allometries(
+  genus = "Quercus",
+  species = "robur",
+  dbh = 45,
+  height = 18,
+  coords = c(-0.2915, 51.4787),
+  returnv = "AGC"
+)
+
+# Run comparison
+comp <- compare_allometries(results, reference = "WCC")
+
+# View the comparison table
+print(comp)
+
+# Summary statistics
+summary(comp)
+```
+
+## 3.3 Batch Comparison
+
+```{r compare-batch}
+# Compare methods across all trees - allometries() handles vectors directly
+batch_results <- allometries(
+  genus = trees$genus,
+  species = trees$species_epithet,
+  dbh = trees$dbh,
+  height = trees$height,
+  coords = c(-0.2915, 51.4787),
+  returnv = "AGC"
+)
+
+# Add tree IDs
+batch_results$tree_id <- seq_len(nrow(batch_results))
+
+cat("=== Batch Results (first 6 rows) ===\n")
+print(head(batch_results))
+```
+
+## 3.4 Visualizing Method Differences
+
+```{r plot-comparison, fig.height=6}
+# Extract carbon columns for comparison
+if (exists("batch_results") && nrow(batch_results) > 0) {
+  
+  # Reshape for plotting
+  plot_data <- data.frame(
+    tree_id = rep(batch_results$tree_id, 4),
+    dbh = rep(batch_results$dbh, 4),
+    method = rep(c("WCC", "BIOMASS", "allodb", "Bunce"), each = nrow(batch_results)),
+    carbon = c(
+      batch_results$WCC_C_t,
+      batch_results$biomass_C_t,
+      batch_results$allodb_C_t,
+      batch_results$Bunce_C_t
+    )
+  )
+  
+  # Remove NA values
+  plot_data <- plot_data[!is.na(plot_data$carbon), ]
+  
+  # Plot
+  ggplot(plot_data, aes(x = dbh, y = carbon, color = method, shape = method)) +
+    geom_point(size = 3, alpha = 0.7) +
+    geom_smooth(method = "loess", se = FALSE, linewidth = 0.8) +
+    labs(
+      title = "Carbon Estimates by Method vs DBH",
+      x = "DBH (cm)",
+      y = "Above-ground Carbon (tonnes)",
+      color = "Method",
+      shape = "Method"
+    ) +
+    theme_minimal() +
+    scale_color_brewer(palette = "Set2")
+}
+```
+
+---
+
+# Part 4: Quantifying Differences Between Methods
+
+## 4.1 Method Deviation Statistics
+
+```{r method-stats}
+if (exists("batch_results") && nrow(batch_results) > 0) {
+  
+  # Calculate statistics
+  methods <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+  method_names <- c("WCC", "BIOMASS", "allodb", "Bunce")
+  
+  stats_table <- data.frame(
+    Method = method_names,
+    Mean = sapply(methods, function(m) mean(batch_results[[m]], na.rm = TRUE)),
+    SD = sapply(methods, function(m) sd(batch_results[[m]], na.rm = TRUE)),
+    Min = sapply(methods, function(m) min(batch_results[[m]], na.rm = TRUE)),
+    Max = sapply(methods, function(m) max(batch_results[[m]], na.rm = TRUE)),
+    N_valid = sapply(methods, function(m) sum(!is.na(batch_results[[m]])))
+  )
+  
+  # Add CV
+  stats_table$CV_pct <- 100 * stats_table$SD / stats_table$Mean
+  
+  print(stats_table)
+}
+```
+
+## 4.2 Pairwise Method Differences
+
+```{r pairwise-diff}
+if (exists("batch_results") && nrow(batch_results) > 0) {
+  
+  # Calculate pairwise differences (as % of mean)
+  wcc <- batch_results$WCC_C_t
+  biomass <- batch_results$biomass_C_t
+  allodb <- batch_results$allodb_C_t
+  bunce <- batch_results$Bunce_C_t
+  
+  # Mean absolute percentage difference
+  mean_apd <- function(x, y) {
+    valid <- !is.na(x) & !is.na(y) & (x + y) > 0
+    if (sum(valid) == 0) return(NA)
+    mean(abs(x[valid] - y[valid]) / ((x[valid] + y[valid]) / 2) * 100)
+  }
+  
+  pairwise <- data.frame(
+    Comparison = c("WCC vs BIOMASS", "WCC vs allodb", "WCC vs Bunce",
+                   "BIOMASS vs allodb", "BIOMASS vs Bunce", "allodb vs Bunce"),
+    Mean_Abs_Pct_Diff = c(
+      mean_apd(wcc, biomass),
+      mean_apd(wcc, allodb),
+      mean_apd(wcc, bunce),
+      mean_apd(biomass, allodb),
+      mean_apd(biomass, bunce),
+      mean_apd(allodb, bunce)
+    )
+  )
+  
+  pairwise <- pairwise[order(-pairwise$Mean_Abs_Pct_Diff), ]
+  print(pairwise)
+}
+```
+
+## 4.3 Method Agreement Assessment
+
+```{r agreement}
+if (exists("batch_results") && nrow(batch_results) > 0) {
+  
+  # Calculate CV across methods for each tree
+  methods <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+  
+  batch_results$cross_method_mean <- apply(batch_results[, methods], 1, mean, na.rm = TRUE)
+  batch_results$cross_method_sd <- apply(batch_results[, methods], 1, sd, na.rm = TRUE)
+  batch_results$cross_method_cv <- 100 * batch_results$cross_method_sd / batch_results$cross_method_mean
+  
+  cat("=== Cross-Method Agreement ===\n\n")
+  cat(sprintf("Mean CV across methods: %.1f%%\n", mean(batch_results$cross_method_cv, na.rm = TRUE)))
+  cat(sprintf("Range of CV: %.1f%% - %.1f%%\n", 
+              min(batch_results$cross_method_cv, na.rm = TRUE),
+              max(batch_results$cross_method_cv, na.rm = TRUE)))
+  
+  # Trees with high disagreement
+  high_cv <- batch_results[batch_results$cross_method_cv > 30, c("tree_id", "genus", "dbh", "cross_method_cv")]
+  if (nrow(high_cv) > 0) {
+    cat("\nTrees with high method disagreement (CV > 30%):\n")
+    print(high_cv)
+  } else {
+    cat("\nAll trees show reasonable agreement across methods (CV < 30%)\n")
+  }
+}
+```
+
+---
+
+# Part 5: Sensitivity Analysis - "How Sensitive is Carbon to Method Choice?"
+
+This is a key question for any carbon accounting project: **How much does my
+reported carbon change depending on which allometric method I use?**
+
+The `sensitivity_analysis()` function provides a comprehensive answer.
+
+## 5.1 Single Tree Sensitivity
+
+Let's examine how sensitive a single tree's carbon estimate is to method choice:
+
+```{r sensitivity-single}
+# Single tree data
+single_tree <- data.frame(
+  dbh = 45,
+  height = 18,
+  genus = "Quercus",
+  species = "robur",
+  name = "Oak"
+)
+
+# Run sensitivity analysis
+sens_single <- sensitivity_analysis(
+  single_tree,
+  coords = c(-0.29, 51.48),  # UK coordinates
+  type = "broadleaf",
+  reference = "WCC"
+)
+
+# View results
+print(sens_single)
+```
+
+## 5.2 Batch Sensitivity Analysis
+
+For multiple trees, sensitivity analysis becomes even more important:
+
+```{r sensitivity-batch}
+# Create sample dataset
+forest_plot <- data.frame(
+  tree_id = 1:15,
+  name = c("Oak", "Beech", "Ash", "Birch", "Oak", 
+           "Sycamore", "Beech", "Oak", "Ash", "Birch",
+           "Oak", "Beech", "Ash", "Oak", "Birch"),
+  genus = c("Quercus", "Fagus", "Fraxinus", "Betula", "Quercus",
+            "Acer", "Fagus", "Quercus", "Fraxinus", "Betula",
+            "Quercus", "Fagus", "Fraxinus", "Quercus", "Betula"),
+  species = c("robur", "sylvatica", "excelsior", "pendula", "robur",
+              "pseudoplatanus", "sylvatica", "robur", "excelsior", "pendula",
+              "robur", "sylvatica", "excelsior", "robur", "pendula"),
+  dbh = c(45, 38, 52, 28, 61, 42, 35, 55, 48, 31, 40, 33, 47, 58, 26),
+  height = c(18, 22, 24, 15, 26, 20, 19, 23, 21, 14, 17, 18, 22, 25, 13),
+  type = rep("broadleaf", 15)
+)
+
+# Run sensitivity analysis on the whole plot
+sens_plot <- sensitivity_analysis(
+  forest_plot,
+  coords = c(-0.29, 51.48),
+  type = "broadleaf",
+  reference = "WCC"
+)
+
+print(sens_plot)
+```
+
+## 5.3 Visualizing Sensitivity
+
+```{r sensitivity-plot, fig.height=5}
+# Bar chart of method totals
+plot(sens_plot, type = "comparison")
+```
+
+```{r sensitivity-deviation, fig.height=4}
+# Deviation from reference method
+plot(sens_plot, type = "deviation")
+```
+
+## 5.4 Per-Tree Sensitivity
+
+When aggregate = FALSE, you can see which individual trees drive the sensitivity:
+
+```{r sensitivity-per-tree}
+# Per-tree sensitivity
+sens_trees <- sensitivity_analysis(
+  forest_plot,
+  coords = c(-0.29, 51.48),
+  type = "broadleaf",
+  aggregate = FALSE
+)
+
+# View per-tree results
+tree_sens <- sens_trees$by_tree[, c("tree_id", "mean_estimate", "cv_pct", 
+                                     "spread_pct", "range_ratio")]
+tree_sens <- tree_sens[order(-tree_sens$cv_pct), ]
+
+cat("Trees ranked by method sensitivity (highest first):\n")
+print(head(tree_sens, 10))
+```
+
+## 5.5 Interpreting Sensitivity Results
+
+The sensitivity analysis provides clear guidance:
+
+| CV (%) | Level | Interpretation |
+|--------|-------|----------------|
+| < 10 | LOW | Method choice has minimal impact |
+| 10-25 | MODERATE | Typical variation; report range |
+| 25-50 | HIGH | Significant impact; justify method choice |
+| > 50 | VERY HIGH | Investigate data quality/applicability |
+
+**Key metrics to report:**
+
+- **CV across methods**: Overall sensitivity measure
+- **Spread (%)**: Total range as percentage of mean
+- **Range ratio**: Max/min estimate (e.g., 1.3x means highest is 30% more than lowest)
+
+## 5.6 What Drives High Sensitivity?
+
+High sensitivity often results from:
+
+1. **Tree size outside calibration range** - Very large or small trees
+2. **Species mismatch** - Methods trained on different species assemblages
+3. **Regional mismatch** - Using tropical equations for temperate trees
+4. **Missing height** - Some methods estimate height differently
+
+```{r sensitivity-investigate}
+# Check which trees have highest disagreement
+if (exists("sens_trees")) {
+  high_sens <- sens_trees$by_tree[sens_trees$by_tree$cv_pct > 20, ]
+  
+  if (nrow(high_sens) > 0) {
+    cat("Trees with CV > 20%:\n")
+    # Merge with original data to see characteristics
+    high_sens_full <- merge(high_sens[, c("tree_id", "cv_pct", "spread_pct")],
+                            forest_plot, by.x = "tree_id", by.y = "tree_id")
+    print(high_sens_full[, c("tree_id", "name", "dbh", "height", "cv_pct")])
+  }
+}
+```
+
+---
+
+# Part 6: Uncertainty Analysis
+
+## 6.1 Using the Monte Carlo Framework
+
+The `mc_uncertainty()` function provides comprehensive uncertainty propagation.
+
+```{r mc-example}
+# Define the Bunce allometric function
+bunce_fn <- function(dbh, a, b) {
+  exp(a + b * log(pi * dbh))
+}
+
+# Define inputs with uncertainties
+inputs <- list(
+  dbh = list(mean = 45, sd = 1.13, source = "measurement"),  # 2.5% error
+  a = list(mean = 1.868, sd = 0.047, source = "parameter"),
+  b = list(mean = 2.268, sd = 0.057, source = "parameter")
+)
+
+# Run Monte Carlo
+mc_result <- mc_uncertainty(bunce_fn, inputs, N = 2000, decompose = TRUE)
+
+# View results
+print(mc_result)
+summary(mc_result)
+```
+
+## 6.2 Variance Decomposition
+
+```{r variance-decomp, fig.height=4}
+if (!is.null(mc_result$decomposition)) {
+  by_source <- mc_result$decomposition$by_source
+  
+  ggplot(by_source, aes(x = reorder(source, contribution_pct), 
+                         y = contribution_pct, fill = source)) +
+    geom_col() +
+    coord_flip() +
+    labs(
+      title = "Variance Decomposition by Uncertainty Source",
+      x = "Source",
+      y = "Contribution (%)"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    scale_fill_brewer(palette = "Set2")
+}
+```
+
+## 6.3 Method Choice Uncertainty
+
+```{r method-choice-unc}
+# Estimates from different methods for the same tree
+estimates <- c(
+  WCC = 0.85,
+  BIOMASS = 0.78,
+  allodb = 0.92,
+  Bunce = 0.72
+)
+
+method_unc <- method_choice_uncertainty(estimates)
+
+cat("=== Method Choice Uncertainty ===\n\n")
+cat(sprintf("Consensus estimate: %.3f t\n", method_unc$consensus))
+cat(sprintf("Spread: %.3f t (%.1f%%)\n", method_unc$spread, method_unc$spread_pct))
+cat(sprintf("SD across methods: %.3f t (CV = %.1f%%)\n", method_unc$sd, method_unc$cv))
+
+cat("\nIndividual method differences:\n")
+print(method_unc$individual)
+```
+
+## 6.4 Bootstrap Sensitivity Analysis
+
+When comparing allometric methods, a key question is: **"How robust is my sensitivity
+conclusion to measurement error?"** The `bootstrap_sensitivity()` function addresses
+this by propagating measurement uncertainty through all methods.
+
+### The Approach
+
+For each bootstrap iteration:
+
+1. Perturb DBH and height by their measurement error (e.g., 2% CV for DBH, 5% for height)
+2. Run all allometric methods with the perturbed inputs
+3. Calculate the between-method CV
+4. Repeat many times to get a distribution of CVs
+
+This gives **confidence intervals** on the sensitivity metrics.
+
+### Example: Bootstrap Sensitivity for Multiple Trees
+
+```{r bootstrap-sensitivity, eval=FALSE}
+# Create sample tree data
+tree_data <- data.frame(
+  dbh = c(30, 45, 60, 25, 55),
+  height = c(15, 20, 25, 12, 22),
+  genus = c("Quercus", "Fagus", "Fraxinus", "Betula", "Acer"),
+  species = c("robur", "sylvatica", "excelsior", "pendula", "pseudoplatanus")
+)
+
+# Run bootstrap sensitivity analysis
+# Note: This is computationally intensive - use n_boot = 100 for testing
+boot_result <- bootstrap_sensitivity(
+  data = tree_data,
+  methods = c("WCC", "BIOMASS", "allodb", "Bunce"),
+  coords = c(-0.29, 51.48),  # London area
+  type = "broadleaf",
+  n_boot = 200,              # Use 500+ for publication
+  dbh_cv = 0.02,             # 2% DBH measurement error
+  height_cv = 0.05,          # 5% height measurement error
+  method = "IPCC2",
+  seed = 42                  # For reproducibility
+)
+
+# View results
+print(boot_result)
+```
+
+### Interpreting the Results
+
+```{r bootstrap-interpret, eval=FALSE}
+# The print method shows:
+# - Point estimate of CV
+# - Bootstrap mean CV  
+# - 95% confidence interval on CV
+# - Same for range ratio
+
+# Key interpretation:
+# If 95% CI is narrow (e.g., [12%, 18%]) -> Sensitivity conclusion is robust
+# If 95% CI is wide (e.g., [5%, 45%]) -> Measurement error affects conclusion
+
+# Visualize the bootstrap distribution
+plot(boot_result, type = "cv")         # Histogram of CVs
+plot(boot_result, type = "range_ratio") # Histogram of range ratios
+```
+
+### When to Use Option A vs Option B
+
+| Aspect | Option A (Per-tree distribution) | Option B (Bootstrap) |
+|--------|----------------------------------|----------------------|
+| **Question** | Which trees are most sensitive? | How robust is my CV estimate? |
+| **Output** | Histogram of per-tree CVs | Confidence interval on overall CV |
+| **Computation** | Fast (uses existing results) | Slow (re-runs all methods many times) |
+| **Best for** | Exploration, Shiny apps | Publications, rigorous analysis |
+| **Interpretation** | "Some trees vary more than others" | "My sensitivity estimate is [X%, Y%]" |
+
+### Statistical Note
+
+The bootstrap approach assumes:
+
+- Measurement errors are approximately normally distributed
+- Errors are independent across trees
+- The allometric equations themselves are deterministic
+
+For a fully Bayesian approach that also accounts for equation parameter uncertainty,
+consider using the `BIOMASS::AGBmonteCarlo()` function directly for the BIOMASS method.
+
+---
+
+# Part 7: Complete Workflow Example
+
+Putting it all together for a real analysis:
+
+```{r complete-workflow}
+# === Step 1: Load/prepare your data ===
+my_trees <- data.frame(
+  id = 1:5,
+  common_name = c("Oak", "Beech", "Scots Pine", "Ash", "Birch"),
+  genus = c("Quercus", "Fagus", "Pinus", "Fraxinus", "Betula"),
+  species = c("robur", "sylvatica", "sylvestris", "excelsior", "pendula"),
+  dbh_cm = c(45, 38, 42, 52, 28),
+  height_m = c(18, 22, 20, 24, 15),
+  type = c("broadleaf", "broadleaf", "conifer", "broadleaf", "broadleaf")
+)
+
+cat("=== Input Data ===\n")
+print(my_trees)
+
+# === Step 2: Calculate carbon using preferred method ===
+cat("\n=== WCC Carbon Estimates ===\n")
+
+wcc_out <- fc_agc_error(
+  name = my_trees$common_name,
+  dbh = my_trees$dbh_cm,
+  height = my_trees$height_m,
+  type = my_trees$type,
+  re_dbh = 0.025,
+  re_h = 0.05
+)
+
+results <- data.frame(
+  Tree = my_trees$common_name,
+  DBH = my_trees$dbh_cm,
+  Height = my_trees$height_m,
+  AGC_t = round(wcc_out$AGC_WCC_t, 3),
+  SD_t = round(wcc_out$sig_AGC, 3)
+)
+results$CV_pct <- round(100 * results$SD_t / results$AGC_t, 1)
+
+print(results)
+
+# === Step 3: Summary statistics ===
+cat("\n=== Summary ===\n")
+cat(sprintf("Total AGC: %.2f ± %.2f tonnes\n", 
+            sum(results$AGC_t, na.rm = TRUE),
+            sqrt(sum(results$SD_t^2, na.rm = TRUE))))
+cat(sprintf("Mean per-tree CV: %.1f%%\n", mean(results$CV_pct, na.rm = TRUE)))
+
+# === Step 4: Convert to CO2 equivalent ===
+results$CO2e_t <- results$AGC_t * (44/12)
+cat(sprintf("\nTotal CO2 equivalent: %.2f tonnes\n", sum(results$CO2e_t, na.rm = TRUE)))
+```
+
+---
+
+# References
+
+1. **Woodland Carbon Code**: UK Woodland Carbon Code (2021). Carbon Assessment 
+   Protocol. Scottish Forestry. https://woodlandcarboncode.org.uk/
+
+2. **Bunce**: Bunce, R.G.H. (1968). Biomass and Production of Trees in a Mixed 
+   Deciduous Woodland. Journal of Ecology, 56(3), 759-775.
+
+3. **BIOMASS**: Réjou-Méchain, M., et al. (2017). BIOMASS: An R package for 
+   estimating above-ground biomass and its uncertainty in tropical forests. 
+   Methods in Ecology and Evolution, 8(9), 1163-1167.
+
+4. **Chave**: Chave, J., et al. (2014). Improved allometric models to estimate 
+   the aboveground biomass of tropical trees. Global Change Biology, 20, 3177-3190.
+
+5. **allodb**: Gonzalez-Akre, E., et al. (2022). allodb: An R package for biomass 
+   estimation at globally distributed extratropical forest plots. Methods in 
+   Ecology and Evolution, 13(2), 330-338.
+
+---
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
+
