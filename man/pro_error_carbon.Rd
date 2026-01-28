@@ -18,20 +18,20 @@ pro_error_carbon(
 \arguments{
 \item{vol}{volume}
 
-\item{sig_vol}{sigma for volume}
+\item{sig_vol}{sigma (standard deviation) for volume}
 
 \item{den}{density}
 
-\item{sig_den}{sigma for wood density}
+\item{sig_den}{sigma (standard deviation) for wood density}
 
 \item{biom}{biomass}
+
+\item{sig_biom}{sigma (standard deviation) for biomass}
 
 \item{nruns}{number of iteration, suggest 10,000 as min and 100,000 is a good number}
 
 \item{returnv}{if null then mean and sd is returned else vector of
 quantiles ie c(5,50,95)/100 will return 5\%, mean and 95\% quantiles.}
-
-\item{biomsd}{biomass sd}
 }
 \value{
 either vector of mean and sd or vector of quantiles

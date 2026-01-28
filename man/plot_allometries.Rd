@@ -58,6 +58,8 @@ If NULL, defaults to theme_minimal with the specified font_size (default: NULL)}
 Jitter helps prevent overplotting when multiple methods have similar values. The jitter width is calculated
 as 2\% of the data range (x-axis), with a minimum of 0.1 units (default: TRUE)}
 
+\item{point_size}{Numeric value specifying the size of points in scatter plots (default: 2)}
+
 \item{x_min}{Numeric value, minimum x-axis value for axis limits (optional, default: NULL)}
 
 \item{x_max}{Numeric value, maximum x-axis value for axis limits (optional, default: NULL)}

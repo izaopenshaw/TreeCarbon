@@ -1,13 +1,12 @@
-## ----include = FALSE----------------------------------------------------------
+############ set up ####################
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
 
-## ----setup--------------------------------------------------------------------
 library(TreeCarbon)
 
-## ----single-tree--------------------------------------------------------------
+############ single tree with WCC ##########
 # Calculate above-ground carbon for an oak tree
 result <- fc_agc(
   name = "Oak",
@@ -21,7 +20,7 @@ cat(sprintf("Above-ground Carbon: %.3f tonnes\n", result$AGC_WCC_t))
 
 ## ----bunce--------------------------------------------------------------------
 result <- Bunce(name = "Oak", dbh = 45)
-cat(sprintf("Biomass: %.1f kg (%.3f tonnes)\n", 
+cat(sprintf("Biomass: %.1f kg (%.3f tonnes)\n",
             result$biomass, result$biomass/1000))
 
 ## ----batch--------------------------------------------------------------------
@@ -67,7 +66,7 @@ result <- fc_agc_error(
   re_h = 0.05       # 5% height error
 )
 
-cat(sprintf("Carbon: %.3f ± %.3f tonnes\n", 
+cat(sprintf("Carbon: %.3f ± %.3f tonnes\n",
             result$AGC_WCC_t, result$sig_AGC))
 
 ## ----rich---------------------------------------------------------------------

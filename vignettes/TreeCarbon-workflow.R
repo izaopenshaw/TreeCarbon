@@ -1,4 +1,4 @@
-## ----setup, include = FALSE---------------------------------------------------
+############ setup ##########
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -6,11 +6,11 @@ knitr::opts_chunk$set(
   fig.height = 5
 )
 
-## ----load-package, message=FALSE, warning=FALSE-------------------------------
+# load packages
 library(TreeCarbon)
 library(ggplot2)
 
-## ----single-wcc---------------------------------------------------------------
+########## single tree with wcc ########################
 # A single oak tree
 result_wcc <- fc_agc(
   name = "Oak",
@@ -21,7 +21,7 @@ result_wcc <- fc_agc(
 
 print(result_wcc)
 
-## ----single-wcc-rich----------------------------------------------------------
+############ single wcc rich output ##########
 result_rich <- fc_agc(
   name = "Oak",
   dbh = 45,
@@ -33,7 +33,7 @@ result_rich <- fc_agc(
 # View the complete result
 print(result_rich)
 
-## ----single-wcc-error---------------------------------------------------------
+############ single wcc with error ####################
 result_error <- fc_agc_error(
   name = "Oak",
   dbh = 45,
@@ -51,7 +51,7 @@ sigma <- result_error$sig_AGC
 cat(sprintf("\nAGC: %.3f ± %.3f t (95%% CI: [%.3f, %.3f])\n",
             agc, 1.96 * sigma, agc - 1.96*sigma, agc + 1.96*sigma))
 
-## ----single-bunce-------------------------------------------------------------
+############ single tree with bunce ##########
 result_bunce <- Bunce(
   name = "Oak",
   dbh = 45,
@@ -60,12 +60,11 @@ result_bunce <- Bunce(
 
 print(result_bunce)
 
-## ----single-bunce-rich--------------------------------------------------------
-# With rich metadata
+############ single tree bunce rich output ##########
 result_bunce_rich <- Bunce("Oak", dbh = 45, re_dbh = 0.025, rich_output = TRUE)
 print(result_bunce_rich)
 
-## ----single-biomass, eval=requireNamespace("BIOMASS", quietly = TRUE)---------
+############ single tree with BIOMASS ##########
 # UK coordinates (Kew Gardens)
 coords <- c(-0.2915, 51.4787)
 
@@ -77,11 +76,11 @@ result_biomass <- BIOMASS(
   coords = coords
 )
 
-print(result_biomass[, c("genus", "species", "dbh", "height", 
+print(result_biomass[, c("genus", "species", "dbh", "height",
                          "Wood_Density", "AGB_Biomass_kg")])
 
 # Convert to tonnes for comparison
-cat(sprintf("\nAGB: %.3f kg (%.4f t)\n", 
+cat(sprintf("\nAGB: %.3f kg (%.4f t)\n",
             result_biomass$AGB_Biomass_kg,
             result_biomass$AGB_Biomass_kg / 1000))
 
