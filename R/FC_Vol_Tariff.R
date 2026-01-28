@@ -1,4 +1,26 @@
-############# FC Tariff number from volume and tree basal area (WCC Eq 1) ############
+# ==============================================================================
+# TreeCarbon - Forestry Commission Woodland Carbon Code: Volume & Tariff
+# ==============================================================================
+#
+# This module implements the Forestry Commission's Woodland Carbon Code (WCC)
+# methodology for tariff number and volume calculations. These form the
+# foundational steps in the WCC carbon estimation pipeline.
+#
+# Functions included:
+#   - Tariff number calculations (Equations 1-4)
+#   - Stand and tree volume estimation (Equations 5a-5c)
+#   - Height-tariff relationships
+#
+# Authors: Justin Moat (J.Moat@kew.org), Isabel Openshaw (I.Openshaw@kew.org)
+#
+# References:
+#   - Jenkins, T.A.R., et al. (2018). FC Woodland Carbon Code: Carbon
+#     Assessment Protocol (v2.0). Forestry Commission, Edinburgh.
+#     https://www.woodlandcarboncode.org.uk/
+#
+# ==============================================================================
+#
+############# Tariff number from volume and tree basal area (WCC Eq 1) ############
 #'
 #' @title Tariff number from volume and basal area
 #' @description Using the sample tree’s basal area and volume to calculate the
@@ -73,10 +95,10 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
   }
 }
 
-############# FC conifer tree tariff number (WCC Eq 3) ############################
+############# Conifer tree tariff number (WCC Eq 3) ############################
 #'
 #' @title Conifer tree tariff number
-#'  sample tree. species-specific estimates of a1 – a3 are found in the
+#'  sample tree. species-specific estimates of a1-a3 are found in the
 #'  R data file, 'tariff_coniferdf'.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in metres
@@ -158,11 +180,11 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
   }
 }
 
-############# FC broadleaf tree tariff number (WCC Eq 2) ##########################
+############# Broadleaf tree tariff number (WCC Eq 2) ##########################
 #'
 #' @title Carbon tariff number for broadleaf tree
 #' @description Use dbh and tree height to derive the tariff number of each
-#' sample tree. species-specific estimates of a1 – a4 are found in the
+#' sample tree. species-specific estimates of a1-a4 are found in the
 #' R data file, 'tariff_broaddf'.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in meters
@@ -248,7 +270,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re 
   }
 }
 
-############# FC tariff number by stand height (WCC Eq 4) ################
+############# Tariff number by stand height (WCC Eq 4) ################
 #'
 #' @title Tariff number by stand height
 #' @description Use the estimated stand top height to calculate the stand
@@ -330,7 +352,7 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
   }
 }
 
-############# FC tariff number depending on inputs ################
+############# Tariff number depending on inputs ################
 #' @title Calculate tariff numbers for list of trees
 #' @description Depending on inputs, calcualte the tariff number using either
 #' stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
@@ -450,7 +472,7 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
   }
 }
 
-############# FC tree merchantable volume (WCC Eq 5) ################
+############# Tree merchantable volume (WCC Eq 5) ################
 #'
 #' @title Forestry merchantable volume
 #' @description Use the tree tariff number and dbh to estimate the mean
@@ -508,7 +530,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
   }
 }
 
-############# FC stem tree volume ################
+############# Stem tree volume ################
 #'
 #' @title Forestry commission tree wood volume
 #' @description Calculate the stem volume by multiplying the merchantable tree
@@ -571,18 +593,19 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
   return(result)
 }
 
-############# FC wood biomass ################
+############# Wood biomass ################
 #'
-#' @title Forestry commission wood biomass
+#' @title Forestry Commission wood biomass (WCC component)
 #' @description Multiply the mean total tree volume by the nominal specific
-#' gravity to give the biomass, in oven dry tonnes.
+#' gravity (NSG) to give the stem biomass, in oven dry tonnes. This is a
+#' component calculation within the Woodland Carbon Code methodology.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param treevol tree volume in metres cubed
-#' @param nsg Nominal Specific Gravity
+#' @param nsg Nominal Specific Gravity (g/cm^3 or t/m^3)
 #' @param sig_treevol tree volume sigma (optional)
-#' @param sig_nsg sigma for nsg (optional)
-#' @return  biomass in oven dry tonnes or if sig_treevol is provided then
-#' additionally returns the error as a list
+#' @param sig_nsg sigma for NSG (default = 0.094, from UK timber data)
+#' @return biomass in oven dry tonnes, or if sig_treevol is provided,
+#'   a list with woodbiomass and sigma.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Lavers, G.M. and Moore, G.L.
 #' (1983) The strength properties of timber. Building Research Establishment
@@ -593,30 +616,35 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
 #'
 woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) {
 
-  if(!is.numeric(treevol))stop("treevol must be numeric")
+  # Check inputs
+  if(!is.numeric(treevol)) stop("treevol must be numeric")
   if(!is.numeric(nsg) || any(nsg < 0, na.rm = TRUE)){
     warning("nsg must be numeric and positive")
   }
 
+  # Calculate biomass
   woodbio <- treevol * nsg
-  sigma <- rep(NA, length(treevol))
 
-  if(is.null(sig_treevol)) {
+  # Calculate uncertainty if provided
+  if (is.null(sig_treevol)) {
     return(woodbio)
   } else {
     if(!is.numeric(sig_treevol) || any(sig_treevol < 0, na.rm = TRUE)) {
-      stop("'sig_treevol' must be positive & numeric")}
+      stop("'sig_treevol' must be positive & numeric")
+    }
     if(!is.numeric(sig_nsg) || any(sig_nsg < 0, na.rm = TRUE)) {
-      stop("'sig_nsg' must be positive & numeric")}
+      stop("'sig_nsg' must be positive & numeric")
+    }
 
+    sigma <- rep(NA, length(treevol))
     v <- !is.na(sig_treevol) & !is.na(treevol) & !is.na(nsg)
     sigma[v] <- error_product(treevol[v], sig_treevol[v], nsg[v], sig_nsg, returnv = "sigma")
+
     return(list(woodbiomass = woodbio, sigma = sigma))
   }
-
 }
 
-############# FC crown biomass (WCC Eq 6 & 7) ################
+############# Crown biomass (WCC Eq 6 & 7) ################
 #'
 #' @title Forestry commission crown biomass estimates
 #' @description  Function to find crown biomass (composed of branches,
@@ -696,7 +724,7 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
   }
 }
 
-############# FC Root Biomass (WCC Eq 8 & 9) ################
+############# Root Biomass (WCC Eq 8 & 9) ################
 #'
 #' @title Forestry commission root biomass estimates
 #' @description Function to calculate the root biomass depending on species and dbh

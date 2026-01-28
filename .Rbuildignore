@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^data-raw$
+^LICENSE\.md$
+^bunce_eg\.rds$
+^comparison_output\.rds$
+^examples$

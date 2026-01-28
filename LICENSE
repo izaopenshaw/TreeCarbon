@@ -1,0 +1,61 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2025 Isabel Openshaw, Justin Moat
+Royal Botanic Gardens, Kew
+
+TreeCarbon: Calculate Carbon Estimates Using Multiple Allometric Methods
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+============================================================================
+
+THIRD-PARTY CITATIONS AND DATA SOURCES
+
+This package implements and builds upon methodologies from multiple sources.
+Users should cite the appropriate original sources when using these methods:
+
+1. Woodland Carbon Code (WCC)
+   - UK Woodland Carbon Code (2021). Carbon Assessment Protocol.
+   - Forestry Commission (2018). Carbon Lookup Tables.
+   - Uses tariff tables from Rollinson & Evans (1987).
+
+2. Bunce (1968)
+   - Bunce, R.G.H. (1968). Biomass and Production of Trees in a Mixed 
+     Deciduous Woodland. Journal of Ecology, 56(3), 759-775.
+
+3. BIOMASS Package
+   - Rejou-Mechain et al. (2017). Methods in Ecology and Evolution.
+   - Chave et al. (2014). Global Change Biology.
+
+4. allodb Package
+   - Gonzalez-Akre et al. (2022). Methods in Ecology and Evolution.
+
+5. Carbon Fraction Methods
+   - Matthews (1993). Forestry Commission.
+   - Thomas & Martin (2012). Forests.
+   - IPCC (2006, 2019). IPCC Guidelines.
+
+6. Wood Density Data
+   - Zanne et al. (2009). Global Wood Density Database. Dryad.
+
+See citation("TreeCarbon") in R for full BibTeX references.
+
+============================================================================
+
+For the full GPL-3 license text, see:
+https://www.gnu.org/licenses/gpl-3.0.txt
+
+
+

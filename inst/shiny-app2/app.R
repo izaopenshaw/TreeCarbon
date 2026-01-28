@@ -1,5 +1,6 @@
-# App2 to compare different allometries - Improved Version
-# Features: Interactive plots, comparison stats, export options, responsive design, etc.
+# App2 to compare different allometries
+# Features: Interactive plots, comparison stats, export options, responsive design,
+#           sensitivity analysis, Monte Carlo uncertainty estimation
 
 library(shiny)
 library(ggplot2)
@@ -58,6 +59,8 @@ ui <- dashboardPage(
     sidebarMenu(
       menuItem("Input & Calculation", tabName = "input", icon = icon("calculator")),
       menuItem("Results & Plots", tabName = "results", icon = icon("chart-line")),
+      menuItem("Carbon per Area", tabName = "per_area", icon = icon("map")),
+      menuItem("Sensitivity Analysis", tabName = "sensitivity", icon = icon("balance-scale")),
       menuItem("Statistics", tabName = "stats", icon = icon("table")),
       menuItem("Method Info", tabName = "info", icon = icon("info-circle")),
       menuItem("Instructions", tabName = "instructions", icon = icon("book"))
@@ -164,22 +167,45 @@ ui <- dashboardPage(
                       shinyBS::bsCollapse(
                         id = "advanced_collapse",
                         shinyBS::bsCollapsePanel(
-                          title = "Error Propagation Parameters",
+                          title = "WCC Error Propagation",
                           numericInput("re_dbh", "Relative error DBH (%)", value = 5, min = 0, max = 100, step = 0.1),
                           numericInput("re_h", "Relative error Height (%)", value = 10, min = 0, max = 100, step = 0.1),
                           numericInput("re", "Relative error coefficients (%)", value = 2.5, min = 0, max = 100, step = 0.1),
                           numericInput("sig_nsg", "Sigma NSG", value = 0.09413391, min = 0, step = 0.001),
                           textInput("nsg", "Nominal Specific Gravity (optional)", value = "", placeholder = "Leave empty for default")
+                        ),
+                        shinyBS::bsCollapsePanel(
+                          title = "BIOMASS Monte Carlo Uncertainty",
+                          checkboxInput("biomass_uncertainty", "Enable Monte Carlo uncertainty", value = FALSE),
+                          helpIcon("help_biomass_mc"),
+                          if (requireNamespace("shinyBS", quietly = TRUE)) {
+                            shinyBS::bsTooltip("help_biomass_mc",
+                              "Uses AGBmonteCarlo to propagate DBH, height, and wood density errors")
+                          },
+                          conditionalPanel(
+                            condition = "input.biomass_uncertainty == true",
+                            numericInput("n_mc", "Monte Carlo iterations", value = 1000, min = 100, max = 10000, step = 100),
+                            numericInput("errH", "Height error (%)", value = 5, min = 0, max = 50, step = 1),
+                            helpText("Height error as % of measured height (e.g., 5 = ±5%)")
+                          )
                         )
                       )
                     } else {
                       wellPanel(
-                        h6("Error Propagation Parameters"),
+                        h6("WCC Error Propagation Parameters"),
                         numericInput("re_dbh", "Relative error DBH (%)", value = 5, min = 0, max = 100, step = 0.1),
                         numericInput("re_h", "Relative error Height (%)", value = 10, min = 0, max = 100, step = 0.1),
                         numericInput("re", "Relative error coefficients (%)", value = 2.5, min = 0, max = 100, step = 0.1),
                         numericInput("sig_nsg", "Sigma NSG", value = 0.09413391, min = 0, step = 0.001),
-                        textInput("nsg", "Nominal Specific Gravity (optional)", value = "", placeholder = "Leave empty for default")
+                        textInput("nsg", "Nominal Specific Gravity (optional)", value = "", placeholder = "Leave empty for default"),
+                        hr(),
+                        h6("BIOMASS Monte Carlo Uncertainty"),
+                        checkboxInput("biomass_uncertainty", "Enable Monte Carlo uncertainty", value = FALSE),
+                        conditionalPanel(
+                          condition = "input.biomass_uncertainty == true",
+                          numericInput("n_mc", "Monte Carlo iterations", value = 1000, min = 100, max = 10000, step = 100),
+                          numericInput("errH", "Height error (%)", value = 5, min = 0, max = 50, step = 1)
+                        )
                       )
                     },
                     hr(),
@@ -209,6 +235,7 @@ ui <- dashboardPage(
                 box(title = "Plot Options", width = 3, status = "info", solidHeader = TRUE,
                     selectInput("plot_type", "Plot Type:",
                                 choices = c("Bar graph (sum)" = "bar",
+                                            "Boxplot by method" = "boxplot",
                                             "Scatter with index" = "tree_index",
                                             "Scatter with DBH" = "dbh",
                                             "Scatter with height" = "height"),
@@ -414,6 +441,277 @@ ui <- dashboardPage(
                 )
               )
       ),
+      # Carbon per Area Tab
+      tabItem(tabName = "per_area",
+              fluidRow(
+                box(title = "Carbon per Unit Area", width = 12, status = "primary", solidHeader = TRUE,
+                    p("Calculate carbon density (carbon per unit area) for your tree data using the ",
+                      tags$code("summary_per_area()"), " function."),
+                    p("This is useful for reporting carbon stocks at the plot, stand, or landscape level."),
+                    hr(),
+                    fluidRow(
+                      column(4,
+                             numericInput("plot_area", "Plot/Stand Area:", value = 1, min = 0.001, step = 0.1),
+                             selectInput("area_unit", "Area Unit:",
+                                         choices = c("hectares (ha)" = "ha",
+                                                     "square metres (m²)" = "m2",
+                                                     "acres" = "acres",
+                                                     "square kilometres (km²)" = "km2"),
+                                         selected = "ha"),
+                             helpText("Enter the total area surveyed. Carbon will be scaled to this area.")
+                      ),
+                      column(4,
+                             selectInput("per_area_methods", "Methods to Include:",
+                                         choices = c("WCC" = "WCC", "BIOMASS" = "BIOMASS",
+                                                     "allodb" = "allodb", "Bunce" = "Bunce"),
+                                         selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
+                                         multiple = TRUE),
+                             checkboxInput("per_area_include_error", "Include uncertainty estimates", value = TRUE),
+                             helpText("Calculate error propagation for carbon density")
+                      ),
+                      column(4,
+                             selectInput("output_unit", "Output Carbon Unit:",
+                                         choices = c("tonnes C / ha" = "t_ha",
+                                                     "kg C / ha" = "kg_ha",
+                                                     "tonnes C / acre" = "t_acre",
+                                                     "Mg C / ha" = "Mg_ha"),
+                                         selected = "t_ha"),
+                             br(),
+                             actionButton("calc_per_area", "Calculate Carbon Density",
+                                          class = "btn-primary btn-lg", style = "margin-top: 10px;")
+                      )
+                    )
+                )
+              ),
+              fluidRow(
+                valueBoxOutput("total_carbon_per_area"),
+                valueBoxOutput("carbon_density_wcc"),
+                valueBoxOutput("method_range_per_area")
+              ),
+              fluidRow(
+                box(title = "Carbon Density by Method", width = 6, status = "success", solidHeader = TRUE,
+                    plotOutput("per_area_bar_plot", height = "400px")
+                ),
+                box(title = "Method Comparison", width = 6, status = "info", solidHeader = TRUE,
+                    DT::dataTableOutput("per_area_table")
+                )
+              ),
+              fluidRow(
+                box(title = "Summary Statistics", width = 12, status = "warning", solidHeader = TRUE,
+                    verbatimTextOutput("per_area_summary"),
+                    hr(),
+                    fluidRow(
+                      column(6,
+                             downloadButton("download_per_area_csv", "Download Results (CSV)", class = "btn-success")
+                      ),
+                      column(6,
+                             downloadButton("download_per_area_report", "Download Report (TXT)", class = "btn-info")
+                      )
+                    )
+                )
+              ),
+              fluidRow(
+                box(title = "Unit Conversion Reference", width = 12, status = "info", solidHeader = TRUE,
+                    collapsible = TRUE, collapsed = TRUE,
+                    tags$table(class = "table table-striped table-sm",
+                               tags$thead(
+                                 tags$tr(tags$th("From"), tags$th("To"), tags$th("Multiply by"))
+                               ),
+                               tags$tbody(
+                                 tags$tr(tags$td("hectares"), tags$td("m²"), tags$td("10,000")),
+                                 tags$tr(tags$td("hectares"), tags$td("acres"), tags$td("2.471")),
+                                 tags$tr(tags$td("km²"), tags$td("hectares"), tags$td("100")),
+                                 tags$tr(tags$td("tonnes C"), tags$td("tonnes CO₂e"), tags$td("3.67")),
+                                 tags$tr(tags$td("tonnes"), tags$td("Mg (megagrams)"), tags$td("1 (equivalent)")),
+                                 tags$tr(tags$td("tonnes"), tags$td("kg"), tags$td("1,000"))
+                               )
+                    )
+                )
+              )
+      ),
+      # Sensitivity Analysis Tab
+      tabItem(tabName = "sensitivity",
+              fluidRow(
+                box(title = "Sensitivity Analysis: How Sensitive is Carbon to Method Choice?",
+                    width = 12, status = "primary", solidHeader = TRUE,
+                    p("This analysis quantifies how much your carbon estimate varies depending on which allometric method you use."),
+                    p(tags$strong("Key question:"), " If I report carbon using method X, how different would my estimate be using method Y?"),
+                    hr(),
+                    fluidRow(
+                      column(4,
+                             selectInput("sens_reference", "Reference Method:",
+                                         choices = c("WCC", "BIOMASS", "allodb", "Bunce"),
+                                         selected = "WCC"),
+                             helpText("Compare all methods against this reference")
+                      ),
+                      column(4,
+                             checkboxGroupInput("sens_methods", "Methods to Compare:",
+                                                choices = c("WCC" = "WCC", "BIOMASS" = "BIOMASS",
+                                                            "allodb" = "allodb", "Bunce" = "Bunce"),
+                                                selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
+                                                inline = FALSE)
+                      ),
+                      column(4,
+                             actionButton("run_sensitivity", "Run Sensitivity Analysis",
+                                         class = "btn-primary btn-lg", style = "margin-top: 25px;"),
+                             br(), br(),
+                             checkboxInput("sens_aggregate", "Aggregate results (total)", value = TRUE),
+                             helpText("Uncheck for per-tree sensitivity"),
+                             hr(),
+                             checkboxInput("sens_show_tree_dist", "Show per-tree CV distribution", value = TRUE),
+                             helpText("Visualize which trees are most sensitive to method choice")
+                      )
+                    )
+                )
+              ),
+              fluidRow(
+                valueBoxOutput("sens_range_ratio"),
+                valueBoxOutput("sens_cv"),
+                valueBoxOutput("sens_level")
+              ),
+              fluidRow(
+                box(title = "Method Comparison Plot", width = 6, status = "primary", solidHeader = TRUE,
+                    plotOutput("sensitivity_comparison_plot", height = "400px")
+                ),
+                box(title = "Deviation from Reference", width = 6, status = "success", solidHeader = TRUE,
+                    plotOutput("sensitivity_deviation_plot", height = "400px")
+                )
+              ),
+              # Per-tree CV distribution (Option A) - conditional on checkbox
+              conditionalPanel(
+                condition = "input.sens_show_tree_dist == true",
+                fluidRow(
+                  box(title = "Per-Tree Sensitivity Distribution (Option A)", width = 12,
+                      status = "info", solidHeader = TRUE,
+                      p("This shows how sensitivity to method choice varies across individual trees. ",
+                        "Trees with higher CV have more disagreement between allometric methods."),
+                      fluidRow(
+                        column(6,
+                               plotOutput("tree_cv_histogram", height = "350px")
+                        ),
+                        column(6,
+                               plotOutput("tree_cv_vs_dbh", height = "350px")
+                        )
+                      ),
+                      hr(),
+                      fluidRow(
+                        column(4,
+                               valueBoxOutput("sens_tree_median_cv", width = 12)
+                        ),
+                        column(4,
+                               valueBoxOutput("sens_tree_high_cv_pct", width = 12)
+                        ),
+                        column(4,
+                               valueBoxOutput("sens_tree_low_cv_pct", width = 12)
+                        )
+                      ),
+                      helpText("Interpretation: Trees with CV > 25% are highly sensitive to method choice. ",
+                               "Large trees often show higher absolute differences but may have similar relative (%) sensitivity.")
+                  )
+                )
+              ),
+              fluidRow(
+                box(title = "Sensitivity Summary", width = 6, status = "info", solidHeader = TRUE,
+                    verbatimTextOutput("sensitivity_summary")
+                ),
+                box(title = "Interpretation Guide", width = 6, status = "warning", solidHeader = TRUE,
+                    h5("Sensitivity Levels", style = "font-weight: bold;"),
+                    tags$table(class = "table table-striped table-sm",
+                               tags$thead(
+                                 tags$tr(
+                                   tags$th("CV (%)"), tags$th("Level"), tags$th("Interpretation")
+                                 )
+                               ),
+                               tags$tbody(
+                                 tags$tr(tags$td("< 10"), tags$td(tags$span(class = "label label-success", "LOW")),
+                                         tags$td("Method choice has minimal impact")),
+                                 tags$tr(tags$td("10-25"), tags$td(tags$span(class = "label label-info", "MODERATE")),
+                                         tags$td("Typical variation; report range")),
+                                 tags$tr(tags$td("25-50"), tags$td(tags$span(class = "label label-warning", "HIGH")),
+                                         tags$td("Significant impact; justify method choice")),
+                                 tags$tr(tags$td("> 50"), tags$td(tags$span(class = "label label-danger", "VERY HIGH")),
+                                         tags$td("Investigate data quality/applicability"))
+                               )
+                    ),
+                    hr(),
+                    h5("Key Metric: Range Ratio", style = "font-weight: bold; color: #605ca8;"),
+                    p("The ", tags$strong("Range Ratio (max/min)"), " is the most robust sensitivity metric. ",
+                      "A ratio of 1.5x means the highest method gives 50% more than the lowest."),
+                    hr(),
+                    h5("Statistical Note", style = "font-weight: bold;"),
+                    p(style = "font-size: 0.9em; color: #666;",
+                      "These 4 methods (WCC, BIOMASS, allodb, Bunce) are ", tags$em("fixed, commonly-used approaches"),
+                      " - not random samples from a population of methods. The CV describes how much ",
+                      tags$em("these specific methods"), " disagree, not sampling uncertainty. ",
+                      "The Range Ratio is more robust with n=4 methods as it doesn't assume any distribution.")
+                )
+              ),
+              fluidRow(
+                box(title = "Method Results Table", width = 12, status = "primary", solidHeader = TRUE,
+                    DT::dataTableOutput("sensitivity_table"),
+                    br(),
+                    downloadButton("download_sensitivity", "Download Sensitivity Report", class = "btn-info")
+                )
+              ),
+              conditionalPanel(
+                condition = "input.sens_aggregate == false",
+                fluidRow(
+                  box(title = "Per-Tree Sensitivity", width = 12, status = "info", solidHeader = TRUE,
+                      helpText("Trees ranked by method sensitivity (highest CV first)"),
+                      DT::dataTableOutput("sensitivity_per_tree_table")
+                  )
+                )
+              ),
+              # Method comparison scatter plots
+              fluidRow(
+                box(title = "Method Comparison: Reference vs Other Methods", width = 12, 
+                    status = "primary", solidHeader = TRUE,
+                    p("Compare how each method's estimates relate to the reference method. ",
+                      "Points on the 1:1 line indicate perfect agreement."),
+                    fluidRow(
+                      column(4,
+                             radioButtons("scatter_view", "Display:",
+                                          choices = c("Combined (single plot)" = "single",
+                                                      "Faceted (one per method)" = "faceted"),
+                                          selected = "single", inline = TRUE)
+                      ),
+                      column(8,
+                             helpText("The reference method is selected above. Other methods are compared against it.")
+                      )
+                    ),
+                    conditionalPanel(
+                      condition = "input.scatter_view == 'single'",
+                      plotOutput("method_scatter_single", height = "450px")
+                    ),
+                    conditionalPanel(
+                      condition = "input.scatter_view == 'faceted'",
+                      plotOutput("method_scatter_faceted", height = "500px")
+                    )
+                )
+              ),
+              # Method correlation heatmap
+              fluidRow(
+                box(title = "Method Correlation Heatmap", width = 6, status = "success", solidHeader = TRUE,
+                    p("Shows correlation between per-tree carbon estimates across methods. ",
+                      "High correlation indicates methods rank trees similarly."),
+                    plotOutput("method_correlation_heatmap", height = "400px")
+                ),
+                box(title = "Correlation Interpretation", width = 6, status = "info", solidHeader = TRUE,
+                    h5("Understanding the Heatmap"),
+                    tags$ul(
+                      tags$li(tags$strong("r > 0.95:"), " Very strong agreement - methods rank trees nearly identically"),
+                      tags$li(tags$strong("r = 0.80-0.95:"), " Strong agreement - general pattern preserved"),
+                      tags$li(tags$strong("r = 0.60-0.80:"), " Moderate agreement - some disagreement in ranking"),
+                      tags$li(tags$strong("r < 0.60:"), " Weak agreement - methods fundamentally differ in how they rank trees")
+                    ),
+                    hr(),
+                    p(style = "font-size: 0.9em; color: #666;",
+                      tags$strong("Note:"), " High correlation does not mean methods give the same ",
+                      tags$em("values"), " - it means they ", tags$em("rank"), " trees similarly. ",
+                      "Two methods can be perfectly correlated (r=1) but still have different absolute values.")
+                )
+              )
+      ),
       # Method Info Tab
       tabItem(tabName = "info",
               fluidRow(
@@ -471,7 +769,8 @@ ui <- dashboardPage(
                       tags$li("Choose carbon conversion method"),
                       tags$li("Select biome and region"),
                       tags$li("Enter coordinates (longitude, latitude)"),
-                      tags$li("Adjust advanced error parameters if needed")
+                      tags$li("Adjust advanced error parameters if needed"),
+                      tags$li(tags$strong("NEW:"), " Enable BIOMASS Monte Carlo uncertainty for robust confidence intervals")
                     ),
                     h4("3. Calculate"),
                     tags$ul(
@@ -479,11 +778,28 @@ ui <- dashboardPage(
                       tags$li("View results in Results & Plots tab"),
                       tags$li("Check Statistics tab for method comparisons")
                     ),
-                    h4("4. Export"),
+                    h4("4. Sensitivity Analysis (NEW)"),
+                    tags$ul(
+                      tags$li("After calculating, go to the 'Sensitivity Analysis' tab"),
+                      tags$li("Select reference method and methods to compare"),
+                      tags$li("Click 'Run Sensitivity Analysis' to see how estimates vary by method"),
+                      tags$li("Interpret results: CV < 10% = LOW sensitivity, 10-25% = MODERATE, etc."),
+                      tags$li("Use this to decide if method choice significantly affects your results")
+                    ),
+                    h4("5. Export"),
                     tags$ul(
                       tags$li("Download results as CSV or Excel"),
                       tags$li("Export plots as PNG or SVG"),
-                      tags$li("Generate PDF report with all results")
+                      tags$li("Download sensitivity analysis report")
+                    ),
+                    hr(),
+                    h4("Understanding Sensitivity Analysis"),
+                    p("The sensitivity analysis answers: ", tags$em("'How much does my carbon estimate change based on which allometric method I choose?'")),
+                    p("Key metrics:"),
+                    tags$ul(
+                      tags$li(tags$strong("CV (Coefficient of Variation):"), " Standard deviation as percentage of mean. Higher CV = more variation between methods."),
+                      tags$li(tags$strong("Spread:"), " Range (max - min) as percentage of mean. Shows total variation."),
+                      tags$li(tags$strong("Range Ratio:"), " Max estimate / Min estimate. E.g., 1.5x means highest is 50% more than lowest.")
                     )
                 )
               )
@@ -666,17 +982,13 @@ server <- function(input, output, session) {
         # Restore warning option
         options(warn = old_warn)
 
-        # Store unique warnings and show notifications
+        # Store unique warnings (displayed in warnings panel only, not as pop-ups)
         captured_warnings <- warn_env$warnings
         if (length(captured_warnings) > 0) {
           unique_warnings <- unique(captured_warnings)
           # Strip ANSI codes before storing
           clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
           calculation_warnings$warnings <- clean_warnings
-          # Show each unique warning as a notification
-          for (w in clean_warnings) {
-            showNotification(w, type = "warning", duration = 15)
-          }
         } else {
           calculation_warnings$warnings <- character()
         }
@@ -738,16 +1050,13 @@ server <- function(input, output, session) {
         # Restore warning option
         options(warn = old_warn)
 
-        # Store unique warnings and show notifications
+        # Store unique warnings (displayed in warnings panel only, not as pop-ups)
         captured_warnings <- warn_env$warnings
         if (length(captured_warnings) > 0) {
           unique_warnings <- unique(captured_warnings)
           # Strip ANSI codes before storing
           clean_warnings <- sapply(unique_warnings, strip_ansi, USE.NAMES = FALSE)
           calculation_warnings$warnings <- clean_warnings
-          for (w in clean_warnings) {
-            showNotification(w, type = "warning", duration = 15)
-          }
         } else {
           calculation_warnings$warnings <- character()
         }
@@ -1002,7 +1311,7 @@ server <- function(input, output, session) {
       invokeRestart("muffleWarning")
     })
 
-    # Show plot warnings as notifications
+    # Store plot warnings in panel (no pop-up notifications)
     if (length(plot_warnings) > 0) {
       unique_warnings <- unique(plot_warnings)
       # Strip ANSI codes
@@ -1010,9 +1319,6 @@ server <- function(input, output, session) {
       # Append to existing warnings
       all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", clean_warnings))
       calculation_warnings$warnings <- unique(all_warnings)
-      for (w in clean_warnings) {
-        showNotification(paste("Plot:", w), type = "warning", duration = 10)
-      }
     }
 
     # Log scale is handled in plot_allometries function (only for scatter plots)
@@ -1082,7 +1388,7 @@ server <- function(input, output, session) {
       invokeRestart("muffleWarning")
     })
 
-    # Show plot warnings as notifications
+    # Store plot warnings in panel (no pop-up notifications)
     if (length(plot_warnings) > 0) {
       unique_warnings <- unique(plot_warnings)
       # Strip ANSI codes
@@ -1090,9 +1396,6 @@ server <- function(input, output, session) {
       # Append to existing warnings
       all_warnings <- c(calculation_warnings$warnings, paste("[Plot]", clean_warnings))
       calculation_warnings$warnings <- unique(all_warnings)
-      for (w in clean_warnings) {
-        showNotification(paste("Plot:", w), type = "warning", duration = 10)
-      }
     }
 
     # Return the plot for Shiny to render
@@ -1637,6 +1940,881 @@ server <- function(input, output, session) {
 
     DT::datatable(results, options = list(pageLength = 10, dom = 't'),
                   rownames = FALSE)
+  })
+
+  # ========== CARBON PER AREA ==========
+
+  # Store per-area results
+  per_area_results <- reactiveValues(data = NULL)
+
+  # Calculate carbon per area when button clicked
+  observeEvent(input$calc_per_area, {
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) {
+      showNotification("No data available. Calculate allometries first.", type = "error")
+      return()
+    }
+
+    # Get area and convert to hectares for internal calculations
+    area_ha <- switch(input$area_unit,
+                      "ha" = input$plot_area,
+                      "m2" = input$plot_area / 10000,
+                      "acres" = input$plot_area / 2.471,
+                      "km2" = input$plot_area * 100,
+                      input$plot_area)
+
+    if (area_ha <= 0) {
+      showNotification("Area must be greater than 0", type = "error")
+      return()
+    }
+
+    # Determine column suffix based on return type
+    suffix <- if (input$returnv == "AGC") "_C_t" else "_B_t"
+    suffix_sig <- if (input$returnv == "AGC") "_C_sig" else "_B_sig"
+
+    # Map method names to column names
+    col_map <- c(
+      "WCC" = paste0("WCC", suffix),
+      "BIOMASS" = paste0("biomass", suffix),
+      "allodb" = paste0("allodb", suffix),
+      "Bunce" = paste0("Bunce", suffix)
+    )
+    sig_map <- c(
+      "WCC" = paste0("WCC", suffix_sig),
+      "BIOMASS" = paste0("biomass", suffix_sig),
+      "allodb" = paste0("allodb", suffix_sig),
+      "Bunce" = paste0("Bunce", suffix_sig)
+    )
+
+    # Calculate per-area values for each selected method
+    results <- data.frame()
+
+    for (m in input$per_area_methods) {
+      col_name <- col_map[m]
+      sig_col <- sig_map[m]
+
+      if (col_name %in% names(df)) {
+        carbon_vals <- df[[col_name]]
+        total_carbon <- sum(carbon_vals, na.rm = TRUE)
+        carbon_per_ha <- total_carbon / area_ha
+
+        # Calculate error if available and requested
+        if (input$per_area_include_error && sig_col %in% names(df)) {
+          error_vals <- df[[sig_col]]
+          # Propagate errors in quadrature for sum
+          total_error <- sqrt(sum(error_vals^2, na.rm = TRUE))
+          error_per_ha <- total_error / area_ha
+          cv_pct <- 100 * total_error / total_carbon
+        } else {
+          total_error <- NA
+          error_per_ha <- NA
+          cv_pct <- NA
+        }
+
+        # Convert to output units
+        output_multiplier <- switch(input$output_unit,
+                                    "t_ha" = 1,
+                                    "kg_ha" = 1000,
+                                    "t_acre" = 2.471,
+                                    "Mg_ha" = 1,
+                                    1)
+
+        results <- rbind(results, data.frame(
+          Method = m,
+          Total_Carbon_t = round(total_carbon, 4),
+          Total_Error_t = round(total_error, 4),
+          Carbon_per_ha = round(carbon_per_ha * output_multiplier, 4),
+          Error_per_ha = round(error_per_ha * output_multiplier, 4),
+          CV_pct = round(cv_pct, 2),
+          N_trees = sum(!is.na(carbon_vals)),
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+
+    if (nrow(results) > 0) {
+      # Add ranking
+      results <- results[order(-results$Carbon_per_ha), ]
+      results$Rank <- seq_len(nrow(results))
+
+      # Store metadata
+      attr(results, "area_ha") <- area_ha
+      attr(results, "area_input") <- input$plot_area
+      attr(results, "area_unit") <- input$area_unit
+      attr(results, "output_unit") <- input$output_unit
+      attr(results, "n_trees") <- nrow(df)
+
+      per_area_results$data <- results
+      showNotification("Carbon density calculated!", type = "message", duration = 3)
+    } else {
+      showNotification("No valid data found for selected methods", type = "error")
+    }
+  })
+
+  # Value boxes for per-area tab
+  output$total_carbon_per_area <- renderValueBox({
+    results <- per_area_results$data
+    if (is.null(results)) {
+      return(valueBox("--", "Total Carbon (all methods avg)", icon = icon("tree"), color = "green"))
+    }
+    avg_total <- mean(results$Total_Carbon_t, na.rm = TRUE)
+    valueBox(paste0(round(avg_total, 2), " t"), "Total Carbon (avg)", icon = icon("tree"), color = "green")
+  })
+
+  output$carbon_density_wcc <- renderValueBox({
+    results <- per_area_results$data
+    if (is.null(results)) {
+      return(valueBox("--", "Carbon Density", icon = icon("chart-area"), color = "blue"))
+    }
+    # Get WCC value or first available
+    wcc_row <- results[results$Method == "WCC", ]
+    if (nrow(wcc_row) > 0) {
+      val <- wcc_row$Carbon_per_ha[1]
+      method_label <- "WCC"
+    } else {
+      val <- results$Carbon_per_ha[1]
+      method_label <- results$Method[1]
+    }
+    unit_label <- switch(attr(results, "output_unit"),
+                         "t_ha" = "t C/ha",
+                         "kg_ha" = "kg C/ha",
+                         "t_acre" = "t C/acre",
+                         "Mg_ha" = "Mg C/ha",
+                         "t C/ha")
+    valueBox(paste0(round(val, 2), " ", unit_label),
+             paste0("Carbon Density (", method_label, ")"),
+             icon = icon("chart-area"), color = "blue")
+  })
+
+  output$method_range_per_area <- renderValueBox({
+    results <- per_area_results$data
+    if (is.null(results) || nrow(results) < 2) {
+      return(valueBox("--", "Method Range", icon = icon("arrows-alt-h"), color = "purple"))
+    }
+    range_ratio <- max(results$Carbon_per_ha, na.rm = TRUE) / min(results$Carbon_per_ha, na.rm = TRUE)
+    valueBox(paste0(round(range_ratio, 2), "x"), "Method Range (max/min)",
+             icon = icon("arrows-alt-h"), color = "purple")
+  })
+
+  # Bar plot for per-area results
+  output$per_area_bar_plot <- renderPlot({
+    results <- per_area_results$data
+    if (is.null(results) || nrow(results) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Click 'Calculate Carbon Density' to see results") +
+               theme_void())
+    }
+
+    unit_label <- switch(attr(results, "output_unit"),
+                         "t_ha" = "t C/ha",
+                         "kg_ha" = "kg C/ha",
+                         "t_acre" = "t C/acre",
+                         "Mg_ha" = "Mg C/ha",
+                         "t C/ha")
+
+    p <- ggplot(results, aes(x = reorder(Method, -Carbon_per_ha), y = Carbon_per_ha, fill = Method)) +
+      geom_col(alpha = 0.8) +
+      geom_text(aes(label = round(Carbon_per_ha, 2)), vjust = -0.5, size = 4)
+
+    # Add error bars if available
+    if (!all(is.na(results$Error_per_ha))) {
+      # Cap error bars at zero
+      results$ymin <- pmax(0, results$Carbon_per_ha - results$Error_per_ha)
+      results$ymax <- results$Carbon_per_ha + results$Error_per_ha
+      p <- p + geom_errorbar(data = results,
+                             aes(ymin = ymin, ymax = ymax),
+                             width = 0.2, linewidth = 0.8)
+    }
+
+    p +
+      scale_fill_manual(values = c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
+                                   "allodb" = "#009E73", "Bunce" = "#CC79A7")) +
+      labs(x = "Allometric Method",
+           y = paste0("Carbon Density (", unit_label, ")"),
+           title = "Carbon Density by Allometric Method",
+           subtitle = sprintf("Area: %.2f %s | Trees: %d",
+                              attr(results, "area_input"),
+                              attr(results, "area_unit"),
+                              attr(results, "n_trees"))) +
+      theme_minimal(base_size = 14) +
+      theme(legend.position = "none",
+            plot.title = element_text(hjust = 0.5, face = "bold"),
+            plot.subtitle = element_text(hjust = 0.5, color = "gray40"))
+  })
+
+  # Results table for per-area
+  output$per_area_table <- DT::renderDataTable({
+    results <- per_area_results$data
+    if (is.null(results)) {
+      return(data.frame(Message = "Calculate carbon density to see results"))
+    }
+
+    # Format for display
+    display_df <- results[, c("Method", "Total_Carbon_t", "Carbon_per_ha", "Error_per_ha", "CV_pct", "Rank")]
+    colnames(display_df) <- c("Method", "Total (t)", "Density", "± Error", "CV (%)", "Rank")
+
+    DT::datatable(display_df, options = list(pageLength = 10, dom = 't'), rownames = FALSE)
+  })
+
+  # Summary text for per-area
+  output$per_area_summary <- renderPrint({
+    results <- per_area_results$data
+    if (is.null(results)) {
+      cat("Click 'Calculate Carbon Density' after calculating allometries.\n")
+      return()
+    }
+
+    cat("=== CARBON DENSITY SUMMARY ===\n\n")
+    cat(sprintf("Survey area: %.2f %s (%.4f ha)\n",
+                attr(results, "area_input"),
+                attr(results, "area_unit"),
+                attr(results, "area_ha")))
+    cat(sprintf("Number of trees: %d\n", attr(results, "n_trees")))
+    cat(sprintf("Methods compared: %d\n\n", nrow(results)))
+
+    unit_label <- switch(attr(results, "output_unit"),
+                         "t_ha" = "t C/ha",
+                         "kg_ha" = "kg C/ha",
+                         "t_acre" = "t C/acre",
+                         "Mg_ha" = "Mg C/ha",
+                         "t C/ha")
+
+    cat("--- Carbon Density by Method ---\n")
+    for (i in seq_len(nrow(results))) {
+      r <- results[i, ]
+      if (!is.na(r$Error_per_ha)) {
+        cat(sprintf("%s: %.2f ± %.2f %s (CV: %.1f%%)\n",
+                    r$Method, r$Carbon_per_ha, r$Error_per_ha, unit_label, r$CV_pct))
+      } else {
+        cat(sprintf("%s: %.2f %s\n", r$Method, r$Carbon_per_ha, unit_label))
+      }
+    }
+
+    cat("\n--- Method Agreement ---\n")
+    if (nrow(results) >= 2) {
+      range_ratio <- max(results$Carbon_per_ha) / min(results$Carbon_per_ha)
+      cv_methods <- 100 * sd(results$Carbon_per_ha) / mean(results$Carbon_per_ha)
+      cat(sprintf("Range ratio: %.2fx (max/min)\n", range_ratio))
+      cat(sprintf("CV across methods: %.1f%%\n", cv_methods))
+      cat(sprintf("Mean density: %.2f %s\n", mean(results$Carbon_per_ha), unit_label))
+    }
+
+    # CO2e conversion note
+    cat("\n--- CO₂ Equivalent ---\n")
+    mean_carbon <- mean(results$Carbon_per_ha)
+    co2e <- mean_carbon * 3.67
+    cat(sprintf("Mean CO₂e: %.2f t CO₂e/%s (carbon × 3.67)\n",
+                co2e, gsub("t C/|kg C/|Mg C/", "", unit_label)))
+  })
+
+  # Download handlers for per-area
+  output$download_per_area_csv <- downloadHandler(
+    filename = function() paste0("carbon_density_", Sys.Date(), ".csv"),
+    content = function(file) {
+      results <- per_area_results$data
+      if (is.null(results)) {
+        write.csv(data.frame(Message = "No data"), file, row.names = FALSE)
+        return()
+      }
+      write.csv(results, file, row.names = FALSE)
+    }
+  )
+
+  output$download_per_area_report <- downloadHandler(
+    filename = function() paste0("carbon_density_report_", Sys.Date(), ".txt"),
+    content = function(file) {
+      results <- per_area_results$data
+      if (is.null(results)) {
+        writeLines("No data available", file)
+        return()
+      }
+
+      # Generate report text
+      lines <- c(
+        "CARBON DENSITY REPORT",
+        paste0("Generated: ", Sys.time()),
+        "",
+        sprintf("Survey area: %.2f %s", attr(results, "area_input"), attr(results, "area_unit")),
+        sprintf("Number of trees: %d", attr(results, "n_trees")),
+        "",
+        "RESULTS BY METHOD:",
+        "-------------------"
+      )
+
+      unit_label <- attr(results, "output_unit")
+      for (i in seq_len(nrow(results))) {
+        r <- results[i, ]
+        lines <- c(lines, sprintf("%s: %.4f (± %.4f) %s",
+                                  r$Method, r$Carbon_per_ha, r$Error_per_ha, unit_label))
+      }
+
+      lines <- c(lines, "",
+                 sprintf("Range ratio: %.2fx", max(results$Carbon_per_ha) / min(results$Carbon_per_ha)),
+                 sprintf("CV across methods: %.1f%%", 100 * sd(results$Carbon_per_ha) / mean(results$Carbon_per_ha)))
+
+      writeLines(lines, file)
+    }
+  )
+
+  # ========== SENSITIVITY ANALYSIS ==========
+
+  # Store sensitivity results
+  sensitivity_results <- reactiveValues(result = NULL)
+
+  # Run sensitivity analysis when button clicked
+  observeEvent(input$run_sensitivity, {
+    df <- current_data()
+    if (is.null(df) || nrow(df) == 0) {
+      showNotification("No data available. Calculate allometries first.", type = "error")
+      return()
+    }
+
+    withProgress(message = "Running sensitivity analysis...", value = 0, {
+      incProgress(0.3, detail = "Analyzing method variation...")
+
+      # Use the allometries() output directly for consistency
+      # This ensures sensitivity analysis uses the SAME values as the Results tab
+      result <- tryCatch({
+        sensitivity_analysis(
+          data = df,  # Pass allometries() output directly
+          methods = input$sens_methods,
+          returnv = input$returnv,  # Use same return type (AGC/AGB)
+          aggregate = input$sens_aggregate,
+          reference = input$sens_reference
+        )
+      }, error = function(e) {
+        showNotification(paste("Sensitivity analysis error:", e$message), type = "error", duration = 10)
+        NULL
+      })
+
+      incProgress(1, detail = "Done!")
+
+      if (!is.null(result)) {
+        sensitivity_results$result <- result
+        showNotification("Sensitivity analysis complete!", type = "message", duration = 3)
+      }
+    })
+  })
+
+  # Sensitivity value boxes
+  output$sens_cv <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(valueBox("--", "CV Across Methods", icon = icon("percent"), color = "blue"))
+    }
+    cv <- result$sensitivity_metrics$cv_across_methods
+    valueBox(paste0(round(cv, 1), "%"), "CV Across Methods", icon = icon("percent"), color = "blue")
+  })
+
+  output$sens_range_ratio <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(valueBox("--", "Range Ratio", icon = icon("arrows-alt-h"), color = "purple"))
+    }
+    ratio <- result$sensitivity_metrics$range_ratio
+    valueBox(paste0(round(ratio, 2), "x"), "Range Ratio (max/min)", icon = icon("arrows-alt-h"), color = "purple")
+  })
+
+  output$sens_level <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(valueBox("--", "Sensitivity Level", icon = icon("thermometer-half"), color = "green"))
+    }
+    level <- result$sensitivity_level
+    color <- switch(level,
+                    "LOW" = "green",
+                    "MODERATE" = "blue",
+                    "HIGH" = "orange",
+                    "VERY HIGH" = "red",
+                    "purple")
+    valueBox(level, "Sensitivity Level", icon = icon("thermometer-half"), color = color)
+  })
+
+  # Sensitivity summary text
+  output$sensitivity_summary <- renderPrint({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      cat("Run sensitivity analysis to see results.\n")
+      cat("\nClick 'Run Sensitivity Analysis' after calculating allometries.")
+      return()
+    }
+
+    cat("=== SENSITIVITY ANALYSIS RESULTS ===\n\n")
+
+    cat("--- Key Metrics ---\n")
+    cat(sprintf("Range ratio: %.2fx (max/min) <- most robust\n", result$sensitivity_metrics$range_ratio))
+    cat(sprintf("CV across methods: %.1f%%\n", result$sensitivity_metrics$cv_across_methods))
+    cat(sprintf("Spread: %.1f%% of mean\n", result$sensitivity_metrics$spread_pct))
+    cat(sprintf("Methods compared: %d\n", result$sensitivity_metrics$n_methods))
+    cat(sprintf("Trees analyzed: %d\n", result$sensitivity_metrics$n_trees))
+
+    cat("\n--- Interpretation ---\n")
+    cat(strwrap(result$interpretation, width = 60), sep = "\n")
+    cat("\n\n--- Recommendation ---\n")
+    cat(strwrap(result$recommendation, width = 60), sep = "\n")
+  })
+
+  # Sensitivity comparison plot
+  output$sensitivity_comparison_plot <- renderPlot({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis to see plot") +
+               theme_void())
+    }
+
+    # Create bar chart of method totals
+    method_summary <- result$method_summary
+    if (is.null(method_summary) || nrow(method_summary) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No method data available") +
+               theme_void())
+    }
+
+    ggplot(method_summary, aes(x = reorder(method, -total), y = total, fill = method)) +
+      geom_col(alpha = 0.8) +
+      geom_text(aes(label = round(total, 3)), vjust = -0.5, size = 4) +
+      scale_fill_manual(values = c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
+                                   "allodb" = "#009E73", "Bunce" = "#CC79A7")) +
+      labs(x = "Method", y = "Total Carbon (tonnes)",
+           title = "Carbon Estimates by Method") +
+      theme_minimal(base_size = 14) +
+      theme(legend.position = "none",
+            plot.title = element_text(hjust = 0.5, face = "bold"))
+  })
+
+  # Sensitivity deviation plot
+  output$sensitivity_deviation_plot <- renderPlot({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis to see plot") +
+               theme_void())
+    }
+
+    method_summary <- result$method_summary
+    ref_method <- result$sensitivity_metrics$reference
+
+    if (is.null(method_summary) || nrow(method_summary) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No method data available") +
+               theme_void())
+    }
+
+    # Calculate deviation from reference
+    ref_value <- method_summary$total[method_summary$method == ref_method]
+    if (length(ref_value) == 0) ref_value <- mean(method_summary$total, na.rm = TRUE)
+
+    method_summary$deviation <- method_summary$total - ref_value
+    method_summary$deviation_pct <- 100 * method_summary$deviation / ref_value
+
+    ggplot(method_summary, aes(x = reorder(method, deviation_pct), y = deviation_pct, fill = deviation_pct > 0)) +
+      geom_col(alpha = 0.8) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+      geom_text(aes(label = paste0(ifelse(deviation_pct > 0, "+", ""), round(deviation_pct, 1), "%")),
+                hjust = ifelse(method_summary$deviation_pct > 0, -0.1, 1.1), size = 4) +
+      scale_fill_manual(values = c("TRUE" = "#2ca02c", "FALSE" = "#d62728"), guide = "none") +
+      coord_flip() +
+      labs(x = "Method", y = paste0("Deviation from ", ref_method, " (%)"),
+           title = paste0("Deviation from Reference (", ref_method, ")")) +
+      theme_minimal(base_size = 14) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  })
+
+  # ========== PER-TREE CV DISTRIBUTION (OPTION A) ==========
+
+  # Histogram of per-tree CVs
+  output$tree_cv_histogram <- renderPlot({
+    result <- sensitivity_results$result
+    if (is.null(result) || is.null(result$by_tree)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+
+    tree_data <- result$by_tree
+    if (!"cv_pct" %in% names(tree_data) || all(is.na(tree_data$cv_pct))) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "CV data not available") +
+               theme_void())
+    }
+
+    # Calculate summary stats for annotations
+    median_cv <- median(tree_data$cv_pct, na.rm = TRUE)
+    mean_cv <- mean(tree_data$cv_pct, na.rm = TRUE)
+
+    ggplot(tree_data, aes(x = cv_pct)) +
+      geom_histogram(bins = 25, fill = "steelblue", alpha = 0.7, color = "white") +
+      geom_vline(xintercept = median_cv, color = "red", linetype = "dashed", linewidth = 1) +
+      geom_vline(xintercept = 10, color = "green", linetype = "dotted", linewidth = 0.8) +
+      geom_vline(xintercept = 25, color = "orange", linetype = "dotted", linewidth = 0.8) +
+      annotate("text", x = median_cv, y = Inf, label = paste0("Median: ", round(median_cv, 1), "%"),
+               vjust = 2, hjust = -0.1, color = "red", fontface = "bold") +
+      annotate("text", x = 10, y = Inf, label = "Low", vjust = 3, hjust = 1.1, color = "green", size = 3) +
+      annotate("text", x = 25, y = Inf, label = "High", vjust = 3, hjust = -0.1, color = "orange", size = 3) +
+      labs(
+        x = "Coefficient of Variation (%)",
+        y = "Number of Trees",
+        title = "Per-Tree Sensitivity Distribution",
+        subtitle = sprintf("n = %d trees | Mean CV = %.1f%% | Median CV = %.1f%%",
+                           sum(!is.na(tree_data$cv_pct)), mean_cv, median_cv)
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+            plot.subtitle = element_text(hjust = 0.5, color = "gray40"))
+  })
+
+  # CV vs DBH scatter plot
+  output$tree_cv_vs_dbh <- renderPlot({
+    result <- sensitivity_results$result
+    df <- current_data()
+
+    if (is.null(result) || is.null(result$by_tree) || is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+
+    tree_data <- result$by_tree
+    if (!"cv_pct" %in% names(tree_data)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "CV data not available") +
+               theme_void())
+    }
+
+    # Add DBH from original data
+    if ("dbh" %in% names(df) && nrow(df) == nrow(tree_data)) {
+      tree_data$dbh <- df$dbh
+    } else {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "DBH data not aligned") +
+               theme_void())
+    }
+
+    # Color by sensitivity level
+    tree_data$sensitivity_level <- cut(tree_data$cv_pct,
+                                       breaks = c(-Inf, 10, 25, 50, Inf),
+                                       labels = c("Low (<10%)", "Moderate (10-25%)",
+                                                  "High (25-50%)", "Very High (>50%)"))
+
+    ggplot(tree_data, aes(x = dbh, y = cv_pct, color = sensitivity_level)) +
+      geom_point(alpha = 0.7, size = 3) +
+      geom_smooth(method = "loess", se = TRUE, color = "gray40", linetype = "dashed") +
+      geom_hline(yintercept = c(10, 25), linetype = "dotted", color = c("green", "orange")) +
+      scale_color_manual(values = c("Low (<10%)" = "#2ca02c",
+                                    "Moderate (10-25%)" = "#1f77b4",
+                                    "High (25-50%)" = "#ff7f0e",
+                                    "Very High (>50%)" = "#d62728"),
+                         name = "Sensitivity") +
+      labs(
+        x = "DBH (cm)",
+        y = "CV across methods (%)",
+        title = "Sensitivity vs Tree Size",
+        subtitle = "Does method disagreement vary with tree size?"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+            plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+            legend.position = "bottom")
+  })
+
+  # Value boxes for per-tree sensitivity
+  output$sens_tree_median_cv <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result) || is.null(result$by_tree)) {
+      return(valueBox("--", "Median Tree CV", icon = icon("chart-line"), color = "blue"))
+    }
+    median_cv <- median(result$by_tree$cv_pct, na.rm = TRUE)
+    color <- if (median_cv < 10) "green" else if (median_cv < 25) "blue" else if (median_cv < 50) "orange" else "red"
+    valueBox(paste0(round(median_cv, 1), "%"), "Median Tree CV", icon = icon("chart-line"), color = color)
+  })
+
+  output$sens_tree_high_cv_pct <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result) || is.null(result$by_tree)) {
+      return(valueBox("--", "High Sensitivity Trees", icon = icon("exclamation-triangle"), color = "orange"))
+    }
+    high_pct <- 100 * sum(result$by_tree$cv_pct > 25, na.rm = TRUE) / sum(!is.na(result$by_tree$cv_pct))
+    valueBox(paste0(round(high_pct, 1), "%"), "Trees with CV > 25%", icon = icon("exclamation-triangle"), color = "orange")
+  })
+
+  output$sens_tree_low_cv_pct <- renderValueBox({
+    result <- sensitivity_results$result
+    if (is.null(result) || is.null(result$by_tree)) {
+      return(valueBox("--", "Low Sensitivity Trees", icon = icon("check-circle"), color = "green"))
+    }
+    low_pct <- 100 * sum(result$by_tree$cv_pct < 10, na.rm = TRUE) / sum(!is.na(result$by_tree$cv_pct))
+    valueBox(paste0(round(low_pct, 1), "%"), "Trees with CV < 10%", icon = icon("check-circle"), color = "green")
+  })
+
+  # Sensitivity table
+  output$sensitivity_table <- DT::renderDataTable({
+    result <- sensitivity_results$result
+    if (is.null(result)) {
+      return(data.frame(Message = "Run sensitivity analysis to see results"))
+    }
+
+    method_summary <- result$method_summary
+    if (is.null(method_summary)) {
+      return(data.frame(Message = "No method data available"))
+    }
+
+    # Round numeric columns
+    numeric_cols <- sapply(method_summary, is.numeric)
+    method_summary[numeric_cols] <- lapply(method_summary[numeric_cols], round, 4)
+
+    DT::datatable(method_summary, options = list(pageLength = 10, dom = 't'),
+                  rownames = FALSE)
+  })
+
+  # Per-tree sensitivity table
+  output$sensitivity_per_tree_table <- DT::renderDataTable({
+    result <- sensitivity_results$result
+    if (is.null(result) || is.null(result$by_tree)) {
+      return(data.frame(Message = "Run sensitivity analysis with 'Aggregate results' unchecked"))
+    }
+
+    by_tree <- result$by_tree
+
+    # Select and round relevant columns
+    cols_to_show <- c("tree_id", "mean_estimate", "sd_across_methods", "cv_pct", "spread_pct", "range_ratio")
+    cols_avail <- intersect(cols_to_show, colnames(by_tree))
+
+    if (length(cols_avail) == 0) {
+      return(data.frame(Message = "No per-tree data available"))
+    }
+
+    by_tree_display <- by_tree[, cols_avail, drop = FALSE]
+
+    # Round numeric columns
+    numeric_cols <- sapply(by_tree_display, is.numeric)
+    by_tree_display[numeric_cols] <- lapply(by_tree_display[numeric_cols], round, 4)
+
+    # Sort by CV descending
+    if ("cv_pct" %in% colnames(by_tree_display)) {
+      by_tree_display <- by_tree_display[order(-by_tree_display$cv_pct), ]
+    }
+
+    DT::datatable(by_tree_display, options = list(pageLength = 15, scrollX = TRUE),
+                  rownames = FALSE)
+  })
+
+  # Download sensitivity report
+  output$download_sensitivity <- downloadHandler(
+    filename = function() paste0("sensitivity_report_", Sys.Date(), ".csv"),
+    content = function(file) {
+      result <- sensitivity_results$result
+      if (is.null(result)) {
+        write.csv(data.frame(Message = "No sensitivity analysis results"), file, row.names = FALSE)
+        return()
+      }
+
+      # Combine summary and metrics into one report
+      summary_df <- result$method_summary
+      summary_df$sensitivity_level <- result$sensitivity_level
+      summary_df$cv_across_methods <- result$sensitivity_metrics$cv_across_methods
+      summary_df$spread_pct <- result$sensitivity_metrics$spread_pct
+      summary_df$range_ratio <- result$sensitivity_metrics$range_ratio
+
+      write.csv(summary_df, file, row.names = FALSE)
+    }
+  )
+
+  # ========== METHOD COMPARISON SCATTER PLOTS ==========
+  
+  # Method colors for consistency
+  method_colors <- c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
+                     "allodb" = "#009E73", "Bunce" = "#CC79A7")
+  
+  # Single scatter plot: Reference method vs all others
+  output$method_scatter_single <- renderPlot({
+    result <- sensitivity_results$result
+    df <- current_data()
+    
+    if (is.null(result) || is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+    
+    ref_method <- input$sens_reference
+    all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
+    other_methods <- setdiff(all_methods, ref_method)
+    
+    # Map method names to column names
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+                 "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    
+    ref_col <- col_map[ref_method]
+    if (!ref_col %in% colnames(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
+               theme_void())
+    }
+    
+    # Build comparison data
+    scatter_data <- data.frame()
+    for (m in other_methods) {
+      m_col <- col_map[m]
+      if (m_col %in% colnames(df)) {
+        temp <- data.frame(
+          Reference = df[[ref_col]],
+          Comparison = df[[m_col]],
+          Method = m
+        )
+        scatter_data <- rbind(scatter_data, temp)
+      }
+    }
+    
+    if (nrow(scatter_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
+               theme_void())
+    }
+    
+    scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
+    
+    # Get max for equal axis
+    max_val <- max(c(scatter_data$Reference, scatter_data$Comparison), na.rm = TRUE) * 1.1
+    
+    ggplot(scatter_data, aes(x = Reference, y = Comparison, color = Method)) +
+      geom_point(alpha = 0.5, size = 2.5) +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40", linewidth = 1) +
+      geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+      scale_color_manual(values = method_colors[other_methods]) +
+      coord_fixed(ratio = 1, xlim = c(0, max_val), ylim = c(0, max_val)) +
+      labs(
+        title = paste("Method Comparison:", ref_method, "vs Other Methods"),
+        subtitle = "Dashed line = 1:1 (perfect agreement)",
+        x = paste(ref_method, "Carbon (tonnes)"),
+        y = "Other Method Carbon (tonnes)"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        legend.position = "bottom"
+      )
+  })
+  
+  # Faceted scatter plot: One panel per comparison method
+  output$method_scatter_faceted <- renderPlot({
+    result <- sensitivity_results$result
+    df <- current_data()
+    
+    if (is.null(result) || is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
+               theme_void())
+    }
+    
+    ref_method <- input$sens_reference
+    all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
+    other_methods <- setdiff(all_methods, ref_method)
+    
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+                 "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
+    
+    ref_col <- col_map[ref_method]
+    if (!ref_col %in% colnames(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
+               theme_void())
+    }
+    
+    scatter_data <- data.frame()
+    for (m in other_methods) {
+      m_col <- col_map[m]
+      if (m_col %in% colnames(df)) {
+        temp <- data.frame(
+          Reference = df[[ref_col]],
+          Comparison = df[[m_col]],
+          Method = m
+        )
+        scatter_data <- rbind(scatter_data, temp)
+      }
+    }
+    
+    if (nrow(scatter_data) == 0) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
+               theme_void())
+    }
+    
+    scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
+    
+    ggplot(scatter_data, aes(x = Reference, y = Comparison)) +
+      geom_point(alpha = 0.5, size = 2, color = "#0072B2") +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red", linewidth = 1) +
+      geom_smooth(method = "lm", se = TRUE, color = "#D55E00", fill = "#D55E00", alpha = 0.2) +
+      facet_wrap(~ Method, scales = "free") +
+      labs(
+        title = paste("Method Comparison:", ref_method, "vs Each Method"),
+        subtitle = "Red dashed = 1:1 line; Orange = linear fit with 95% CI",
+        x = paste(ref_method, "Carbon (tonnes)"),
+        y = "Comparison Method Carbon (tonnes)"
+      ) +
+      theme_minimal(base_size = 11) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        strip.text = element_text(face = "bold", size = 11)
+      )
+  })
+  
+  # Method correlation heatmap
+  output$method_correlation_heatmap <- renderPlot({
+    df <- current_data()
+    
+    if (is.null(df)) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Calculate results first") +
+               theme_void())
+    }
+    
+    # Get carbon columns
+    carbon_cols <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+    available_cols <- carbon_cols[carbon_cols %in% colnames(df)]
+    
+    if (length(available_cols) < 2) {
+      return(ggplot() +
+               annotate("text", x = 0.5, y = 0.5, label = "Need at least 2 methods for correlation") +
+               theme_void())
+    }
+    
+    # Build correlation matrix
+    carbon_matrix <- df[, available_cols, drop = FALSE]
+    
+    # Rename columns for display
+    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS", 
+                      "allodb_C_t" = "allodb", "Bunce_C_t" = "Bunce")
+    colnames(carbon_matrix) <- method_names[colnames(carbon_matrix)]
+    
+    cor_matrix <- cor(carbon_matrix, use = "pairwise.complete.obs")
+    
+    # Convert to long format
+    cor_long <- as.data.frame(as.table(cor_matrix))
+    colnames(cor_long) <- c("Method1", "Method2", "Correlation")
+    
+    ggplot(cor_long, aes(x = Method1, y = Method2, fill = Correlation)) +
+      geom_tile(color = "white", linewidth = 1) +
+      geom_text(aes(label = sprintf("%.2f", Correlation)), size = 5, fontface = "bold") +
+      scale_fill_gradient2(low = "#d62728", mid = "white", high = "#2ca02c",
+                           midpoint = 0.5, limits = c(0, 1), name = "r") +
+      labs(
+        title = "Correlation Between Methods",
+        subtitle = "Per-tree carbon estimates",
+        x = "", y = ""
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+        axis.text.y = element_text(face = "bold"),
+        legend.position = "right"
+      ) +
+      coord_fixed()
   })
 
   # Export functions

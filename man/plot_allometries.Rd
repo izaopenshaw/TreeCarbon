@@ -43,7 +43,7 @@ The function will auto-detect if the specified type doesn't match available colu
 not bar plots, density plots, or residual plots (default: FALSE)}
 
 \item{color_scheme}{Character string specifying the color scheme. Options: "default" (ggplot2 default colors),
-"viridis" (viridis color palette), or "brewer" (RColorBrewer Set2 palette) (default: "default")}
+"viridis" (viridis color palette), or "colorblind" (Okabe-Ito colorblind-friendly palette) (default: "default")}
 
 \item{font_size}{Numeric value specifying the base font size for plot text in points (default: 12)}
 
