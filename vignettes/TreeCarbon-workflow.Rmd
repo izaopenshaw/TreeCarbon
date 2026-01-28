@@ -274,7 +274,7 @@ direct comparison.
 
 ## 3.1 Single Tree Comparison
 
-```{r compare-single}
+```{r compare-single, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Compare all methods for a single oak tree
 comparison <- allometries(
   genus = "Quercus",
@@ -293,7 +293,7 @@ print(comparison)
 The `compare_allometries()` function provides detailed statistics comparing
 methods.
 
-```{r compare-detailed}
+```{r compare-detailed, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Get allometries results first
 results <- allometries(
   genus = "Quercus",
@@ -316,7 +316,7 @@ summary(comp)
 
 ## 3.3 Batch Comparison
 
-```{r compare-batch}
+```{r compare-batch, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Compare methods across all trees - allometries() handles vectors directly
 batch_results <- allometries(
   genus = trees$genus,
@@ -336,7 +336,7 @@ print(head(batch_results))
 
 ## 3.4 Visualizing Method Differences
 
-```{r plot-comparison, fig.height=6}
+```{r plot-comparison, fig.height=6, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Extract carbon columns for comparison
 if (exists("batch_results") && nrow(batch_results) > 0) {
   
@@ -378,7 +378,7 @@ if (exists("batch_results") && nrow(batch_results) > 0) {
 
 ## 4.1 Method Deviation Statistics
 
-```{r method-stats}
+```{r method-stats, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 if (exists("batch_results") && nrow(batch_results) > 0) {
   
   # Calculate statistics
@@ -403,7 +403,7 @@ if (exists("batch_results") && nrow(batch_results) > 0) {
 
 ## 4.2 Pairwise Method Differences
 
-```{r pairwise-diff}
+```{r pairwise-diff, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 if (exists("batch_results") && nrow(batch_results) > 0) {
   
   # Calculate pairwise differences (as % of mean)
@@ -439,7 +439,7 @@ if (exists("batch_results") && nrow(batch_results) > 0) {
 
 ## 4.3 Method Agreement Assessment
 
-```{r agreement}
+```{r agreement, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 if (exists("batch_results") && nrow(batch_results) > 0) {
   
   # Calculate CV across methods for each tree
@@ -479,7 +479,7 @@ The `sensitivity_analysis()` function provides a comprehensive answer.
 
 Let's examine how sensitive a single tree's carbon estimate is to method choice:
 
-```{r sensitivity-single}
+```{r sensitivity-single, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Single tree data
 single_tree <- data.frame(
   dbh = 45,
@@ -505,7 +505,7 @@ print(sens_single)
 
 For multiple trees, sensitivity analysis becomes even more important:
 
-```{r sensitivity-batch}
+```{r sensitivity-batch, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Create sample dataset
 forest_plot <- data.frame(
   tree_id = 1:15,
@@ -536,12 +536,12 @@ print(sens_plot)
 
 ## 5.3 Visualizing Sensitivity
 
-```{r sensitivity-plot, fig.height=5}
+```{r sensitivity-plot, fig.height=5, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Bar chart of method totals
 plot(sens_plot, type = "comparison")
 ```
 
-```{r sensitivity-deviation, fig.height=4}
+```{r sensitivity-deviation, fig.height=4, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Deviation from reference method
 plot(sens_plot, type = "deviation")
 ```
@@ -550,7 +550,7 @@ plot(sens_plot, type = "deviation")
 
 When aggregate = FALSE, you can see which individual trees drive the sensitivity:
 
-```{r sensitivity-per-tree}
+```{r sensitivity-per-tree, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Per-tree sensitivity
 sens_trees <- sensitivity_analysis(
   forest_plot,
@@ -594,7 +594,7 @@ High sensitivity often results from:
 3. **Regional mismatch** - Using tropical equations for temperate trees
 4. **Missing height** - Some methods estimate height differently
 
-```{r sensitivity-investigate}
+```{r sensitivity-investigate, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Check which trees have highest disagreement
 if (exists("sens_trees")) {
   high_sens <- sens_trees$by_tree[sens_trees$by_tree$cv_pct > 20, ]
@@ -617,7 +617,7 @@ if (exists("sens_trees")) {
 
 The `mc_uncertainty()` function provides comprehensive uncertainty propagation.
 
-```{r mc-example}
+```{r mc-example, eval=requireNamespace("BIOMASS", quietly = TRUE)}
 # Define the Bunce allometric function
 bunce_fn <- function(dbh, a, b) {
   exp(a + b * log(pi * dbh))
@@ -640,7 +640,7 @@ summary(mc_result)
 
 ## 6.2 Variance Decomposition
 
-```{r variance-decomp, fig.height=4}
+```{r variance-decomp, fig.height=4, eval=requireNamespace("BIOMASS", quietly = TRUE)}
 if (!is.null(mc_result$decomposition)) {
   by_source <- mc_result$decomposition$by_source
   
@@ -661,7 +661,7 @@ if (!is.null(mc_result$decomposition)) {
 
 ## 6.3 Method Choice Uncertainty
 
-```{r method-choice-unc}
+```{r method-choice-unc, eval=requireNamespace("BIOMASS", quietly = TRUE)}
 # Estimates from different methods for the same tree
 estimates <- c(
   WCC = 0.85,

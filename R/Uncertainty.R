@@ -420,6 +420,17 @@ if (!is.null(seed)) set.seed(seed)
 }
 
 
+########### Print Monte Carlo Uncertainty Results ###########
+#' @title Print Monte Carlo Uncertainty Results
+#' @description Print method for mc_uncertainty objects showing key statistics
+#'   and interpretation.
+#'
+#' @param x An mc_uncertainty object from \code{\link{mc_uncertainty}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method print mc_uncertainty
 #' @export
 print.mc_uncertainty <- function(x, ...) {
   cat("\n=== Monte Carlo Uncertainty Analysis ===\n\n")
@@ -460,6 +471,17 @@ print.mc_uncertainty <- function(x, ...) {
 }
 
 
+########### Summary Monte Carlo Uncertainty Results ###########
+#' @title Summary of Monte Carlo Uncertainty Results
+#' @description Summary method for mc_uncertainty objects providing detailed
+#'   statistics and variance decomposition.
+#'
+#' @param object An mc_uncertainty object from \code{\link{mc_uncertainty}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method summary mc_uncertainty
 #' @export
 summary.mc_uncertainty <- function(object, ...) {
   cat("---------- MONTE CARLO UNCERTAINTY SUMMARY ----------\n")
@@ -517,10 +539,17 @@ summary.mc_uncertainty <- function(object, ...) {
 
 ########### Plot Monte Carlo Uncertainty Results ###########
 #'
-#' @param x An mc_uncertainty object
+#' @title Plot Monte Carlo Uncertainty Results
+#' @description Visualize the distribution of Monte Carlo simulation results
+#'   from an mc_uncertainty object.
+#'
+#' @param x An mc_uncertainty object from \code{\link{mc_uncertainty}}
 #' @param type Plot type: "histogram" (default), "density", or "both"
 #' @param ... Additional arguments passed to plotting functions
 #'
+#' @return A ggplot object (if ggplot2 available) or base R plot (invisible NULL)
+#'
+#' @method plot mc_uncertainty
 #' @export
 plot.mc_uncertainty <- function(x, type = "histogram", ...) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
@@ -575,6 +604,7 @@ plot.mc_uncertainty <- function(x, type = "histogram", ...) {
 }
 
 
+########### Create Measurement Uncertainty Specification ###########
 #' Create Measurement Uncertainty Specification
 #'
 #' Helper function to create properly formatted input
@@ -610,6 +640,7 @@ measurement_uncertainty <- function(value, absolute_error = NULL,
 }
 
 
+########### Create Parameter Uncertainty Specification ###########
 #' Create Parameter Uncertainty Specification
 #'
 #' @description Helper function for allometric equation parameter uncertainty.
@@ -644,6 +675,7 @@ parameter_uncertainty <- function(value, se = NULL, relative_se = 0.025) {
 }
 
 
+########### Create Residual Uncertainty Specification ###########
 #' Create Residual Uncertainty Specification
 #'
 #' @description Helper function for model residual error. This represents the
@@ -683,10 +715,7 @@ residual_uncertainty <- function(rse = NULL, cv_residual = 0.20, estimate = 1) {
 }
 
 
-# ==============================================================================
-# Method Choice Uncertainty
-# ==============================================================================
-
+########### Method Choice Uncertainty ###########
 #' Quantify Method Choice Uncertainty
 #'
 #' @description
@@ -904,6 +933,17 @@ comprehensive_uncertainty <- function(fn, inputs, method_estimates = NULL,
 }
 
 
+########### Print Comprehensive Uncertainty Results ###########
+#' @title Print Comprehensive Uncertainty Results
+#' @description Print method for comprehensive_uncertainty objects showing
+#'   the breakdown of uncertainty sources.
+#'
+#' @param x A comprehensive_uncertainty object from \code{\link{comprehensive_uncertainty}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method print comprehensive_uncertainty
 #' @export
 print.comprehensive_uncertainty <- function(x, ...) {
   cat("--------- COMPREHENSIVE UNCERTAINTY ANALYSIS ---------\n")
@@ -926,10 +966,7 @@ print.comprehensive_uncertainty <- function(x, ...) {
 }
 
 
-# ==============================================================================
-# Convenience Function for Standard Allometric Uncertainty
-# ==============================================================================
-
+########### Quick Uncertainty Analysis ###########
 #' Quick Uncertainty Analysis for Common Allometric Equations
 #'
 #' @description

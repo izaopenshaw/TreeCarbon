@@ -61,7 +61,6 @@ ui <- dashboardPage(
       menuItem("Results & Plots", tabName = "results", icon = icon("chart-line")),
       menuItem("Carbon per Area", tabName = "per_area", icon = icon("map")),
       menuItem("Sensitivity Analysis", tabName = "sensitivity", icon = icon("balance-scale")),
-      menuItem("Statistics", tabName = "stats", icon = icon("table")),
       menuItem("Method Info", tabName = "info", icon = icon("info-circle")),
       menuItem("Instructions", tabName = "instructions", icon = icon("book"))
     )
@@ -369,96 +368,21 @@ ui <- dashboardPage(
                 )
               )
       ),
-      # Statistics Tab
-      tabItem(tabName = "stats",
-              conditionalPanel(
-                condition = "!input.calc_stats",
-                fluidRow(
-                  box(title = "Statistics Not Enabled", width = 12, status = "warning", solidHeader = TRUE,
-                      p("To view comparison statistics, enable 'Calculate comparison statistics' in the Input & Calculation tab and click Calculate.")
-                  )
-                )
-              ),
-              conditionalPanel(
-                condition = "input.calc_stats",
-                fluidRow(
-                  box(title = "Filter Methods for Comparison", width = 12, status = "warning", solidHeader = TRUE,
-                      checkboxGroupInput("stats_filter_methods", "Select methods to compare:",
-                                         choices = c("WCC" = "WCC", "BIOMASS" = "BIOMASS",
-                                                     "allodb" = "allodb", "Bunce" = "Bunce"),
-                                         selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
-                                         inline = TRUE)
-                  )
-                ),
-                fluidRow(
-                  box(title = tags$span("Method Comparison Boxplot ",
-                                        tags$i(class = "fa fa-question-circle",
-                                               title = "Shows the distribution of estimates from each allometric method. Compare medians (middle line), spread (box height = IQR), and outliers (points). Methods with similar distributions produce comparable estimates.")),
-                      width = 12, status = "primary", solidHeader = TRUE,
-                      helpText("Distribution of carbon/biomass estimates across all trees for each allometric method. Wider boxes indicate more variability."),
-                      plotOutput("method_boxplot", height = "400px")
-                  )
-                ),
-                fluidRow(
-                  box(title = tags$span("Bland-Altman Plots ",
-                                        tags$i(class = "fa fa-question-circle",
-                                               title = "Bland-Altman plots visualize agreement between two methods. X-axis: mean of both methods. Y-axis: difference between methods. The blue line shows bias (systematic difference). Red dashed lines show 95% limits of agreement. Points should scatter randomly around zero if methods agree well.")),
-                      width = 12, status = "success", solidHeader = TRUE,
-                      helpText(tags$strong("How to interpret:"), " Each point is one tree. The blue line = mean bias. Red dashed lines = 95% limits of agreement (\u00B11.96 SD). Good agreement: points scattered evenly around zero, narrow limits."),
-                      helpText(tags$strong("Warning signs:"), " Trend in points = proportional bias (methods disagree more at higher/lower values). Wide limits = poor reliability."),
-                      uiOutput("ba_comparison_ui"),
-                      plotOutput("bland_altman_plot", height = "400px")
-                  )
-                ),
-                fluidRow(
-                  box(title = tags$span("Bland-Altman Metrics ",
-                                        tags$i(class = "fa fa-question-circle",
-                                               title = "Bias: Average difference between methods (positive = Method 1 higher). Limits of Agreement (LoA): 95% of differences fall within these bounds. Narrower LoA = better agreement. % Within LoA: Should be ~95% if data is normally distributed.")),
-                      width = 12, status = "success", solidHeader = TRUE,
-                      helpText(tags$strong("Bias:"), " Mean difference between methods. Ideally close to 0."),
-                      helpText(tags$strong("Lower/Upper LoA:"), " 95% limits of agreement (Bias \u00B1 1.96\u00D7SD). Narrower = more consistent agreement."),
-                      DT::dataTableOutput("bland_altman_table")
-                  )
-                ),
-                fluidRow(
-                  box(title = tags$span("Normalized Differences ",
-                                        tags$i(class = "fa fa-question-circle",
-                                               title = "Normalized difference scales the comparison relative to estimate magnitude: (Method1 - Method2)/(Method1 + Method2). Values range -1 to +1. Near 0 = good agreement. Useful when comparing trees of different sizes.")),
-                      width = 12, status = "info", solidHeader = TRUE,
-                      helpText("Normalized difference: (AGB\u2081 - AGB\u2082) / (AGB\u2081 + AGB\u2082). Values range from -1 to 1, where 0 = perfect agreement."),
-                      helpText("Reference: Neumann et al. (2022) European Journal of Forest Research"),
-                      plotOutput("normalized_diff_plot", height = "400px")
-                  )
-                ),
-                fluidRow(
-                  box(title = tags$span("Normalized Differences Summary ",
-                                        tags$i(class = "fa fa-question-circle",
-                                               title = "Mean: Average normalized difference (0 = no systematic bias). SD: Spread of differences (lower = more consistent). Interpretation thresholds: <0.05 good, 0.05-0.15 moderate, >0.15 large difference.")),
-                      width = 12, status = "info", solidHeader = TRUE,
-                      helpText("Mean and SD of normalized differences for each method pair. Interpretation: |Mean| < 0.05 = Good, < 0.15 = Moderate, \u2265 0.15 = Large difference."),
-                      DT::dataTableOutput("normalized_diff_table")
-                  )
-                )
-              )
-      ),
       # Carbon per Area Tab
       tabItem(tabName = "per_area",
               fluidRow(
                 box(title = "Carbon per Unit Area", width = 12, status = "primary", solidHeader = TRUE,
-                    p("Calculate carbon density (carbon per unit area) for your tree data using the ",
-                      tags$code("summary_per_area()"), " function."),
-                    p("This is useful for reporting carbon stocks at the plot, stand, or landscape level."),
+                    p("Calculate carbon density (carbon per unit area) for your tree data ",
                     hr(),
                     fluidRow(
                       column(4,
-                             numericInput("plot_area", "Plot/Stand Area:", value = 1, min = 0.001, step = 0.1),
+                             numericInput("plot_area", "Plot/Stand Total Area:", value = 1, min = 0.001, step = 0.1),
                              selectInput("area_unit", "Area Unit:",
                                          choices = c("hectares (ha)" = "ha",
                                                      "square metres (m²)" = "m2",
                                                      "acres" = "acres",
                                                      "square kilometres (km²)" = "km2"),
                                          selected = "ha"),
-                             helpText("Enter the total area surveyed. Carbon will be scaled to this area.")
                       ),
                       column(4,
                              selectInput("per_area_methods", "Methods to Include:",
@@ -467,7 +391,6 @@ ui <- dashboardPage(
                                          selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
                                          multiple = TRUE),
                              checkboxInput("per_area_include_error", "Include uncertainty estimates", value = TRUE),
-                             helpText("Calculate error propagation for carbon density")
                       ),
                       column(4,
                              selectInput("output_unit", "Output Carbon Unit:",
@@ -535,7 +458,7 @@ ui <- dashboardPage(
                 box(title = "Sensitivity Analysis: How Sensitive is Carbon to Method Choice?",
                     width = 12, status = "primary", solidHeader = TRUE,
                     p("This analysis quantifies how much your carbon estimate varies depending on which allometric method you use."),
-                    p(tags$strong("Key question:"), " If I report carbon using method X, how different would my estimate be using method Y?"),
+                    p(tags$strong("Question:"), " If I report carbon using method X, how different would my estimate be using method Y?"),
                     hr(),
                     fluidRow(
                       column(4,
@@ -664,7 +587,7 @@ ui <- dashboardPage(
               ),
               # Method comparison scatter plots
               fluidRow(
-                box(title = "Method Comparison: Reference vs Other Methods", width = 12, 
+                box(title = "Method Comparison: Reference vs Other Methods", width = 12,
                     status = "primary", solidHeader = TRUE,
                     p("Compare how each method's estimates relate to the reference method. ",
                       "Points on the 1:1 line indicate perfect agreement."),
@@ -775,8 +698,7 @@ ui <- dashboardPage(
                     h4("3. Calculate"),
                     tags$ul(
                       tags$li("Click 'Calculate' to process data"),
-                      tags$li("View results in Results & Plots tab"),
-                      tags$li("Check Statistics tab for method comparisons")
+                      tags$li("View results in Results & Plots tab")
                     ),
                     h4("4. Sensitivity Analysis (NEW)"),
                     tags$ul(
@@ -1571,7 +1493,9 @@ server <- function(input, output, session) {
     for (col in avail_cols) {
       temp <- data.frame(
         Method = method_names[col],
-        Value = df[[col]]
+        Value = df[[col]],
+        dbh = if ("dbh" %in% names(df)) df$dbh else NA,
+        height = if ("height" %in% names(df)) df$height else NA
       )
       plot_data <- rbind(plot_data, temp)
     }
@@ -1585,17 +1509,53 @@ server <- function(input, output, session) {
                theme_void())
     }
 
-    # Create boxplot
-    ggplot(plot_data, aes(x = Method, y = Value, fill = Method)) +
-      geom_boxplot(alpha = 0.7, outlier.shape = 21) +
-      geom_jitter(width = 0.2, alpha = 0.5, size = 2) +
+    # Get UI settings with defaults
+    use_jitter <- isTRUE(input$boxplot_jitter)
+    size_mapping <- if (is.null(input$boxplot_size_scale)) "none" else input$boxplot_size_scale
+    point_size <- if (is.null(input$boxplot_point_size)) 2 else input$boxplot_point_size
+    jitter_width <- if (is.null(input$boxplot_jitter_width)) 0.2 else input$boxplot_jitter_width
+
+    # Create base boxplot
+    p <- ggplot(plot_data, aes(x = Method, y = Value, fill = Method)) +
+      geom_boxplot(alpha = 0.7, outlier.shape = NA)  # Hide outliers, we'll show points
+
+    # Add points based on settings
+    if (size_mapping == "dbh" && "dbh" %in% names(plot_data) && !all(is.na(plot_data$dbh))) {
+      if (use_jitter) {
+        p <- p + geom_jitter(aes(size = dbh), width = jitter_width, alpha = 0.5, shape = 21, color = "black")
+      } else {
+        p <- p + geom_point(aes(size = dbh), alpha = 0.5, shape = 21, color = "black")
+      }
+      p <- p + scale_size_continuous(name = "DBH (cm)", range = c(1, 6))
+    } else if (size_mapping == "height" && "height" %in% names(plot_data) && !all(is.na(plot_data$height))) {
+      if (use_jitter) {
+        p <- p + geom_jitter(aes(size = height), width = jitter_width, alpha = 0.5, shape = 21, color = "black")
+      } else {
+        p <- p + geom_point(aes(size = height), alpha = 0.5, shape = 21, color = "black")
+      }
+      p <- p + scale_size_continuous(name = "Height (m)", range = c(1, 6))
+    } else {
+      # Fixed size
+      if (use_jitter) {
+        p <- p + geom_jitter(width = jitter_width, alpha = 0.5, size = point_size)
+      } else {
+        p <- p + geom_point(alpha = 0.5, size = point_size,
+                            position = position_dodge(width = 0.75))
+      }
+    }
+
+    # Show size legend only when size mapping is used
+    show_legend <- size_mapping != "none"
+
+    p +
       scale_fill_manual(values = c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
                                    "allodb" = "#009E73", "Bunce" = "#CC79A7")) +
       labs(x = "Allometric Method", y = y_label,
            title = "Distribution of Estimates by Method") +
       theme_minimal(base_size = 14) +
-      theme(legend.position = "none",
-            plot.title = element_text(hjust = 0.5, face = "bold"))
+      theme(legend.position = if (show_legend) "right" else "none",
+            plot.title = element_text(hjust = 0.5, face = "bold")) +
+      guides(fill = "none")  # Hide fill legend (colors are self-explanatory)
   })
 
   # Calculate normalized differences for all method pairs
@@ -2621,37 +2581,37 @@ server <- function(input, output, session) {
   )
 
   # ========== METHOD COMPARISON SCATTER PLOTS ==========
-  
+
   # Method colors for consistency
   method_colors <- c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
                      "allodb" = "#009E73", "Bunce" = "#CC79A7")
-  
+
   # Single scatter plot: Reference method vs all others
   output$method_scatter_single <- renderPlot({
     result <- sensitivity_results$result
     df <- current_data()
-    
+
     if (is.null(result) || is.null(df)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
                theme_void())
     }
-    
+
     ref_method <- input$sens_reference
     all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
     other_methods <- setdiff(all_methods, ref_method)
-    
+
     # Map method names to column names
-    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t",
                  "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
-    
+
     ref_col <- col_map[ref_method]
     if (!ref_col %in% colnames(df)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
                theme_void())
     }
-    
+
     # Build comparison data
     scatter_data <- data.frame()
     for (m in other_methods) {
@@ -2665,18 +2625,18 @@ server <- function(input, output, session) {
         scatter_data <- rbind(scatter_data, temp)
       }
     }
-    
+
     if (nrow(scatter_data) == 0) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
                theme_void())
     }
-    
+
     scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
-    
+
     # Get max for equal axis
     max_val <- max(c(scatter_data$Reference, scatter_data$Comparison), na.rm = TRUE) * 1.1
-    
+
     ggplot(scatter_data, aes(x = Reference, y = Comparison, color = Method)) +
       geom_point(alpha = 0.5, size = 2.5) +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40", linewidth = 1) +
@@ -2696,32 +2656,32 @@ server <- function(input, output, session) {
         legend.position = "bottom"
       )
   })
-  
+
   # Faceted scatter plot: One panel per comparison method
   output$method_scatter_faceted <- renderPlot({
     result <- sensitivity_results$result
     df <- current_data()
-    
+
     if (is.null(result) || is.null(df)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "Run sensitivity analysis first") +
                theme_void())
     }
-    
+
     ref_method <- input$sens_reference
     all_methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
     other_methods <- setdiff(all_methods, ref_method)
-    
-    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t", 
+
+    col_map <- c("WCC" = "WCC_C_t", "BIOMASS" = "biomass_C_t",
                  "allodb" = "allodb_C_t", "Bunce" = "Bunce_C_t")
-    
+
     ref_col <- col_map[ref_method]
     if (!ref_col %in% colnames(df)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = paste("Reference method", ref_method, "not in data")) +
                theme_void())
     }
-    
+
     scatter_data <- data.frame()
     for (m in other_methods) {
       m_col <- col_map[m]
@@ -2734,15 +2694,15 @@ server <- function(input, output, session) {
         scatter_data <- rbind(scatter_data, temp)
       }
     }
-    
+
     if (nrow(scatter_data) == 0) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "No comparison data available") +
                theme_void())
     }
-    
+
     scatter_data <- scatter_data[!is.na(scatter_data$Reference) & !is.na(scatter_data$Comparison), ]
-    
+
     ggplot(scatter_data, aes(x = Reference, y = Comparison)) +
       geom_point(alpha = 0.5, size = 2, color = "#0072B2") +
       geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red", linewidth = 1) +
@@ -2761,41 +2721,41 @@ server <- function(input, output, session) {
         strip.text = element_text(face = "bold", size = 11)
       )
   })
-  
+
   # Method correlation heatmap
   output$method_correlation_heatmap <- renderPlot({
     df <- current_data()
-    
+
     if (is.null(df)) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "Calculate results first") +
                theme_void())
     }
-    
+
     # Get carbon columns
     carbon_cols <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
     available_cols <- carbon_cols[carbon_cols %in% colnames(df)]
-    
+
     if (length(available_cols) < 2) {
       return(ggplot() +
                annotate("text", x = 0.5, y = 0.5, label = "Need at least 2 methods for correlation") +
                theme_void())
     }
-    
+
     # Build correlation matrix
     carbon_matrix <- df[, available_cols, drop = FALSE]
-    
+
     # Rename columns for display
-    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS", 
+    method_names <- c("WCC_C_t" = "WCC", "biomass_C_t" = "BIOMASS",
                       "allodb_C_t" = "allodb", "Bunce_C_t" = "Bunce")
     colnames(carbon_matrix) <- method_names[colnames(carbon_matrix)]
-    
+
     cor_matrix <- cor(carbon_matrix, use = "pairwise.complete.obs")
-    
+
     # Convert to long format
     cor_long <- as.data.frame(as.table(cor_matrix))
     colnames(cor_long) <- c("Method1", "Method2", "Correlation")
-    
+
     ggplot(cor_long, aes(x = Method1, y = Method2, fill = Correlation)) +
       geom_tile(color = "white", linewidth = 1) +
       geom_text(aes(label = sprintf("%.2f", Correlation)), size = 5, fontface = "bold") +

@@ -389,6 +389,17 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
 }
 
 
+########### Print Sensitivity Analysis Results ###########
+#' @title Print Sensitivity Analysis Results
+#' @description Print method for sensitivity_analysis objects showing key metrics
+#'   and method comparisons.
+#'
+#' @param x A sensitivity_analysis object from \code{\link{sensitivity_analysis}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method print sensitivity_analysis
 #' @export
 print.sensitivity_analysis <- function(x, ...) {
 
@@ -448,6 +459,16 @@ print.sensitivity_analysis <- function(x, ...) {
 }
 
 
+########### Summary Sensitivity Analysis Results ###########
+#' @title Summary of Sensitivity Analysis Results
+#' @description Summary method for sensitivity_analysis objects.
+#'
+#' @param object A sensitivity_analysis object from \code{\link{sensitivity_analysis}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method summary sensitivity_analysis
 #' @export
 summary.sensitivity_analysis <- function(object, ...) {
   print(object)
@@ -455,6 +476,7 @@ summary.sensitivity_analysis <- function(object, ...) {
 }
 
 
+########### Plot Sensitivity Analysis Results ###########
 #' Plot Sensitivity Analysis Results
 #'
 #' @description Creates visualizations of sensitivity analysis results showing
@@ -565,6 +587,7 @@ plot.sensitivity_analysis <- function(x, type = "comparison", ...) {
 }
 
 
+########### Plot Sensitivity (Convenience Function) ###########
 #' Convenience function for plotting sensitivity analysis
 #'
 #' @description Alternative function for plotting sensitivity analysis results
@@ -869,6 +892,17 @@ bootstrap_sensitivity <- function(data,
 }
 
 
+########### Print Bootstrap Sensitivity Results ###########
+#' @title Print Bootstrap Sensitivity Results
+#' @description Print method for bootstrap_sensitivity objects showing sensitivity
+#'   metrics with confidence intervals.
+#'
+#' @param x A bootstrap_sensitivity object from \code{\link{bootstrap_sensitivity}}
+#' @param ... Additional arguments (ignored)
+#'
+#' @return Invisibly returns the input object
+#'
+#' @method print bootstrap_sensitivity
 #' @export
 print.bootstrap_sensitivity <- function(x, ...) {
 
@@ -904,6 +938,17 @@ print.bootstrap_sensitivity <- function(x, ...) {
 }
 
 
+########### Plot Bootstrap Sensitivity Results ###########
+#' @title Plot Bootstrap Sensitivity Results
+#' @description Visualize the distribution of bootstrap sensitivity metrics.
+#'
+#' @param x A bootstrap_sensitivity object from \code{\link{bootstrap_sensitivity}}
+#' @param type Plot type: "histogram" or "cv" (default), or "range_ratio"
+#' @param ... Additional arguments (ignored)
+#'
+#' @return A ggplot object
+#'
+#' @method plot bootstrap_sensitivity
 #' @export
 plot.bootstrap_sensitivity <- function(x, type = "histogram", ...) {
 

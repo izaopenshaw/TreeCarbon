@@ -335,6 +335,7 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
 }
 
 
+########### Method Comparison Table ###########
 #' @title Get method comparison summary as a data frame
 #' @description Returns a data frame comparing key attributes across all allometric
 #'   methods, useful for quick comparison and method selection. Provides a
