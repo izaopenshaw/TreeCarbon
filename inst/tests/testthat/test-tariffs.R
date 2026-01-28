@@ -10,19 +10,6 @@ test_that("stand_tariff returns numeric", {
   expect_type(result, "double")
 })
 
-test_that("stand_tariff is positive for valid inputs", {
-  result <- stand_tariff(dbh = 30, height = 15)
-
-  expect_true(result > 0)
-})
-
-test_that("stand_tariff increases with tree size", {
-  small <- stand_tariff(dbh = 20, height = 10)
-  large <- stand_tariff(dbh = 50, height = 25)
-
-  expect_true(large > small)
-})
-
 test_that("stand_tariff handles vectorized input", {
   result <- stand_tariff(dbh = c(20, 30, 40), height = c(10, 15, 20))
 

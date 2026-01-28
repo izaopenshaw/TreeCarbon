@@ -1,7 +1,14 @@
 # ==============================================================================
-# Method Sensitivity Analysis
+# TreeCarbon - Sensitivity functions file
 # ==============================================================================
-
+#
+# Functions included:
+#   - Method Sensitivity Analysis
+#   - Bootstrap Sensitivity Analysis
+#
+# Authors: Justin Moat (J.Moat@kew.org), Isabel Openshaw (I.Openshaw@kew.org)
+#
+################### Method Sensitivity Analysis ###################
 #' Sensitivity Analysis: How Sensitive is Carbon to Method Choice?
 #'
 #' @description
@@ -84,15 +91,15 @@
 #'
 #' \strong{Interpretation Guidelines:}
 #' \itemize{
-#'   \item CV < 10\%: Low sensitivity - method choice has minor impact
-#'   \item CV 10-25\%: Moderate sensitivity - report range or use ensemble
-#'   \item CV 25-50\%: High sensitivity - method choice significantly affects results
-#'   \item CV > 50\%: Very high sensitivity - investigate cause, consider data quality
+#'   \item CV < 0.1: Low sensitivity - method choice has minor impact
+#'   \item CV 0.1-0.25: Moderate sensitivity - report range or use ensemble
+#'   \item CV 0.25-0.5: High sensitivity - method choice significantly affects results
+#'   \item CV > 0.5: Very high sensitivity - investigate cause, consider data quality
 #' }
 #'
 #' @examples
 #' \dontrun{
-#' # RECOMMENDED: Use allometries() output for consistency
+#' # Recomended: Use allometries() output for consistency
 #' results <- allometries(genus = c("Quercus", "Fagus"), species = c("robur", "sylvatica"),
 #'   dbh = c(45, 38), height = c(18, 15), method = "IPCC2")
 #'
@@ -122,9 +129,7 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
 
   n_trees <- nrow(data)
 
-  # ============================================================================
-  # DETECT INPUT TYPE: allometries() output OR raw tree data
-  # ============================================================================
+  ###### DETECT INPUT TYPE: allometries() output OR raw tree data
 
   # Check if this looks like allometries() output by looking for method columns
   suffix <- if (returnv == "AGC") "_C_t" else "_B_t"
@@ -132,9 +137,8 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
   has_allometry_cols <- any(possible_cols %in% names(data))
 
   if (has_allometry_cols) {
-    # =========================================================================
-    # Option A: Data is from allometries() - extract directly (RECOMMENDED)
-    # =========================================================================
+    ###### Option A #####
+    # Data is from allometries() - extract directly (Recomended)
 
     # Map method names to column names
     col_map <- c(
@@ -165,9 +169,8 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
     }
 
   } else {
-    # =========================================================================
-    # Option B: Raw tree data - calculate using allometries() internally
-    # =========================================================================
+    ##### Option B #####
+    # Raw tree data - calculate using allometries() internally
 
     if (!"dbh" %in% names(data)) {
       stop("'data' must contain a 'dbh' column")
@@ -227,9 +230,7 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
     }
   }
 
-  # ============================================================================
-  # Calculate Sensitivity Metrics
-  # ============================================================================
+  #################### Calculate Sensitivity Metrics ###################
   if (length(method_success) < 2) {
     stop("Need at least 2 successful methods for sensitivity analysis. ",
          "Only found: ", paste(method_success, collapse = ", "))
@@ -391,10 +392,8 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
 #' @export
 print.sensitivity_analysis <- function(x, ...) {
 
-  cat("\n")
-  cat("================================================================================\n")
-  cat("           SENSITIVITY ANALYSIS: Method Choice Impact on Carbon\n")
-  cat("================================================================================\n\n")
+  cat("------------ SENSITIVITY ANALYSIS ------------\n")
+  cat("Method Choice Impact on Carbon \n\n")
 
   # Key metrics
   m <- x$sensitivity_metrics
@@ -581,3 +580,386 @@ plot.sensitivity_analysis <- function(x, type = "comparison", ...) {
 plot_sensitivity <- function(x, type = "comparison", ...) {
   plot.sensitivity_analysis(x, type = type, ...)
 }
+
+
+################## Bootstrap Sensitivity Analysis ##################
+#' Bootstrap Sensitivity Analysis with Measurement Uncertainty
+#'
+#' @description
+#' Quantifies the uncertainty around sensitivity metrics (CV, range ratio) by
+#' propagating measurement errors through all allometric methods via bootstrapping.
+#'
+#' This answers the question: "Given my measurement uncertainty, how confident
+#' am I in my conclusion about method sensitivity?"
+#'
+#' @param data A data frame with columns: dbh, height, genus, species.
+#'   Optionally: type, name.
+#' @param methods Character vector of methods to compare. Default:
+#'   \code{c("WCC", "BIOMASS", "allodb", "Bunce")}
+#' @param coords Coordinates for BIOMASS or allodb (longitude, latitude).
+#' @param type Tree type: "broadleaf" or "conifer". Default "broadleaf".
+#' @param n_boot Number of bootstrap iterations. Default 500.
+#' @param dbh_cv Coefficient of variation for DBH measurement error (proportion).
+#'   Default 0.02 (2 percent).
+#' @param height_cv Coefficient of variation for height measurement error (proportion).
+#'   Default 0.05 (5 percent).
+#' @param method Carbon conversion method. Default "IPCC2".
+#' @param biome Biome for carbon conversion. Default "temperate".
+#' @param seed Random seed for reproducibility. Default NULL (no seed).
+#' @param verbose Print progress messages. Default TRUE.
+#'
+#' @return A list of class "bootstrap_sensitivity" containing:
+#' \itemize{
+#'   \item cv_observed: The observed CV from point estimates
+#'   \item cv_boot: Vector of bootstrapped CVs
+#'   \item cv_ci: 95 percent confidence interval on CV
+#'   \item cv_se: Standard error of CV
+#'   \item range_ratio_observed: The observed range ratio
+#'   \item range_ratio_boot: Vector of bootstrapped range ratios
+#'   \item range_ratio_ci: 95 percent confidence interval on range ratio
+#'   \item spread_pct_boot: Vector of bootstrapped spread percentages
+#'   \item spread_pct_ci: 95 percent confidence interval on spread percentage
+#'   \item n_boot: Number of bootstrap iterations completed
+#'   \item n_failed: Number of failed iterations
+#'   \item interpretation: Plain-language interpretation of results
+#' }
+#'
+#' @details
+#' \strong{Algorithm:}
+#' For each bootstrap iteration:
+#' \enumerate{
+#'   \item Perturb DBH using normally-distributed relative error
+#'   \item Perturb height using normally-distributed relative error
+#'   \item Run all allometric methods with perturbed inputs
+#'   \item Calculate between-method CV from the perturbed totals
+#'   \item Store the CV
+#' }
+#' Then compute confidence intervals on the distribution of CVs.
+#'
+#' \strong{Interpretation:}
+#' If the 95 percent CI on CV is narrow (around 5 percentage points),
+#' your sensitivity conclusion is robust to measurement error. If wide
+#' (more than 20 percentage points), measurement error significantly
+#' affects your sensitivity assessment.
+#'
+#' \strong{Computational Note:}
+#' This function is computationally intensive. For 100 trees and 500
+#' bootstrap iterations, it runs 2000 allometry calculations. Consider
+#' using fewer iterations (n_boot = 100) for initial exploration.
+#'
+#' @examples
+#' \dontrun{
+#' # Basic usage
+#' tree_data <- data.frame(dbh = c(30, 45, 60), height = c(15, 20, 25),
+#'   genus = c("Quercus", "Fagus", "Fraxinus"),
+#'   species = c("robur", "sylvatica", "excelsior"))
+#'
+#' result <- bootstrap_sensitivity(tree_data, coords = c(-0.29, 51.48),
+#'   n_boot = 100,  # Use more for final analysis
+#'   seed = 42)
+#'
+#' print(result)
+#' plot(result)
+#' }
+#'
+#' @seealso \code{\link{sensitivity_analysis}} for point estimate sensitivity,
+#'   \code{\link{mc_uncertainty}} for single-method uncertainty
+#'
+#' @export
+bootstrap_sensitivity <- function(data,
+                                  methods = c("WCC", "BIOMASS", "allodb", "Bunce"), coords = NULL,
+                                  type = "broadleaf", n_boot = 500, dbh_cv = 0.02, height_cv = 0.05,
+                                  method = "IPCC2", biome = "temperate", seed = NULL, verbose = TRUE) {
+
+  # Input validation
+  if (!is.data.frame(data)) {
+    stop("'data' must be a data frame")
+  }
+  if (!all(c("dbh", "height", "genus", "species") %in% names(data))) {
+    stop("'data' must contain columns: dbh, height, genus, species")
+  }
+  if (is.null(coords) && any(c("BIOMASS", "allodb") %in% methods)) {
+    stop("'coords' required for BIOMASS and allodb methods")
+  }
+
+  if (!is.null(seed)) set.seed(seed)
+
+  n_trees <- nrow(data)
+  n_methods <- length(methods)
+
+  if (verbose) { message(sprintf("Bootstrap sensitivity analysis: %d trees,
+                    %d methods, %d iterations", n_trees, n_methods, n_boot))
+    message(sprintf("Measurement error: DBH CV = %.1f%%, Height CV = %.1f%%",
+                    100 * dbh_cv, 100 * height_cv))
+  }
+
+  # Storage for bootstrap results
+  cv_boot <- numeric(n_boot)
+  range_ratio_boot <- numeric(n_boot)
+  spread_pct_boot <- numeric(n_boot)
+  n_failed <- 0
+
+  # Get type vector
+
+  type_vec <- if ("type" %in% names(data)) data$type else rep(type, n_trees)
+
+  # Progress tracking
+  if (verbose) pb <- txtProgressBar(min = 0, max = n_boot, style = 3)
+
+  for (i in seq_len(n_boot)) {
+
+    # Perturb measurements
+    dbh_perturbed <- data$dbh * (1 + stats::rnorm(n_trees, 0, dbh_cv))
+    height_perturbed <- data$height * (1 + stats::rnorm(n_trees, 0, height_cv))
+
+    # Ensure positive values
+    dbh_perturbed <- pmax(dbh_perturbed, 1)  # Min 1 cm
+    height_perturbed <- pmax(height_perturbed, 1)  # Min 1 m
+
+    # Run allometries with perturbed inputs
+    result <- tryCatch({
+      allometries(
+        genus = data$genus,
+        species = data$species,
+        dbh = dbh_perturbed,
+        height = height_perturbed,
+        type = type_vec,
+        method = method,
+        returnv = "AGC",
+        coords = coords,
+        biome = biome
+      )
+    }, error = function(e) NULL)
+
+    if (is.null(result)) {
+      n_failed <- n_failed + 1
+      cv_boot[i] <- NA
+      range_ratio_boot[i] <- NA
+      spread_pct_boot[i] <- NA
+      next
+    }
+
+    # Extract totals for each method
+    suffix <- "_C_t"
+    col_map <- c(
+      "WCC" = paste0("WCC", suffix),
+      "BIOMASS" = paste0("biomass", suffix),
+      "allodb" = paste0("allodb", suffix),
+      "Bunce" = paste0("Bunce", suffix)
+    )
+
+    totals <- sapply(methods, function(m) {
+      col <- col_map[m]
+      if (col %in% names(result)) sum(result[[col]], na.rm = TRUE) else NA
+    })
+
+    # Remove NAs and calculate metrics
+    valid_totals <- totals[!is.na(totals)]
+
+    if (length(valid_totals) >= 2) {
+      cv_boot[i] <- 100 * stats::sd(valid_totals) / mean(valid_totals)
+      range_ratio_boot[i] <- max(valid_totals) / min(valid_totals)
+      spread_pct_boot[i] <- 100 * (max(valid_totals) - min(valid_totals)) / mean(valid_totals)
+    } else {
+      cv_boot[i] <- NA
+      range_ratio_boot[i] <- NA
+      spread_pct_boot[i] <- NA
+      n_failed <- n_failed + 1
+    }
+
+    if (verbose) setTxtProgressBar(pb, i)
+  }
+
+  if (verbose) close(pb)
+
+  # Calculate observed (point estimate) sensitivity
+  observed <- tryCatch({
+    allometries(
+      genus = data$genus,
+      species = data$species,
+      dbh = data$dbh,
+      height = data$height,
+      type = type_vec,
+      method = method,
+      returnv = "AGC",
+      coords = coords,
+      biome = biome
+    )
+  }, error = function(e) NULL)
+
+  if (!is.null(observed)) {
+    obs_totals <- sapply(methods, function(m) {
+      col <- col_map[m]
+      if (col %in% names(observed)) sum(observed[[col]], na.rm = TRUE) else NA
+    })
+    valid_obs <- obs_totals[!is.na(obs_totals)]
+    cv_observed <- 100 * stats::sd(valid_obs) / mean(valid_obs)
+    range_ratio_observed <- max(valid_obs) / min(valid_obs)
+    spread_pct_observed <- 100 * (max(valid_obs) - min(valid_obs)) / mean(valid_obs)
+  } else {
+    cv_observed <- NA
+    range_ratio_observed <- NA
+    spread_pct_observed <- NA
+  }
+
+  # Remove failed iterations for summary
+  cv_valid <- cv_boot[!is.na(cv_boot)]
+  rr_valid <- range_ratio_boot[!is.na(range_ratio_boot)]
+  sp_valid <- spread_pct_boot[!is.na(spread_pct_boot)]
+
+  # Calculate confidence intervals
+  cv_ci <- stats::quantile(cv_valid, c(0.025, 0.975))
+  range_ratio_ci <- stats::quantile(rr_valid, c(0.025, 0.975))
+  spread_pct_ci <- stats::quantile(sp_valid, c(0.025, 0.975))
+
+  # Generate interpretation
+  ci_width <- cv_ci[2] - cv_ci[1]
+  if (ci_width < 10) {
+    stability <- "very stable"
+    interpretation <- sprintf(
+      "Your sensitivity estimate is %s (95%% CI width = %.1f%%). Measurement error has minimal impact on the conclusion that method sensitivity is %.0f%% (95%% CI: %.1f%% - %.1f%%).",
+      stability, ci_width, cv_observed, cv_ci[1], cv_ci[2]
+    )
+  } else if (ci_width < 25) {
+    stability <- "moderately stable"
+    interpretation <- sprintf(
+      "Your sensitivity estimate is %s (95%% CI width = %.1f%%). The true CV is likely between %.1f%% and %.1f%%, which spans the same sensitivity category.",
+      stability, ci_width, cv_ci[1], cv_ci[2]
+    )
+  } else {
+    stability <- "uncertain"
+    interpretation <- sprintf(
+      "Your sensitivity estimate is %s (95%% CI width = %.1f%%). Measurement error significantly affects the sensitivity conclusion. Consider improving measurement precision or using the range ratio (%.2fx, 95%% CI: %.2fx - %.2fx) which may be more stable.",
+      stability, ci_width, range_ratio_observed, range_ratio_ci[1], range_ratio_ci[2]
+    )
+  }
+
+  if (verbose) {
+    message(sprintf("\nCompleted: %d successful, %d failed iterations",
+                    n_boot - n_failed, n_failed))
+    message(sprintf("CV: %.1f%% [95%% CI: %.1f%% - %.1f%%]",
+                    cv_observed, cv_ci[1], cv_ci[2]))
+  }
+
+  # Build result object
+  result <- list(
+    cv_observed = cv_observed,
+    cv_boot = cv_valid,
+    cv_ci = cv_ci,
+    cv_se = stats::sd(cv_valid),
+    cv_mean_boot = mean(cv_valid),
+    range_ratio_observed = range_ratio_observed,
+    range_ratio_boot = rr_valid,
+    range_ratio_ci = range_ratio_ci,
+    spread_pct_observed = spread_pct_observed,
+    spread_pct_boot = sp_valid,
+    spread_pct_ci = spread_pct_ci,
+    n_boot = n_boot,
+    n_successful = n_boot - n_failed,
+    n_failed = n_failed,
+    n_trees = n_trees,
+    methods = methods,
+    dbh_cv = dbh_cv,
+    height_cv = height_cv,
+    interpretation = interpretation
+  )
+
+  class(result) <- c("bootstrap_sensitivity", "list")
+  return(result)
+}
+
+
+#' @export
+print.bootstrap_sensitivity <- function(x, ...) {
+
+  cat("-------- BOOTSTRAP SENSITIVITY ANALYSIS: Measurement Uncertainty --------)\n")
+
+  cat(sprintf("Trees analyzed:       %d\n", x$n_trees))
+  cat(sprintf("Methods compared:     %s\n", paste(x$methods, collapse = ", ")))
+  cat(sprintf("Bootstrap iterations: %d (%d successful)\n", x$n_boot, x$n_successful))
+  cat(sprintf("Measurement error:    DBH CV = %.1f%%, Height CV = %.1f%%\n\n",
+              100 * x$dbh_cv, 100 * x$height_cv))
+
+  cat("--- SENSITIVITY METRICS WITH CONFIDENCE INTERVALS ---\n\n")
+
+  cat(sprintf("CV across methods:\n"))
+  cat(sprintf("  Point estimate:     %.1f%%\n", x$cv_observed))
+  cat(sprintf("  Bootstrap mean:     %.1f%%\n", x$cv_mean_boot))
+  cat(sprintf("  95%% CI:             [%.1f%%, %.1f%%]\n", x$cv_ci[1], x$cv_ci[2]))
+  cat(sprintf("  Standard error:     %.2f%%\n\n", x$cv_se))
+
+  cat(sprintf("Range ratio (max/min):\n"))
+  cat(sprintf("  Point estimate:     %.2fx\n", x$range_ratio_observed))
+  cat(sprintf("  95%% CI:             [%.2fx, %.2fx]\n\n", x$range_ratio_ci[1], x$range_ratio_ci[2]))
+
+  cat(sprintf("Spread (%% of mean):\n"))
+  cat(sprintf("  Point estimate:     %.1f%%\n", x$spread_pct_observed))
+  cat(sprintf("  95%% CI:             [%.1f%%, %.1f%%]\n\n", x$spread_pct_ci[1], x$spread_pct_ci[2]))
+
+  cat("--- INTERPRETATION ---\n")
+  cat(strwrap(x$interpretation, width = 78, prefix = "  "), sep = "\n")
+  cat("\n")
+
+  invisible(x)
+}
+
+
+#' @export
+plot.bootstrap_sensitivity <- function(x, type = "histogram", ...) {
+
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 is required for plotting")
+  }
+
+  if (type == "histogram" || type == "cv") {
+    # Histogram of bootstrapped CVs
+    df <- data.frame(cv = x$cv_boot)
+
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = cv)) +
+      ggplot2::geom_histogram(bins = 30, fill = "steelblue", alpha = 0.7, color = "white") +
+      ggplot2::geom_vline(xintercept = x$cv_observed, color = "red",
+                          linetype = "dashed", linewidth = 1) +
+      ggplot2::geom_vline(xintercept = x$cv_ci, color = "darkred",
+                          linetype = "dotted", linewidth = 0.8) +
+      ggplot2::annotate("text", x = x$cv_observed, y = Inf,
+                        label = sprintf("Observed: %.1f%%", x$cv_observed),
+                        vjust = 2, hjust = -0.1, color = "red", fontface = "bold") +
+      ggplot2::labs(
+        x = "CV across methods (%)",
+        y = "Frequency",
+        title = "Bootstrap Distribution of Method Sensitivity (CV)",
+        subtitle = sprintf("n = %d iterations | 95%% CI: [%.1f%%, %.1f%%]",
+                           x$n_successful, x$cv_ci[1], x$cv_ci[2])
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"),
+                     plot.subtitle = ggplot2::element_text(hjust = 0.5, color = "gray40"))
+
+  } else if (type == "range_ratio") {
+    # Histogram of range ratios
+    df <- data.frame(rr = x$range_ratio_boot)
+
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = rr)) +
+      ggplot2::geom_histogram(bins = 30, fill = "purple", alpha = 0.7, color = "white") +
+      ggplot2::geom_vline(xintercept = x$range_ratio_observed, color = "red",
+                          linetype = "dashed", linewidth = 1) +
+      ggplot2::geom_vline(xintercept = x$range_ratio_ci, color = "darkred",
+                          linetype = "dotted", linewidth = 0.8) +
+      ggplot2::labs(
+        x = "Range Ratio (max/min)",
+        y = "Frequency",
+        title = "Bootstrap Distribution of Range Ratio",
+        subtitle = sprintf("Observed: %.2fx | 95%% CI: [%.2fx, %.2fx]",
+                           x$range_ratio_observed, x$range_ratio_ci[1], x$range_ratio_ci[2])
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"))
+
+  } else {
+    stop("type must be 'histogram', 'cv', or 'range_ratio'")
+  }
+
+  print(p)
+  invisible(p)
+}
+

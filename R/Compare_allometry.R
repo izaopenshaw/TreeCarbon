@@ -60,27 +60,7 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #' @returns If \code{rich_output = FALSE}: data.frame with estimates from all methods.
 #'   If \code{rich_output = TRUE}: a list containing method-specific results with
 #'   full metadata for WCC, BIOMASS, allodb, and Bunce.
-#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#'  Carbon Assessment Protocol (v2. 0)." (2018).
-#' Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017).
-#'  BIOMASS: an R package for estimating above-ground biomass and its
-#'  uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
-#'  1163-1167
-#' Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira, K. (2020).
-#'  allodb: An R package for biomass estimation at globally distributed
-#'  extratropical forest plots. Methods in Ecology and Evolution, 11(10),
-#'  1273-1280
-#' Bunce, R. G. H. "Biomass and Production of Trees in a Mixed Deciduous
-#'  Woodland: I. Girth and height as Parameters for the Estimation of Tree Dry
-#'  Weight" (1968)
 #' @importFrom utils data
-#' @examples
-#' # Standard output
-#' allometries("Quercus", "robur", 20, 10)
-#'
-#' # Rich output with full metadata for all methods
-#' result <- allometries("Quercus", "robur", 30, 15, rich_output = TRUE)
-#' print(result)
 #' @export
 #'
 allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2",

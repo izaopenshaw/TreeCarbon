@@ -106,15 +106,15 @@ those methods are equally valid for your application
 
 \strong{Interpretation Guidelines:}
 \itemize{
-\item CV < 10\\%: Low sensitivity - method choice has minor impact
-\item CV 10-25\\%: Moderate sensitivity - report range or use ensemble
-\item CV 25-50\\%: High sensitivity - method choice significantly affects results
-\item CV > 50\\%: Very high sensitivity - investigate cause, consider data quality
+\item CV < 0.1: Low sensitivity - method choice has minor impact
+\item CV 0.1-0.25: Moderate sensitivity - report range or use ensemble
+\item CV 0.25-0.5: High sensitivity - method choice significantly affects results
+\item CV > 0.5: Very high sensitivity - investigate cause, consider data quality
 }
 }
 \examples{
 \dontrun{
-# RECOMMENDED: Use allometries() output for consistency
+# Recomended: Use allometries() output for consistency
 results <- allometries(genus = c("Quercus", "Fagus"), species = c("robur", "sylvatica"),
   dbh = c(45, 38), height = c(18, 15), method = "IPCC2")
 
