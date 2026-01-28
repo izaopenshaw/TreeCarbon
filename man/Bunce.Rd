@@ -15,10 +15,10 @@ Bunce(name, dbh, type = NULL, re_dbh = NULL, re = 0.025, rich_output = FALSE)
 
 \item{re_dbh}{relative measurement error for diameter at breast height (optional)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata including: value, method, citation, assumptions, validity_warning,
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata including: value, method, reference, assumptions, validity_warning,
 flags, uncertainty interval, region, and source type. Default FALSE for
 backwards compatibility.}
 }
@@ -29,8 +29,8 @@ trees) or a list of such objects (for multiple trees) containing:
 \describe{
 \item{value}{Estimated biomass (kg)}
 \item{method}{"Bunce"}
-\item{citation}{Full citation for Bunce (1968)}
-\item{assumptions}{Key assumptions of the method}
+\item{reference}{Bunce (1968)}
+\item{assumptions}{Assumptions of the method}
 \item{validity_warning}{Warnings if inputs outside valid range}
 \item{flags}{Extrapolation or default flags}
 \item{uncertainty}{Standard deviation if re_dbh provided}
@@ -52,7 +52,7 @@ including method metadata, assumptions, validity warnings, and uncertainty
 Bunce("Oak", 24)
 Bunce(c("Oak", "Beech"), c(23,23))
 
-# Rich output with full metadata
+# Rich output with metadata
 result <- Bunce("Oak", 24, re_dbh = 0.05, rich_output = TRUE)
 print(result)  # Shows assumptions prominently
 summary(result)

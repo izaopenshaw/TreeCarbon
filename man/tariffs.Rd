@@ -27,7 +27,7 @@ tariffs(
 
 \item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 either tariff number or if re_h is provided, then returns a list

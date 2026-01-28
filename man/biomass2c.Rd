@@ -20,9 +20,9 @@ or metric tonnes).}
 \item{method}{Character. Method defining the carbon volatile fraction (CF).
 Supported methods:
 \itemize{
-\item \code{"Matthews1"}: Simplest, CF = 50\\% (Matthews, 1993).
+\item \code{"Matthews1"}: Simplest, CF = 50 percent (Matthews, 1993).
 \item \code{"Matthews2"}: CF based on type (broadleaf or conifer).
-\item \code{"IPCC1"}: CF = 47.7\\% (IPCC, 2006).
+\item \code{"IPCC1"}: CF = 47.7 percent (IPCC, 2006).
 \item \code{"IPCC2"}: Lookup CF by type and biome.
 \item \code{"Thomas"}: Lookup by type and biome (Thomas & Martin, 2012).
 }}
@@ -37,8 +37,8 @@ and \code{"Thomas"} methods. Accepted values: \code{"tropical"}, \code{"subtropi
 \item{sig_biomass}{Numeric vector. Biomass uncertainty (optional, only used
 with \code{"IPCC2"} and \code{"Thomas"} methods).}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata including: value, method, citation, assumptions, and uncertainty.
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata including: value, method, reference, assumptions, and uncertainty.
 Default FALSE for backwards compatibility.}
 }
 \value{
@@ -49,7 +49,7 @@ If \code{rich_output = TRUE}: a list with carbon values and conversion metadata.
 }
 \description{
 Converts biomass values to carbon values using the carbon
-fraction (CF) from the chosen method or citation.
+fraction (CF) from the chosen method or reference.
 
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including conversion method metadata, assumptions, and uncertainty

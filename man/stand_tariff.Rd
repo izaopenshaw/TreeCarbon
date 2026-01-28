@@ -13,7 +13,7 @@ stand_tariff(spcode, height, re_h = NULL, re = 0.025)
 
 \item{re_h}{relative error of height measurement (optional)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 either tariff number or if re_h is provided, then returns a list

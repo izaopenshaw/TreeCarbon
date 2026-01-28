@@ -23,7 +23,7 @@ Helper function for allometric equation parameter uncertainty.
 # Bunce coefficient 'a' with SE from regression
 a_input <- parameter_uncertainty(1.868, se = 0.047)
 
-# Or with relative SE (2.5\% of value)
+# Or with relative SE (2.5 percent of value)
 b_input <- parameter_uncertainty(2.268, relative_se = 0.025)
 
 }

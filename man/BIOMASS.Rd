@@ -46,8 +46,8 @@ are over 15 height measurements inputted, in which case you can choose a
 model fit for this from, HD_method = c("log2","weibull","log1","exp","lin")
 See BIOMASS::modelHD for more.}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata including: value, method, citation, assumptions, validity_warning,
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata including: value, method, reference, assumptions, validity_warning,
 flags, region, and source type. Default FALSE for backwards compatibility.}
 
 \item{uncertainty}{Logical. If TRUE, runs Monte Carlo uncertainty propagation
@@ -58,7 +58,7 @@ using \code{BIOMASS::AGBmonteCarlo}. This propagates errors from:
 \item Height estimation error (if heights are predicted)
 \item Allometric model error
 }
-Returns SD, CV, and 5-95\% credible intervals. Default FALSE.}
+Returns SD, CV, and 5-95 percent credible intervals. Default FALSE.}
 
 \item{n_mc}{Number of Monte Carlo iterations for uncertainty estimation.
 Default 1000. Higher values give more stable estimates but take longer.
@@ -78,7 +78,7 @@ and heights are provided directly (not estimated). Options:
 \item NULL (default): If heights are estimated, error is propagated from
 the height-diameter model. If heights are provided directly, errH is
 set to 0 (no height error propagation).
-\item A numeric value: Fixed relative error (e.g., 0.05 for 5\\%)
+\item A numeric value: Fixed relative error (e.g., 0.05 for 5 percent)
 applied to all trees as SD = errH * height.
 \item A numeric vector: Per-tree absolute height errors (in metres).
 }}
@@ -89,7 +89,7 @@ is retrieved from the Global Wood Density Database via
 vector matching the length of \code{dbh}.}
 
 \item{wd_sd}{Standard deviation of wood density. Optional. If NULL and
-\code{wd} is provided, a default SD of 10\\% of wd is used. If \code{wd}
+\code{wd} is provided, a default SD of 10 percent of wd is used. If \code{wd}
 is NULL, this is retrieved from the database.}
 }
 \value{
@@ -106,10 +106,10 @@ If \code{uncertainty = TRUE}, additional columns include:
 \item AGB_CI_low_kg: 5th percentile (lower credible bound)
 \item AGB_CI_high_kg: 95th percentile (upper credible bound)
 \item AGB_median_kg: Median estimate
-\item AGB_CV_pct: Coefficient of variation (\%)
+\item AGB_CV_pct: Coefficient of variation (percent)
 }
 
-If \code{rich_output = TRUE}: an \code{allometry_result} object with full
+If \code{rich_output = TRUE}: an \code{allometry_result} object with
 metadata including uncertainty estimates.
 }
 \description{
@@ -130,17 +130,17 @@ coords <- c(-0.088837, 51.071610)
 # Basic usage
 BIOMASS(12, 12, 'Quercus', 'robur', coords)
 
-# With uncertainty estimation (default 5\% height error)
+# With uncertainty estimation (default 5 percent height error)
 result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
                   uncertainty = TRUE, n_mc = 1000)
 result[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct")]
 
-# With specific height measurement error (10\% relative error)
+# With specific height measurement error (10 percent relative error)
 result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
                   uncertainty = TRUE, n_mc = 1000, errH = 0.10)
 result[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct")]
 
-# Rich output with full metadata and uncertainty
+# Rich output with metadata and uncertainty
 result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
                   rich_output = TRUE, uncertainty = TRUE)
 print(result)

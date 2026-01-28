@@ -34,8 +34,8 @@ fc_agc(
 \item{nsg}{nominal specific gravity. Optionally specified, else will use that
 given by the WCC}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata including: value, method, citation, assumptions, validity_warning,
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata including: value, method, reference, assumptions, validity_warning,
 flags, region, and source type. Default FALSE for backwards compatibility.}
 }
 \value{
@@ -62,7 +62,7 @@ fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc('beech', 72, 24, nsg = wd$meanWD)
 
-# Rich output with full metadata
+# Rich output with metadata
 result <- fc_agc('Oak', dbh=50, height=20, rich_output = TRUE)
 print(result)
 }

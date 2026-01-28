@@ -10,8 +10,8 @@ method_comparison_table()
 A data frame with one row per method and columns for key attributes:
 \describe{
 \item{method}{Method identifier (WCC, BIOMASS, allodb, Bunce)}
-\item{full_name}{Full descriptive name of the method}
-\item{citation_short}{Short citation (Author, Year)}
+\item{full_name}{Name of the method}
+\item{reference_short}{Short reference (Author, Year)}
 \item{source_type}{Type of source (peer-reviewed, government, etc.)}
 \item{region}{Geographic region of applicability}
 \item{dbh_min, dbh_max}{Valid DBH range in cm}
@@ -23,7 +23,7 @@ A data frame with one row per method and columns for key attributes:
 \description{
 Returns a data frame comparing key attributes across all allometric
 methods, useful for quick comparison and method selection. Provides a
-tabular summary of citations, valid ranges, and data requirements.
+tabular summary of references, valid ranges, and data requirements.
 }
 \examples{
 method_comparison_table()

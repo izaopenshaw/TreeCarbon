@@ -15,17 +15,17 @@
 ############# Method Metadata Registry ################
 #' @title Get allometric method metadata
 #' @description Returns comprehensive metadata for each allometric method including
-#'   citations, assumptions, valid ranges, and regional applicability.
+#'   references, assumptions, valid ranges, and regional applicability.
 #'   Metadata is loaded from the package data tables \code{method_metadata} and
 #'   \code{method_assumptions}.
 #' @param method Character string specifying the method. Options: "WCC", "BIOMASS",
 #'   "allodb", "Bunce", or "all" to return all methods.
 #' @return A list containing method metadata with components:
 #' \describe{
-#'   \item{full_name}{Full descriptive name of the method}
-#'   \item{citation}{Full citation for the method}
-#'   \item{citation_short}{Short citation (Author, Year)}
-#'   \item{assumptions}{Character vector of key assumptions}
+#'   \item{full_name}{Descriptive name of the method}
+#'   \item{reference}{Reference for the method}
+#'   \item{reference_short}{Short reference (Author, Year)}
+#'   \item{assumptions}{Character vector of assumptions}
 #'   \item{region}{Geographic region(s) where method is applicable}
 #'   \item{biome}{Biome(s) where method is applicable}
 #'   \item{source_type}{Type of source (e.g., "peer-reviewed", "government")}
@@ -119,8 +119,8 @@ get_method_metadata <- function(method = "all") {
     # Construct metadata list with all required fields
     list(
       full_name = row$full_name,
-      citation = row$citation,
-      citation_short = row$citation_short,
+      reference = row$reference,
+      reference_short = row$reference_short,
       doi = row$doi,
       assumptions = assumptions,
       region = row$region,
@@ -161,8 +161,8 @@ get_method_metadata <- function(method = "all") {
   metadata <- list(
     WCC = list(
       full_name = "UK Woodland Carbon Code",
-      citation = "Jenkins, T.A.R., et al. (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). Forestry Commission.",
-      citation_short = "Jenkins et al. (2018)",
+      reference = "Jenkins, T.A.R., et al. (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). Forestry Commission.",
+      reference_short = "Jenkins et al. (2018)",
       doi = NA,
       assumptions = c(
         "Tree form follows UK forestry commission models",
@@ -184,8 +184,8 @@ get_method_metadata <- function(method = "all") {
 
     BIOMASS = list(
       full_name = "BIOMASS R Package (Chave et al. pantropical equations)",
-      citation = "Rejou-Mechain, M., et al. (2017). BIOMASS: an R package for estimating above-ground biomass and its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9), 1163-1167.",
-      citation_short = "Rejou-Mechain et al. (2017)",
+      reference = "Rejou-Mechain, M., et al. (2017). BIOMASS: an R package for estimating above-ground biomass and its uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9), 1163-1167.",
+      reference_short = "Rejou-Mechain et al. (2017)",
       doi = "10.1111/2041-210X.12753",
       assumptions = c(
         "Chave et al. (2014) pantropical allometric equation applies",
@@ -207,8 +207,8 @@ get_method_metadata <- function(method = "all") {
 
     allodb = list(
       full_name = "allodb R Package (multi-source allometric database)",
-      citation = "Gonzalez-Akre, E., et al. (2020). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. Methods in Ecology and Evolution, 11(10), 1273-1280.",
-      citation_short = "Gonzalez-Akre et al. (2020)",
+      reference = "Gonzalez-Akre, E., et al. (2020). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. Methods in Ecology and Evolution, 11(10), 1273-1280.",
+      reference_short = "Gonzalez-Akre et al. (2020)",
       doi = "10.1111/2041-210X.13452",
       assumptions = c(
         "Weighted combination of multiple published allometries",
@@ -230,8 +230,8 @@ get_method_metadata <- function(method = "all") {
 
     Bunce = list(
       full_name = "Bunce (1968) UK Deciduous Woodland Equations",
-      citation = "Bunce, R.G.H. (1968). Biomass and Production of Trees in a Mixed Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry Weight. Journal of Ecology, 56(3), 759-775.",
-      citation_short = "Bunce (1968)",
+      reference = "Bunce, R.G.H. (1968). Biomass and Production of Trees in a Mixed Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of Tree Dry Weight. Journal of Ecology, 56(3), 759-775.",
+      reference_short = "Bunce (1968)",
       doi = "10.2307/2258105",
       assumptions = c(
         "Based on UK mixed deciduous woodland",
@@ -292,8 +292,8 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
     cat(sprintf("  %s: %s\n", m, meta$full_name))
 
     # Citation
-    cat("\nCITATION:\n")
-    cat(sprintf("  %s\n", meta$citation))
+    cat("\nREFERENCE:\n")
+    cat(sprintf("  %s\n", meta$reference))
     if (!is.na(meta$doi)) {
       cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
     }
@@ -324,7 +324,7 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
 
     # Assumptions
     if (include_assumptions) {
-      cat("\nKEY ASSUMPTIONS:\n")
+      cat("\n ASSUMPTIONS:\n")
       for (i in seq_along(meta$assumptions)) {
         cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
       }
@@ -338,12 +338,12 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
 #' @title Get method comparison summary as a data frame
 #' @description Returns a data frame comparing key attributes across all allometric
 #'   methods, useful for quick comparison and method selection. Provides a
-#'   tabular summary of citations, valid ranges, and data requirements.
+#'   tabular summary of references, valid ranges, and data requirements.
 #' @return A data frame with one row per method and columns for key attributes:
 #' \describe{
 #'   \item{method}{Method identifier (WCC, BIOMASS, allodb, Bunce)}
-#'   \item{full_name}{Full descriptive name of the method}
-#'   \item{citation_short}{Short citation (Author, Year)}
+#'   \item{full_name}{Name of the method}
+#'   \item{reference_short}{Short reference (Author, Year)}
 #'   \item{source_type}{Type of source (peer-reviewed, government, etc.)}
 #'   \item{region}{Geographic region of applicability}
 #'   \item{dbh_min, dbh_max}{Valid DBH range in cm}
@@ -362,7 +362,7 @@ method_comparison_table <- function() {
   data.frame(
     method = names(all_meta),
     full_name = sapply(all_meta, function(x) x$full_name),
-    citation_short = sapply(all_meta, function(x) x$citation_short),
+    reference_short = sapply(all_meta, function(x) x$reference_short),
     source_type = sapply(all_meta, function(x) x$source_type),
     region = sapply(all_meta, function(x) x$region),
     dbh_min = sapply(all_meta, function(x) x$dbh_range[1]),

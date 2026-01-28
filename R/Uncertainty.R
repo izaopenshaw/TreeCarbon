@@ -126,7 +126,7 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 #'   10000 for final results.
 #' @param corr_matrix Optional correlation matrix for inputs. If NULL, inputs
 #'   are assumed independent.
-#' @param conf Confidence level for intervals (default: 0.90 for 5-95%).
+#' @param conf Confidence level for intervals (default: 0.90 for 0.5-0.95).
 #' @param seed Random seed for reproducibility. Set to NULL for no seed.
 #' @param decompose Logical. If TRUE, also compute variance decomposition by
 #'   uncertainty source. Default FALSE.
@@ -462,9 +462,7 @@ print.mc_uncertainty <- function(x, ...) {
 
 #' @export
 summary.mc_uncertainty <- function(object, ...) {
-  cat("\n============================================================\n")
-  cat("          MONTE CARLO UNCERTAINTY SUMMARY\n")
-  cat("============================================================\n")
+  cat("---------- MONTE CARLO UNCERTAINTY SUMMARY ----------\n")
 
   # Main results
   cat("\nRESULTS:\n")
@@ -513,12 +511,11 @@ summary.mc_uncertainty <- function(object, ...) {
     }
   }
 
-  cat("\n============================================================\n")
   invisible(object)
 }
 
 
-#' Plot Monte Carlo Uncertainty Results
+########### Plot Monte Carlo Uncertainty Results ###########
 #'
 #' @param x An mc_uncertainty object
 #' @param type Plot type: "histogram" (default), "density", or "both"
@@ -584,7 +581,7 @@ plot.mc_uncertainty <- function(x, type = "histogram", ...) {
 #' specifications for measurement uncertainty.
 #' @param value Measured value
 #' @param absolute_error Absolute measurement error (e.g., +/- 2 mm for DBH)
-#' @param relative_error Relative measurement error (e.g., 0.025 for 2.5%).
+#' @param relative_error Relative measurement error (e.g. 0.025 for 2.5 percent)
 #'   Ignored if absolute_error is provided.
 #' @param dist Distribution: "normal" (default), "lognormal", "uniform"
 #' @return A list suitable for use in mc_uncertainty inputs
@@ -592,7 +589,7 @@ plot.mc_uncertainty <- function(x, type = "histogram", ...) {
 #' # DBH measurement with +/-2mm absolute error
 #' dbh_input <- measurement_uncertainty(30, absolute_error = 0.2)
 #'
-#' # Height measurement with 5% relative error
+#' # Height measurement with 5 percent relative error
 #' height_input <- measurement_uncertainty(15, relative_error = 0.05)
 #'
 #' @export
@@ -627,7 +624,7 @@ measurement_uncertainty <- function(value, absolute_error = NULL,
 #' # Bunce coefficient 'a' with SE from regression
 #' a_input <- parameter_uncertainty(1.868, se = 0.047)
 #'
-#' # Or with relative SE (2.5% of value)
+#' # Or with relative SE (2.5 percent of value)
 #' b_input <- parameter_uncertainty(2.268, relative_se = 0.025)
 #'
 #' @export
@@ -666,7 +663,7 @@ parameter_uncertainty <- function(value, se = NULL, relative_se = 0.025) {
 #' @return A list suitable for use in mc_uncertainty inputs
 #'
 #' @examples
-#' # Model with RSE of 0.15 on log scale (approx 15% CV)
+#' # Model with RSE of 0.15 on log scale (approx 15 percent CV)
 #' residual_input <- residual_uncertainty(rse = 50, estimate = 500)
 #'
 #' @export
@@ -773,10 +770,7 @@ method_choice_uncertainty <- function(estimates, weights = NULL, conf = 0.90) {
 }
 
 
-# ==============================================================================
-# Combined Uncertainty (All Sources)
-# ==============================================================================
-
+################ Combined Uncertainty (All Sources) ################
 #' Comprehensive Uncertainty Analysis
 #'
 #' @description
@@ -794,7 +788,7 @@ method_choice_uncertainty <- function(estimates, weights = NULL, conf = 0.90) {
 #'
 #' @return A list with:
 #'   \describe{
-#'     \item{mc_result}{Full Monte Carlo result}
+#'     \item{mc_result}{Monte Carlo result}
 #'     \item{method_uncertainty}{Method choice uncertainty (if provided)}
 #'     \item{combined_cv}{Combined CV from all sources}
 #'     \item{summary_table}{Data frame summarizing all uncertainty components}
@@ -912,9 +906,7 @@ comprehensive_uncertainty <- function(fn, inputs, method_estimates = NULL,
 
 #' @export
 print.comprehensive_uncertainty <- function(x, ...) {
-  cat("\n========================================\n")
-  cat("COMPREHENSIVE UNCERTAINTY ANALYSIS\n")
-  cat("========================================\n\n")
+  cat("--------- COMPREHENSIVE UNCERTAINTY ANALYSIS ---------\n")
 
   cat(sprintf("Point Estimate: %.4f\n", x$estimate))
   cat(sprintf("Total SD:       %.4f\n", x$total_sd))
@@ -923,14 +915,12 @@ print.comprehensive_uncertainty <- function(x, ...) {
               100 * x$conf, x$ci[1], x$ci[2]))
 
   cat("UNCERTAINTY BREAKDOWN:\n")
-  cat("----------------------------------------\n")
   for (i in seq_len(nrow(x$summary_table))) {
     row <- x$summary_table[i, ]
-    if (row$source == "TOTAL") cat("----------------------------------------\n")
+    if (row$source == "TOTAL")
     bar <- paste(rep("=", round(row$cv_pct / 2)), collapse = "")
     cat(sprintf("%-18s %6.1f%%  %s\n", row$source, row$cv_pct, bar))
   }
-  cat("========================================\n")
 
   invisible(x)
 }
@@ -1044,7 +1034,7 @@ quick_uncertainty <- function(method = "Bunce", dbh, height = NULL,
 #' @return A list containing:
 #'   - mean: mean of simulated biomass/carbon
 #'   - sd: standard deviation
-#'   - ci: 2.5% and 97.5% quantiles
+#'   - ci: 2.5 and 97.5 percent quantiles
 #'   - sim_values: vector of all simulated values
 #'
 #' @references
@@ -1121,7 +1111,7 @@ MC_propagate <- function(fn, inputs, N = 5000, corr_matrix = NULL, extra_args = 
 #' @param sig_biom sigma (standard deviation) for biomass
 #' @param nruns number of iteration, suggest 10,000 as min and 100,000 is a good number
 #' @param returnv if null then mean and sd is returned else vector of
-#' quantiles ie c(5,50,95)/100 will return 5%, mean and 95% quantiles.
+#' quantiles ie c(5,50,95)/100 will return 0.05, mean and 0.95 quantiles.
 #' @return  either vector of mean and sd or vector of quantiles
 #' @references todo** and to write at export
 #' @importFrom stats quantile rnorm sd

@@ -13,7 +13,7 @@ sap_seedling2C(height, type, re_h = NULL, re = 0.025)
 
 \item{re_h}{relative error of height measurement (optional)}
 
-\item{re}{relative error of estimates (default = 2.5\%)}
+\item{re}{relative error of estimates (default = 0.025)}
 }
 \value{
 carbon in tonnes or if re_h provided then additionally the error

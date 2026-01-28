@@ -31,7 +31,7 @@ A list containing:
 \itemize{
 \item mean: mean of simulated biomass/carbon
 \item sd: standard deviation
-\item ci: 2.5\% and 97.5\% quantiles
+\item ci: 2.5 and 97.5 percent quantiles
 \item sim_values: vector of all simulated values
 }
 }

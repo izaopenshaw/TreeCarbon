@@ -29,8 +29,8 @@
 #' @param vol tree volume (metres cubed)
 #' @param dbh diameter at breast height (centimetres)
 #' @param sig_vol sigma for tree volume (optional)
-#' @param re_dbh relative measurement error for diameter at breast height (default is 2.5%)
-#' @param re  relative error of coefficients (default = 2.5%)
+#' @param re_dbh relative measurement error for diameter at breast height (default is 0.025)
+#' @param re  relative error of coefficients (default = 0.025)
 #' @return  Tariff number or if sigma for inputs are provided, then will return
 #' a list of tariff number and sigma for tariff
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -106,7 +106,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
 #' @param spcode species code (single)
 #' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
-#' @param re  relative error of coefficients (default = 2.5%)
+#' @param re  relative error of coefficients (default = 0.025)
 #' @return  tariff number or if relative errors are provided returns a list of
 #' tariff number and an estimate for sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -192,7 +192,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
 #' @param spcode species code (single)
 #' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for dbh/percentage measurement error (optional)
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re relative error of coefficients (default = 0.025)
 #' @return  tariff number or if relative errors are provided returns a list of
 #' tariff number and an estimate for sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -279,7 +279,7 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re 
 #' @param height tree height in metres
 #' @param spcode species code
 #' @param re_h relative error of height measurement (optional)
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re relative error of coefficients (default = 0.025)
 #' @return either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and an estimate of sigma for tariff number
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -363,7 +363,7 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
 #' @param dbh diameter at breast height in centimetres
 #' @param type conifer or broadleaf
 #' @param re_dbh relative error for diameter at breast height (optional)
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re relative error of coefficients (default = 0.025)
 #' @return either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and uncertainty
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -482,7 +482,7 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
 #' @param dbh diameter at breast height in centimetres
 #' @param sig_tariff tariff sigma (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re relative error of coefficients (default = 0.025)
 #' @return  volume in metres cubed and error if sig of variables inputted
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
@@ -539,7 +539,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
 #' @param mtreevol merchantable tree volume
 #' @param dbh diameter at breast height in centimeters (greater than 6.5 cm)
 #' @param sig_mtreevol sigma for mtreevol (optional)
-#' @param re relative error of conversion factor (default = 2.5%)
+#' @param re relative error of conversion factor (default = 0.025)
 #' @return volume metres cubed or if sig_mtreevol is provided then additionally
 #'  returns the error as a list
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -653,8 +653,8 @@ woodbiomass <- function(treevol, nsg, sig_treevol = NULL, sig_nsg = 0.09413391) 
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode Crown biomass species code, crown_biomasdf$Code or if not
 #' defined for species, lookup_df$short to find relating lookup_df$Crown
-#' @param re_d relative error for diameter at breast height measurement (default = 5%)
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re_d relative error for diameter at breast height measurement (default = 0.05)
+#' @param re relative error of coefficients (default = 0.025)
 #' @return  biomass (oven dry tonnes) and estimated sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.2.
@@ -732,7 +732,7 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
 #' @param dbh diameter at breast height (1.3 m) in centimetres
 #' @param spcode species code
 #' @param re_dbh relative error for diameter at breast height (optional)
-#' @param re relative error of coefficients of the equation (default = 2.5%)
+#' @param re relative error of coefficients of the equation (default = 0.025)
 #' @return biomass (oven dry tonnes)
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018). Section 5.2.3.

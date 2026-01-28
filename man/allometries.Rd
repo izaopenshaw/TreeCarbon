@@ -51,7 +51,7 @@ coordinates for each tree of longitude and latitude}
 
 \item{re_h}{relative error of height measurement}
 
-\item{re}{relative error of coefficients (default = 2.5\\%)}
+\item{re}{relative error of coefficients (default = 2.5 percent)}
 
 \item{nsg}{nominal specific gravity (optional)}
 
@@ -60,14 +60,14 @@ coordinates for each tree of longitude and latitude}
 \item{checkTaxo}{If TRUE then BIOMASS::correctTaxo will check spelling of
 species name. This is included in output if there were modifications made.}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata for ALL methods including: values, citations, assumptions,
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata for ALL methods including: values, references, assumptions,
 validity warnings, flags, and uncertainties. Default FALSE.}
 }
 \value{
 If \code{rich_output = FALSE}: data.frame with estimates from all methods.
 If \code{rich_output = TRUE}: a list containing method-specific results with
-full metadata for WCC, BIOMASS, allodb, and Bunce.
+metadata for WCC, BIOMASS, allodb, and Bunce.
 }
 \description{
 Function that inputs tree species, dbh, height and calculates
@@ -77,6 +77,29 @@ allodb, and Bunce. Enables comparison across methods.
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including method metadata, assumptions, validity warnings for each method,
 and uncertainty
+}
+\examples{
+# Standard output
+allometries("Quercus", "robur", 20, 10)
+
+# Rich output with metadata for all methods
+result <- allometries("Quercus", "robur", 30, 15, rich_output = TRUE)
+print(result)
+}
+\references{
+Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+Carbon Assessment Protocol (v2. 0)." (2018).
+Rejou-Mechain, M., Tanguy, A., Piponiot, C., Chave, J., & Herault, B. (2017).
+BIOMASS: an R package for estimating above-ground biomass and its
+uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
+1163-1167
+Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira, K. (2020).
+allodb: An R package for biomass estimation at globally distributed
+extratropical forest plots. Methods in Ecology and Evolution, 11(10),
+1273-1280
+Bunce, R. G. H. "Biomass and Production of Trees in a Mixed Deciduous
+Woodland: I. Girth and height as Parameters for the Estimation of Tree Dry
+Weight" (1968)
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org

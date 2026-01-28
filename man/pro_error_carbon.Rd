@@ -31,7 +31,7 @@ pro_error_carbon(
 \item{nruns}{number of iteration, suggest 10,000 as min and 100,000 is a good number}
 
 \item{returnv}{if null then mean and sd is returned else vector of
-quantiles ie c(5,50,95)/100 will return 5\%, mean and 95\% quantiles.}
+quantiles ie c(5,50,95)/100 will return 0.05, mean and 0.95 quantiles.}
 }
 \value{
 either vector of mean and sd or vector of quantiles

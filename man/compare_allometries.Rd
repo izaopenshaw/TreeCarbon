@@ -28,7 +28,7 @@ percent differences. Default is "WCC".}
 for above-ground biomass. Default is "AGC".}
 
 \item{ci_level}{Numeric value between 0 and 1 specifying the confidence interval
-level. Default is 0.95 (95\% CI).}
+level. Default is 0.95 (95 percent CI).}
 
 \item{aggregate}{Logical. If TRUE (default), returns aggregated totals across
 all trees. If FALSE, returns per-tree comparison.}

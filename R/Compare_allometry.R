@@ -49,17 +49,37 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #' coordinates for each tree of longitude and latitude
 #' @param re_dbh relative measurement error for diameter at breast height
 #' @param re_h relative error of height measurement
-#' @param re relative error of coefficients (default = 2.5\%)
+#' @param re relative error of coefficients (default = 2.5 percent)
 #' @param nsg nominal specific gravity (optional)
 #' @param sig_nsg sigma for nominal specific gravity
 #' @param checkTaxo If TRUE then BIOMASS::correctTaxo will check spelling of
 #' species name. This is included in output if there were modifications made.
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata for ALL methods including: values, citations, assumptions,
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata for ALL methods including: values, references, assumptions,
 #'   validity warnings, flags, and uncertainties. Default FALSE.
 #' @returns If \code{rich_output = FALSE}: data.frame with estimates from all methods.
 #'   If \code{rich_output = TRUE}: a list containing method-specific results with
-#'   full metadata for WCC, BIOMASS, allodb, and Bunce.
+#'   metadata for WCC, BIOMASS, allodb, and Bunce.
+#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#'  Carbon Assessment Protocol (v2. 0)." (2018).
+#' Rejou-Mechain, M., Tanguy, A., Piponiot, C., Chave, J., & Herault, B. (2017).
+#'  BIOMASS: an R package for estimating above-ground biomass and its
+#'  uncertainty in tropical forests. Methods in Ecology and Evolution, 8(9),
+#'  1163-1167
+#' Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira, K. (2020).
+#'  allodb: An R package for biomass estimation at globally distributed
+#'  extratropical forest plots. Methods in Ecology and Evolution, 11(10),
+#'  1273-1280
+#' Bunce, R. G. H. "Biomass and Production of Trees in a Mixed Deciduous
+#'  Woodland: I. Girth and height as Parameters for the Estimation of Tree Dry
+#'  Weight" (1968)
+#' @examples
+#' # Standard output
+#' allometries("Quercus", "robur", 20, 10)
+#'
+#' # Rich output with metadata for all methods
+#' result <- allometries("Quercus", "robur", 30, 15, rich_output = TRUE)
+#' print(result)
 #' @importFrom utils data
 #' @export
 #'
@@ -202,7 +222,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
       # Summary table
       estimates = df,
 
-      # Method-specific results with full metadata
+      # Method-specific results with metadata
       methods = list(
         WCC = list(
           value = if(returnv == "AGC") WCC$AGC_WCC_t else WCC$AGB_WCC_t,
@@ -268,24 +288,19 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 #' @param ... Additional arguments (unused)
 #' @export
 print.allometries_rich_result <- function(x, ...) {
-  cat("\n")
-  cat("================================================================================\n")
-  cat("              MULTI-METHOD ALLOMETRY COMPARISON RESULTS                         \n")
-  cat("================================================================================\n\n")
+  cat("------------- MULTI-METHOD ALLOMETRY COMPARISON RESULTS -------------\n")
 
   cat(sprintf("Trees analysed: %d\n", x$n_trees))
   cat(sprintf("Output type: %s\n", x$return_type))
   cat(sprintf("Species: %s %s\n", x$inputs$genus[1], x$inputs$species[1]))
 
-  cat("\n--------------------------------------------------------------------------------\n")
   cat("ESTIMATES BY METHOD\n")
-  cat("--------------------------------------------------------------------------------\n")
 
   for (m_name in names(x$methods)) {
     m <- x$methods[[m_name]]
     val <- if (length(m$value) == 1) m$value else mean(m$value, na.rm = TRUE)
     cat(sprintf("\n%s:\n", m_name))
-    cat(sprintf("  Value: %.4f %s | %s\n", val, m$unit, m$metadata$citation_short))
+    cat(sprintf("  Value: %.4f %s | %s\n", val, m$unit, m$metadata$reference_short))
     cat(sprintf("  Region: %s | Source: %s\n", m$metadata$region, m$metadata$source_type))
 
     if (!is.null(m$uncertainty) && !all(is.na(m$uncertainty))) {
@@ -300,21 +315,17 @@ print.allometries_rich_result <- function(x, ...) {
     }
   }
 
-  cat("\n--------------------------------------------------------------------------------\n")
-  cat("*** KEY ASSUMPTIONS BY METHOD ***\n")
-  cat("--------------------------------------------------------------------------------\n")
+  cat(" ASSUMPTIONS BY METHOD \n")
 
   for (m_name in names(x$methods)) {
     m <- x$methods[[m_name]]
-    cat(sprintf("\n%s (%s):\n", m_name, m$metadata$citation_short))
+    cat(sprintf("\n%s (%s):\n", m_name, m$metadata$reference_short))
     for (i in seq_along(m$metadata$assumptions)) {
       cat(sprintf("  %d. %s\n", i, m$metadata$assumptions[i]))
     }
   }
 
-  cat("\n================================================================================\n")
   cat("Use compare_allometries() for detailed statistical comparison\n")
-  cat("================================================================================\n\n")
 
   invisible(x)
 }
@@ -326,7 +337,7 @@ print.allometries_rich_result <- function(x, ...) {
 #' This prevents overplotting when multiple methods have similar values by adding small random offsets.
 #' @param data_range Numeric value representing the range of the data (max - min)
 #' @param default_width Default width to use if range is 0 or invalid (default: 0.1)
-#' @param proportion Proportion of the data range to use for jitter width (default: 0.02, i.e., 2%)
+#' @param proportion Proportion of the data range to use for jitter width (default: 0.02, i.e., 2 percent)
 #' @returns Numeric value representing the jitter width to use
 #' @noRd
 calculate_jitter_width <- function(data_range, default_width = 0.1, proportion = 0.02) {
@@ -441,12 +452,12 @@ add_error_bars <- function(p, plot_df, show_errors, position = NULL, width = 0.1
 #' @param y_max Numeric value, maximum y-axis value for axis limits (optional, default: NULL)
 #' @param jitter Logical, whether to apply jitter to points and error bars in scatter plots (dbh, height).
 #'   Jitter helps prevent overplotting when multiple methods have similar values. The jitter width is calculated
-#'   as 2% of the data range (x-axis), with a minimum of 0.1 units (default: TRUE)
+#'   as 2 percent of the data range (x-axis), with a minimum of 0.1 units (default: TRUE)
 #' @param point_size Numeric value specifying the size of points in scatter plots (default: 2)
 #' @details
 #' This function creates visualizations comparing estimates from different allometric methods. For scatter plots
 #' (dbh, height), jitter can be applied to points and error bars to prevent overplotting when multiple
-#' methods have similar values. The jitter width is calculated as 2% of the data range (x-axis), with a minimum
+#' methods have similar values. The jitter width is calculated as 2 percent of the data range (x-axis), with a minimum
 #' of 0.1 units. This helps distinguish overlapping points while maintaining the overall pattern of the data.
 #'
 #' Interactive plots (when interactive = TRUE) display hover tooltips with formatted values: species name (if available),
@@ -1377,7 +1388,7 @@ compare_methods <- function(results_df, returnv = "AGC") {
 #' @param returnv Character string, either "AGC" for above-ground carbon or "AGB"
 #'   for above-ground biomass. Default is "AGC".
 #' @param ci_level Numeric value between 0 and 1 specifying the confidence interval
-#'   level. Default is 0.95 (95% CI).
+#'   level. Default is 0.95 (95 percent CI).
 #' @param aggregate Logical. If TRUE (default), returns aggregated totals across
 #'   all trees. If FALSE, returns per-tree comparison.
 #'
@@ -1609,7 +1620,7 @@ compare_allometries <- function(df,
         cv_pct = cv_pct,
         pct_diff_vs_ref = NA_real_,
         abs_diff_vs_ref = NA_real_,
-        citation = meta$citation_short,
+        reference = meta$reference_short,
         assumptions = paste(meta$assumptions[1:2], collapse = "; "),
         region = meta$region,
         source = meta$source_type,
@@ -1698,7 +1709,7 @@ compare_allometries <- function(df,
           cv_pct = cv_pct,
           pct_diff_vs_ref = NA_real_,
           abs_diff_vs_ref = NA_real_,
-          citation = meta$citation_short,
+          reference = meta$reference_short,
           assumptions = paste(meta$assumptions[1:2], collapse = "; "),
           region = meta$region,
           source = meta$source_type,
@@ -1848,8 +1859,8 @@ print.allometry_comparison <- function(x, ...) {
   cat("\n--- Citations ---\n")
   unique_methods <- unique(x$method)
   for (m in unique_methods) {
-    citation <- x$citation[x$method == m][1]
-    cat(sprintf("  %s: %s\n", m, citation))
+    reference <- x$reference[x$method == m][1]
+    cat(sprintf("  %s: %s\n", m, reference))
   }
 
   cat("\n--- Validity Warnings ---\n")
@@ -1896,7 +1907,7 @@ summary.allometry_comparison <- function(object, ...) {
   cat("\nCITATIONS:\n")
   for (m in methods) {
     row <- object[object$method == m, ][1, ]
-    cat(sprintf("  - %s: %s\n", m, row$citation))
+    cat(sprintf("  - %s: %s\n", m, row$reference))
   }
 
   cat("\nUNCERTAINTY:\n")
@@ -2023,8 +2034,8 @@ create_allometry_result <- function(value, method, measure, unit,
     # === Method information ===
     method = method,
     method_full_name = meta$full_name,
-    citation = meta$citation,
-    citation_short = meta$citation_short,
+    reference = meta$reference,
+    reference_short = meta$reference_short,
     doi = meta$doi,
     source_type = meta$source_type,
     region = meta$region,
@@ -2079,11 +2090,11 @@ print.allometry_result <- function(x, ...) {
 
   cat(" METHOD INFORMATION \n")
   cat(sprintf("Method: %s\n", x$method_full_name))
-  cat(sprintf("Citation: %s\n", x$citation_short))
+  cat(sprintf("Reference: %s\n", x$reference_short))
   cat(sprintf("Source: %s\n", x$source_type))
   cat(sprintf("Region: %s | Biome: %s\n", x$region, x$biome))
 
-  cat(" KEY ASSUMPTIONS ")
+  cat(" ASSUMPTIONS ")
   for (i in seq_along(x$assumptions)) {
     cat(sprintf("  %d. %s\n", i, x$assumptions[i]))
   }
@@ -2110,7 +2121,7 @@ print.allometry_result <- function(x, ...) {
   }
 
   cat("REFERENCE:\n")
-  cat(sprintf("  %s\n", x$citation))
+  cat(sprintf("  %s\n", x$reference))
   if (!is.na(x$doi)) {
     cat(sprintf("  DOI: https://doi.org/%s\n", x$doi))
   }
@@ -2133,7 +2144,7 @@ as.data.frame.allometry_result <- function(x, ...) {
     unit = x$unit,
     method = x$method,
     method_full_name = x$method_full_name,
-    citation_short = x$citation_short,
+    reference_short = x$reference_short,
     source_type = x$source_type,
     region = x$region,
     uncertainty = ifelse(is.null(x$uncertainty), NA, x$uncertainty),
@@ -2159,7 +2170,7 @@ summary.allometry_result <- function(object, ...) {
     cat(sprintf(" (+/- %.4f)", object$uncertainty))
   }
   cat("\n")
-  cat(sprintf("Source: %s (%s)\n", object$citation_short, object$source_type))
+  cat(sprintf("Source: %s (%s)\n", object$reference_short, object$source_type))
   if (any(object$validity_warnings != "None")) {
     cat(sprintf("WARNINGS: %s\n", paste(object$validity_warnings, collapse = "; ")))
   }

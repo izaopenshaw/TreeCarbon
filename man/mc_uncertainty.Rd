@@ -35,7 +35,7 @@ more stable estimates but take longer. Recommended: 1000 for quick checks,
 \item{corr_matrix}{Optional correlation matrix for inputs. If NULL, inputs
 are assumed independent.}
 
-\item{conf}{Confidence level for intervals (default: 0.90 for 5-95\%).}
+\item{conf}{Confidence level for intervals (default: 0.90 for 0.5-0.95).}
 
 \item{seed}{Random seed for reproducibility. Set to NULL for no seed.}
 

@@ -9,8 +9,8 @@ A data frame with 4 rows (one per method) and 16 variables:
 \describe{
 \item{method}{Character. Short method identifier: "WCC", "BIOMASS", "allodb", "Bunce"}
 \item{full_name}{Character. Full descriptive name of the method}
-\item{citation}{Character. Full citation for the method}
-\item{citation_short}{Character. Short citation format (Author, Year)}
+\item{reference}{Character. Full reference for the method}
+\item{reference_short}{Character. Short reference format (Author, Year)}
 \item{doi}{Character. Digital Object Identifier (DOI) if available, NA otherwise}
 \item{region}{Character. Geographic region(s) where method is applicable}
 \item{biome}{Character. Biome(s) where method is applicable, semicolon-separated}
@@ -33,7 +33,7 @@ method_metadata
 }
 \description{
 A dataset containing comprehensive metadata for each allometric method
-supported by the TreeCarbon package. Includes citations, valid ranges,
+supported by the TreeCarbon package. Includes references, valid ranges,
 regional applicability, and source information.
 }
 \examples{

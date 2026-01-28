@@ -28,7 +28,7 @@ that the model cannot capture.
 For log-transformed models, RSE should be back-transformed appropriately.
 }
 \examples{
-# Model with RSE of 0.15 on log scale (approx 15\% CV)
+# Model with RSE of 0.15 on log scale (approx 15 percent CV)
 residual_input <- residual_uncertainty(rse = 50, estimate = 500)
 
 }

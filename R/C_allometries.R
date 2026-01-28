@@ -44,9 +44,9 @@
 #' @param type 'broadleaf' or 'conifer' (optional)
 #' @param dbh diameter at breast height (cm)
 #' @param re_dbh relative measurement error for diameter at breast height (optional)
-#' @param re  relative error of coefficients (default = 2.5%)
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, validity_warning,
+#' @param re  relative error of coefficients (default = 0.025)
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, uncertainty interval, region, and source type. Default FALSE for
 #'   backwards compatibility.
 #' @return If \code{rich_output = FALSE} (default): data.frame with biomass in kg.
@@ -55,8 +55,8 @@
 #' \describe{
 #'   \item{value}{Estimated biomass (kg)}
 #'   \item{method}{"Bunce"}
-#'   \item{citation}{Full citation for Bunce (1968)}
-#'   \item{assumptions}{Key assumptions of the method}
+#'   \item{reference}{Bunce (1968)}
+#'   \item{assumptions}{Assumptions of the method}
 #'   \item{validity_warning}{Warnings if inputs outside valid range}
 #'   \item{flags}{Extrapolation or default flags}
 #'   \item{uncertainty}{Standard deviation if re_dbh provided}
@@ -74,7 +74,7 @@
 #' Bunce("Oak", 24)
 #' Bunce(c("Oak", "Beech"), c(23,23))
 #'
-#' # Rich output with full metadata
+#' # Rich output with metadata
 #' result <- Bunce("Oak", 24, re_dbh = 0.05, rich_output = TRUE)
 #' print(result)  # Shows assumptions prominently
 #' summary(result)
@@ -251,10 +251,8 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025,
 #' @export
 print.bunce_multi_result <- function(x, ...) {
 
-  cat("\n")
-  cat("================================================================================\n")
-  cat("                    BUNCE BIOMASS ESTIMATES (MULTIPLE TREES)                    \n")
-  cat("================================================================================\n\n")
+  cat("---------- BUNCE BIOMASS ESTIMATES ----------\n")
+  cat("             Multiple trees \n\n")
 
   cat(sprintf("Number of trees: %d\n", x$n_trees))
   cat(sprintf("Total biomass: %.2f kg (%.4f t)\n", x$total_biomass_kg, x$total_biomass_kg / 1000))
@@ -263,27 +261,21 @@ print.bunce_multi_result <- function(x, ...) {
   # Get method metadata (from first tree)
   meta <- x$trees[[1]]
 
-  cat("\n--------------------------------------------------------------------------------\n")
   cat("METHOD INFORMATION\n")
-  cat("--------------------------------------------------------------------------------\n")
   cat(sprintf("Method: %s\n", meta$method_full_name))
-  cat(sprintf("Citation: %s\n", meta$citation_short))
+  cat(sprintf("Reference: %s\n", meta$reference_short))
   cat(sprintf("Source: %s | Region: %s\n", meta$source_type, meta$region))
 
-  cat("\n--------------------------------------------------------------------------------\n")
-  cat("*** KEY ASSUMPTIONS ***\n")
-  cat("--------------------------------------------------------------------------------\n")
+  cat(" ASSUMPTIONS \n")
   for (i in seq_along(meta$assumptions)) {
     cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
   }
 
-  cat("\n--------------------------------------------------------------------------------\n")
   cat("VALIDITY\n")
-  cat("--------------------------------------------------------------------------------\n")
   cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", meta$valid_dbh_range[1], meta$valid_dbh_range[2]))
 
   if (any(x$validation$validity_warnings != "None")) {
-    cat("\n*** WARNINGS ***\n")
+    cat("\n WARNINGS \n")
     for (w in x$validation$validity_warnings) {
       cat(sprintf("  ! %s\n", w))
     }
@@ -296,22 +288,18 @@ print.bunce_multi_result <- function(x, ...) {
     }
   }
 
-  cat("\n--------------------------------------------------------------------------------\n")
   cat("SUMMARY TABLE (first 10 rows)\n")
-  cat("--------------------------------------------------------------------------------\n")
   print(utils::head(x$summary_table[, c("tree_id", "species_name", "value", "uncertainty", "flags")], 10))
 
   if (x$n_trees > 10) {
     cat(sprintf("... and %d more trees\n", x$n_trees - 10))
   }
 
-  cat("\n================================================================================\n")
-  cat("Full citation:\n")
-  cat(sprintf("  %s\n", meta$citation))
+  cat("Reference:\n")
+  cat(sprintf("  %s\n", meta$reference))
   if (!is.na(meta$doi)) {
     cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
   }
-  cat("================================================================================\n\n")
 
   invisible(x)
 }
@@ -344,8 +332,8 @@ print.bunce_multi_result <- function(x, ...) {
 #'   are over 15 height measurements inputted, in which case you can choose a
 #'   model fit for this from, HD_method = c("log2","weibull","log1","exp","lin")
 #'   See BIOMASS::modelHD for more.
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, validity_warning,
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, region, and source type. Default FALSE for backwards compatibility.
 #' @param uncertainty Logical. If TRUE, runs Monte Carlo uncertainty propagation
 #'   using \code{BIOMASS::AGBmonteCarlo}. This propagates errors from:
@@ -355,7 +343,7 @@ print.bunce_multi_result <- function(x, ...) {
 #'     \item Height estimation error (if heights are predicted)
 #'     \item Allometric model error
 #'   }
-#'   Returns SD, CV, and 5-95% credible intervals. Default FALSE.
+#'   Returns SD, CV, and 5-95 percent credible intervals. Default FALSE.
 #' @param n_mc Number of Monte Carlo iterations for uncertainty estimation.
 #'   Default 1000. Higher values give more stable estimates but take longer.
 #'   Recommended: 1000 for quick checks, 10000 for final results.
@@ -372,7 +360,7 @@ print.bunce_multi_result <- function(x, ...) {
 #'     \item NULL (default): If heights are estimated, error is propagated from
 #'       the height-diameter model. If heights are provided directly, errH is
 #'       set to 0 (no height error propagation).
-#'     \item A numeric value: Fixed relative error (e.g., 0.05 for 5\%)
+#'     \item A numeric value: Fixed relative error (e.g., 0.05 for 5 percent)
 #'       applied to all trees as SD = errH * height.
 #'     \item A numeric vector: Per-tree absolute height errors (in metres).
 #'   }
@@ -381,7 +369,7 @@ print.bunce_multi_result <- function(x, ...) {
 #'   \code{BIOMASS::getWoodDensity()}. If provided, must be a numeric value or
 #'   vector matching the length of \code{dbh}.
 #' @param wd_sd Standard deviation of wood density. Optional. If NULL and
-#'   \code{wd} is provided, a default SD of 10\% of wd is used. If \code{wd}
+#'   \code{wd} is provided, a default SD of 10 percent of wd is used. If \code{wd}
 #'   is NULL, this is retrieved from the database.
 #'
 #' @return If \code{rich_output = FALSE}: Above-ground Biomass in kg. If
@@ -397,10 +385,10 @@ print.bunce_multi_result <- function(x, ...) {
 #'     \item AGB_CI_low_kg: 5th percentile (lower credible bound)
 #'     \item AGB_CI_high_kg: 95th percentile (upper credible bound)
 #'     \item AGB_median_kg: Median estimate
-#'     \item AGB_CV_pct: Coefficient of variation (%)
+#'     \item AGB_CV_pct: Coefficient of variation (percent)
 #'   }
 #'
-#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with full
+#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with
 #'   metadata including uncertainty estimates.
 #'
 #' @import remotes
@@ -420,17 +408,17 @@ print.bunce_multi_result <- function(x, ...) {
 #' # Basic usage
 #' BIOMASS(12, 12, 'Quercus', 'robur', coords)
 #'
-#' # With uncertainty estimation (default 5% height error)
+#' # With uncertainty estimation (default 5 percent height error)
 #' result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
 #'                   uncertainty = TRUE, n_mc = 1000)
 #' result[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct")]
 #'
-#' # With specific height measurement error (10% relative error)
+#' # With specific height measurement error (10 percent relative error)
 #' result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
 #'                   uncertainty = TRUE, n_mc = 1000, errH = 0.10)
 #' result[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct")]
 #'
-#' # Rich output with full metadata and uncertainty
+#' # Rich output with metadata and uncertainty
 #' result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
 #'                   rich_output = TRUE, uncertainty = TRUE)
 #' print(result)
@@ -802,8 +790,8 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 #' coordinates for each tree of longitude and latitude
 #' @param output.all if TRUE outputs all data from processing, else just outputs biomass
 #' @param new.eqtable a subset or extension of the allometric equation table. Create with allodb::new_equations
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, validity_warning,
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, uncertainty interval, region, and source type. Default FALSE.
 #' @references Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira,
 #' K. (2020). allodb: An R package for biomass estimation at globally
@@ -812,14 +800,14 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 #' @return If \code{rich_output = FALSE}: Above-ground Biomass in kg. If output.all = TRUE
 #'   then returns columns 'dbh', 'genus', 'species', 'AGB_allodb_kg', 'allodb_a',
 #'   'allodb_b', 'allodb_sigma' (where AGB = a*dbh^b+e, e ~ N(0,sigma^2)).
-#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with full metadata.
+#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @examples
 #' remotes::install_github('ropensci/allodb')
 #' coords <- c(-0.088837,51.071610)
 #' allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
 #' allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
 #'
-#' # Rich output with full metadata
+#' # Rich output with metadata
 #' result <- allodb(50, "Quercus", "robur", coords, rich_output = TRUE)
 #' print(result)
 #' @import remotes

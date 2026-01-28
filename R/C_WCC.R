@@ -12,7 +12,7 @@
 #   - Root biomass estimation (Equations 8-9)
 #   - Stem wood biomass (using NSG and CVF)
 #   - Biomass to carbon conversion
-#   - Full WCC carbon pipeline (fc_agc)
+#   - WCC carbon pipeline (fc_agc)
 #
 # Authors: Justin Moat (J.Moat@kew.org), Isabel Openshaw (I.Openshaw@kew.org)
 #
@@ -23,8 +23,6 @@
 #
 # ==============================================================================
 #
-############# Woodland Carbon Code Full Calculations ################
-
 ############# Lookup species Code ################
 #'
 #' @title Lookup species code
@@ -153,8 +151,8 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @param output.all if TRUE (default) outputs all data from processing, else outputs carbon estimate
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, validity_warning,
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, region, and source type. Default FALSE for backwards compatibility.
 #' @return If \code{rich_output = FALSE}: either Above ground carbon (AGC) in tonnes,
 #'   or a data.frame with tariff number, merchantable volume, stem volume,
@@ -171,7 +169,7 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc('beech', 72, 24, nsg = wd$meanWD)
 #'
-#' # Rich output with full metadata
+#' # Rich output with metadata
 #' result <- fc_agc('Oak', dbh=50, height=20, rich_output = TRUE)
 #' print(result)
 #' @export
@@ -367,16 +365,16 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 #' @param re_dbh relative measurement error for diameter at breast height, single value
 #' @param re_h relative error of height measurement, single value
 #' @param sig_nsg sigma for nominal specific gravity (NSG) or wood density
-#' @param re relative error of coefficients (default = 2.5%)
+#' @param re relative error of coefficients (default = 0.025)
 #' @param nsg nominal specific gravity. Optionally specified, else will use that
 #'  given by the WCC
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, validity_warning,
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, uncertainty interval, region, and source type. Default FALSE.
 #' @return If \code{rich_output = FALSE}: either Above ground carbon (AGC) in tonnes,
 #'   or if output.all = TRUE, a data.frame with tariff number, volumes, biomass,
 #'   carbon estimates and associated uncertainties (sig_*).
-#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with full metadata.
+#'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom utils data
@@ -388,7 +386,7 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
 #'
-#' # Rich output with full metadata
+#' # Rich output with metadata
 #' result <- fc_agc_error('Oak', 50, 20, rich_output = TRUE)
 #' print(result)
 #' @export
@@ -577,7 +575,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in metres
 #' @param type 'conifer' or 'broadleaf'
-#' @param re relative error of estimates (default = 2.5%)
+#' @param re relative error of estimates (default = 0.025)
 #' @param re_h relative error of height measurement (optional)
 #' @return carbon in tonnes or if re_h provided then additionally the error
 #' @note just uses simple linear relationship to get between measures

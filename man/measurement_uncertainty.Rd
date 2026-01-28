@@ -16,7 +16,7 @@ measurement_uncertainty(
 
 \item{absolute_error}{Absolute measurement error (e.g., +/- 2 mm for DBH)}
 
-\item{relative_error}{Relative measurement error (e.g., 0.025 for 2.5\%).
+\item{relative_error}{Relative measurement error (e.g. 0.025 for 2.5 percent)
 Ignored if absolute_error is provided.}
 
 \item{dist}{Distribution: "normal" (default), "lognormal", "uniform"}
@@ -32,7 +32,7 @@ specifications for measurement uncertainty.
 # DBH measurement with +/-2mm absolute error
 dbh_input <- measurement_uncertainty(30, absolute_error = 0.2)
 
-# Height measurement with 5\% relative error
+# Height measurement with 5 percent relative error
 height_input <- measurement_uncertainty(15, relative_error = 0.05)
 
 }

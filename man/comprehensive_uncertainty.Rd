@@ -33,7 +33,7 @@ for method choice uncertainty}
 \value{
 A list with:
 \describe{
-\item{mc_result}{Full Monte Carlo result}
+\item{mc_result}{Monte Carlo result}
 \item{method_uncertainty}{Method choice uncertainty (if provided)}
 \item{combined_cv}{Combined CV from all sources}
 \item{summary_table}{Data frame summarizing all uncertainty components}

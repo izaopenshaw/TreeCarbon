@@ -13,10 +13,10 @@ get_method_metadata(method = "all")
 \value{
 A list containing method metadata with components:
 \describe{
-\item{full_name}{Full descriptive name of the method}
-\item{citation}{Full citation for the method}
-\item{citation_short}{Short citation (Author, Year)}
-\item{assumptions}{Character vector of key assumptions}
+\item{full_name}{Descriptive name of the method}
+\item{reference}{Reference for the method}
+\item{reference_short}{Short reference (Author, Year)}
+\item{assumptions}{Character vector of assumptions}
 \item{region}{Geographic region(s) where method is applicable}
 \item{biome}{Biome(s) where method is applicable}
 \item{source_type}{Type of source (e.g., "peer-reviewed", "government")}
@@ -30,7 +30,7 @@ A list containing method metadata with components:
 }
 \description{
 Returns comprehensive metadata for each allometric method including
-citations, assumptions, valid ranges, and regional applicability.
+references, assumptions, valid ranges, and regional applicability.
 Metadata is loaded from the package data tables \code{method_metadata} and
 \code{method_assumptions}.
 }

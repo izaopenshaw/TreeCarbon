@@ -56,7 +56,7 @@ If NULL, defaults to theme_minimal with the specified font_size (default: NULL)}
 
 \item{jitter}{Logical, whether to apply jitter to points and error bars in scatter plots (dbh, height).
 Jitter helps prevent overplotting when multiple methods have similar values. The jitter width is calculated
-as 2\% of the data range (x-axis), with a minimum of 0.1 units (default: TRUE)}
+as 2 percent of the data range (x-axis), with a minimum of 0.1 units (default: TRUE)}
 
 \item{point_size}{Numeric value specifying the size of points in scatter plots (default: 2)}
 
@@ -79,7 +79,7 @@ Supports multiple plot types including bar charts, scatter plots, density plots,
 \details{
 This function creates visualizations comparing estimates from different allometric methods. For scatter plots
 (dbh, height), jitter can be applied to points and error bars to prevent overplotting when multiple
-methods have similar values. The jitter width is calculated as 2\% of the data range (x-axis), with a minimum
+methods have similar values. The jitter width is calculated as 2 percent of the data range (x-axis), with a minimum
 of 0.1 units. This helps distinguish overlapping points while maintaining the overall pattern of the data.
 
 Interactive plots (when interactive = TRUE) display hover tooltips with formatted values: species name (if available),

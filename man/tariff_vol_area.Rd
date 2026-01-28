@@ -13,9 +13,9 @@ tariff_vol_area(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025)
 
 \item{sig_vol}{sigma for tree volume (optional)}
 
-\item{re_dbh}{relative measurement error for diameter at breast height (default is 2.5\%)}
+\item{re_dbh}{relative measurement error for diameter at breast height (default is 0.025)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 Tariff number or if sigma for inputs are provided, then will return

@@ -12,9 +12,9 @@ defined for species, lookup_df$short to find relating lookup_df$Crown}
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{re_d}{relative error for diameter at breast height measurement (default = 5\%)}
+\item{re_d}{relative error for diameter at breast height measurement (default = 0.05)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 biomass (oven dry tonnes) and estimated sigma

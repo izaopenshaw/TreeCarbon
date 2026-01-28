@@ -19,7 +19,7 @@ conifer_tariff(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re = 0.025)
 
 \item{re_dbh}{relative error for diameter at breast height (optional)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 tariff number or if relative errors are provided returns a list of

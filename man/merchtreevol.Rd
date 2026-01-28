@@ -15,7 +15,7 @@ merchtreevol(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.025)
 
 \item{sig_tariff}{tariff sigma (optional)}
 
-\item{re}{relative error of coefficients (default = 2.5\%)}
+\item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
 volume in metres cubed and error if sig of variables inputted

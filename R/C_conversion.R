@@ -60,7 +60,7 @@ ctoco2e <- function(carbon) {
 ############# Plant Biomass to Carbon Conversion ################
 #' @title Convert Biomass to Carbon
 #' @description Converts biomass values to carbon values using the carbon
-#' fraction (CF) from the chosen method or citation.
+#' fraction (CF) from the chosen method or reference.
 #'
 #'   When \code{rich_output = TRUE}, returns a comprehensive result object
 #'   including conversion method metadata, assumptions, and uncertainty
@@ -71,9 +71,9 @@ ctoco2e <- function(carbon) {
 #' @param method Character. Method defining the carbon volatile fraction (CF).
 #' Supported methods:
 #' \itemize{
-#'   \item `"Matthews1"`: Simplest, CF = 50\% (Matthews, 1993).
+#'   \item `"Matthews1"`: Simplest, CF = 50 percent (Matthews, 1993).
 #'   \item `"Matthews2"`: CF based on type (broadleaf or conifer).
-#'   \item `"IPCC1"`: CF = 47.7\% (IPCC, 2006).
+#'   \item `"IPCC1"`: CF = 47.7 percent (IPCC, 2006).
 #'   \item `"IPCC2"`: Lookup CF by type and biome.
 #'   \item `"Thomas"`: Lookup by type and biome (Thomas & Martin, 2012).
 #' }
@@ -84,8 +84,8 @@ ctoco2e <- function(carbon) {
 #' `"mediterranean"`, `"temperate"`, or `"boreal"`.
 #' @param sig_biomass Numeric vector. Biomass uncertainty (optional, only used
 #' with `"IPCC2"` and `"Thomas"` methods).
-#' @param rich_output Logical. If TRUE, returns a rich result object with full
-#'   metadata including: value, method, citation, assumptions, and uncertainty.
+#' @param rich_output Logical. If TRUE, returns a rich result object with
+#'   metadata including: value, method, reference, assumptions, and uncertainty.
 #'   Default FALSE for backwards compatibility.
 #' @return If \code{rich_output = FALSE}: Numeric vector of carbon values. If
 #'   `sig_biomass` is provided, returns a data frame with columns `"AGC"` and
@@ -124,31 +124,31 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
   # ==== Conversion method metadata ====
   conversion_metadata <- list(
     Matthews1 = list(
-      citation = "Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical Paper 4.",
+      reference = "Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical Paper 4.",
       carbon_fraction = 0.50,
       assumptions = c("Simple 50% carbon fraction", "No distinction by tree type or biome"),
       source_type = "government publication"
     ),
     Matthews2 = list(
-      citation = "Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical Paper 4.",
+      reference = "Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical Paper 4.",
       carbon_fraction = "varies by type",
       assumptions = c("Carbon fraction varies by broadleaf/conifer", "Based on UK forestry data"),
       source_type = "government publication"
     ),
     IPCC1 = list(
-      citation = "IPCC (2006). Forest lands. IPCC Guidelines for National Greenhouse Gas Inventories, Vol. 4.",
+      reference = "IPCC (2006). Forest lands. IPCC Guidelines for National Greenhouse Gas Inventories, Vol. 4.",
       carbon_fraction = 0.477,
       assumptions = c("Default 47.7% carbon fraction", "IPCC Tier 1 approach"),
       source_type = "intergovernmental guidelines"
     ),
     IPCC2 = list(
-      citation = "IPCC (2006). Forest lands. IPCC Guidelines for National Greenhouse Gas Inventories, Vol. 4.",
+      reference = "IPCC (2006). Forest lands. IPCC Guidelines for National Greenhouse Gas Inventories, Vol. 4.",
       carbon_fraction = "varies by type and biome",
       assumptions = c("Carbon fraction varies by tree type and biome", "IPCC Tier 2 approach"),
       source_type = "intergovernmental guidelines"
     ),
     Thomas = list(
-      citation = "Thomas, S.C. & Martin, A.R. (2012). Carbon content of tree tissues: A synthesis. Forests, 3(2), 332-352.",
+      reference = "Thomas, S.C. & Martin, A.R. (2012). Carbon content of tree tissues: A synthesis. Forests, 3(2), 332-352.",
       carbon_fraction = "varies by type and biome",
       assumptions = c("Synthesis of empirical measurements", "Carbon fraction varies by type and biome", "Most detailed approach"),
       source_type = "peer-reviewed"
@@ -253,7 +253,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
 
       # Method info
       conversion_method = method,
-      citation = meta$citation,
+      reference = meta$reference,
       source_type = meta$source_type,
 
       # Assumptions
@@ -287,10 +287,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
 #' @param ... Additional arguments (unused)
 #' @export
 print.biomass2c_result <- function(x, ...) {
-  cat("\n")
-  cat("================================================================================\n")
-  cat("                    BIOMASS TO CARBON CONVERSION RESULT                         \n")
-  cat("================================================================================\n\n")
+  cat(" --------- BIOMASS TO CARBON CONVERSION RESULT ---------\n")
 
   cat(sprintf("CARBON ESTIMATE: %.4f (same units as biomass input)\n", sum(x$carbon)))
   if (!is.null(x$uncertainty)) {
@@ -299,16 +296,12 @@ print.biomass2c_result <- function(x, ...) {
   cat(sprintf("CARBON FRACTION USED: %.3f (%.1f%%)\n", mean(x$carbon_fraction_used),
               mean(x$carbon_fraction_used) * 100))
 
-  cat("\n--------------------------------------------------------------------------------\n")
   cat("CONVERSION METHOD\n")
-  cat("--------------------------------------------------------------------------------\n")
   cat(sprintf("Method: %s\n", x$conversion_method))
-  cat(sprintf("Citation: %s\n", x$citation))
+  cat(sprintf("Reference: %s\n", x$reference))
   cat(sprintf("Source: %s\n", x$source_type))
 
-  cat("\n--------------------------------------------------------------------------------\n")
-  cat("*** KEY ASSUMPTIONS ***\n")
-  cat("--------------------------------------------------------------------------------\n")
+  cat(" ASSUMPTIONS \n")
   for (i in seq_along(x$assumptions)) {
     cat(sprintf("  %d. %s\n", i, x$assumptions[i]))
   }
@@ -320,7 +313,6 @@ print.biomass2c_result <- function(x, ...) {
     }
   }
 
-  cat("\n================================================================================\n\n")
   invisible(x)
 }
 
@@ -441,7 +433,7 @@ global_wd <- function(binomial, region = "World") {
   return(list(wd = wd, sd = sd))
 }
 
-############# Summarise Total per unit area with errors =========================
+############# Summarise Total per unit area with errors ############
 
 #' @title Calculate Total per unit area with Error for Biomass or Carbon
 #' @description This function calculates the total carbon or biomass per unit
@@ -535,7 +527,7 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
   return(list(total_per_area = total_per_area, error_per_area = error_per_area))
 }
 
-############# Standard Deviation for Area Measurement =========================
+############# Standard Deviation for Area Measurement ##############
 
 #' @title Standard Deviation for Measurement of the total Area
 #' @description This function calculates the standard deviation of the area

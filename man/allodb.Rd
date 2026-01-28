@@ -28,15 +28,15 @@ coordinates for each tree of longitude and latitude}
 
 \item{new.eqtable}{a subset or extension of the allometric equation table. Create with allodb::new_equations}
 
-\item{rich_output}{Logical. If TRUE, returns a rich result object with full
-metadata including: value, method, citation, assumptions, validity_warning,
+\item{rich_output}{Logical. If TRUE, returns a rich result object with
+metadata including: value, method, reference, assumptions, validity_warning,
 flags, uncertainty interval, region, and source type. Default FALSE.}
 }
 \value{
 If \code{rich_output = FALSE}: Above-ground Biomass in kg. If output.all = TRUE
 then returns columns 'dbh', 'genus', 'species', 'AGB_allodb_kg', 'allodb_a',
 'allodb_b', 'allodb_sigma' (where AGB = a*dbh^b+e, e ~ N(0,sigma^2)).
-If \code{rich_output = TRUE}: an \code{allometry_result} object with full metadata.
+If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 }
 \description{
 Use the allodb R package to calculate above-ground biomass
@@ -54,7 +54,7 @@ coords <- c(-0.088837,51.071610)
 allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
 allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
 
-# Rich output with full metadata
+# Rich output with metadata
 result <- allodb(50, "Quercus", "robur", coords, rich_output = TRUE)
 print(result)
 }
