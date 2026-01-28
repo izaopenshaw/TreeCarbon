@@ -19,12 +19,10 @@ library(TreeCarbon)
 # The Woodland Carbon Code
 
 # Calculate above-ground carbon for an oak tree
-result <- fc_agc(
-  name = "Oak",
-  dbh = 45,        # cm
-  height = 18,     # metres
-  type = "broadleaf"
-)
+result <- fc_agc(name = "Oak",
+                 dbh = 45,        # cm
+                 height = 18,     # metres
+                 type = "broadleaf")
 
 # View result
 cat(sprintf("Above-ground Carbon: %.3f tonnes\n", result$AGC_WCC_t))
