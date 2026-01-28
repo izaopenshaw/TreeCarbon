@@ -1,39 +1,15 @@
----
-title: "Getting Started with TreeCarbon"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Getting Started with TreeCarbon}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
-
-```{r, include = FALSE}
+## ----include = FALSE-------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-```
 
-# Installation
 
-```{r install, eval = FALSE}
-# Install package from GitHub
-devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
-```
-
-# Quick Start
-
-TreeCarbon estimates tree biomass and carbon using multiple allometric methods.
-
-```{r setup}
+## ----setup-----------------------------------------------------------------------------------------------------
 library(TreeCarbon)
-```
 
-## Single Tree - WCC Method (UK)
 
-The Woodland Carbon Code method is the UK standard:
-
-```{r single-tree}
+## ----single-tree-----------------------------------------------------------------------------------------------
 # Calculate above-ground carbon for an oak tree
 result <- fc_agc(
   name = "Oak",
@@ -44,23 +20,15 @@ result <- fc_agc(
 
 # View result
 cat(sprintf("Above-ground Carbon: %.3f tonnes\n", result$AGC_WCC_t))
-```
 
-## Single Tree - Bunce Method (No Height Needed)
 
-For UK deciduous woodland when height isn't available:
-
-```{r bunce}
+## ----bunce-----------------------------------------------------------------------------------------------------
 result <- Bunce(name = "Oak", dbh = 45)
 cat(sprintf("Biomass: %.1f kg (%.3f tonnes)\n", 
             result$biomass, result$biomass/1000))
-```
 
-## Multiple Trees
 
-Process a batch of trees:
-
-```{r batch}
+## ----batch-----------------------------------------------------------------------------------------------------
 # Sample data
 trees <- data.frame(
   species = c("Oak", "Beech", "Ash", "Birch"),
@@ -79,13 +47,9 @@ results <- fc_agc(
 
 # Summary
 cat(sprintf("Total carbon: %.2f tonnes\n", sum(results$AGC_WCC_t, na.rm = TRUE)))
-```
 
-## Compare Methods
 
-Use `allometries()` to compare all methods at once:
-
-```{r compare, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+## ----compare, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)----
 comparison <- allometries(
   genus = "Quercus",
   species = "robur",
@@ -97,13 +61,9 @@ comparison <- allometries(
 
 # View carbon estimates from each method
 print(comparison[, c("genus", "dbh", "WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")])
-```
 
-## With Uncertainty
 
-Add measurement error propagation:
-
-```{r uncertainty}
+## ----uncertainty-----------------------------------------------------------------------------------------------
 result <- fc_agc_error(
   name = "Oak",
   dbh = 45,
@@ -115,13 +75,9 @@ result <- fc_agc_error(
 
 cat(sprintf("Carbon: %.3f ± %.3f tonnes\n", 
             result$AGC_WCC_t, result$sig_AGC))
-```
 
-## Rich Output (Full Metadata)
 
-Get comprehensive metadata including assumptions and citations:
-
-```{r rich}
+## ----rich------------------------------------------------------------------------------------------------------
 result <- fc_agc(
   name = "Oak",
   dbh = 45,
@@ -131,14 +87,4 @@ result <- fc_agc(
 )
 
 print(result)
-```
-
-## Next Steps
-
-- See `vignette("TreeCarbon-workflow")` for complete workflows
-- Use `?allometries` for multi-method comparison
-- Use `?compare_allometries` for detailed method comparison statistics
-- Use `?mc_uncertainty` for Monte Carlo uncertainty analysis
-
-
 

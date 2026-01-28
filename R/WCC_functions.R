@@ -187,7 +187,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
 #' sample tree. species-specific estimates of a1-a4 are found in the
 #' R data file, 'tariff_broaddf'.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param height tree height in meters
+#' @param height tree height in metres
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode species code (single)
 #' @param re_h relative error of height measurement (optional)

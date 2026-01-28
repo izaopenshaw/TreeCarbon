@@ -228,7 +228,7 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
                                                     is.na(dbh) & height < 10)
   # For small trees, calculate carbon using sapling function
   if (any(small_id, na.rm = TRUE)) {
-    carbon <- sap_seedling2C(heightincm = height[small_id] * 100, type[small_id])
+    carbon <- sap_seedling2C(height = height[small_id], type[small_id])
     # sap_seedling2C returns a vector when re_h is NULL, list otherwise
     if (is.list(carbon)) {
       r$AGC_WCC_t[small_id] <- carbon$carbon
@@ -451,7 +451,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
   small_id <- type %in% class & !is.na(height) & (!is.na(dbh) & dbh < 7 | is.na(dbh) & height < 10)
 
   if (any(small_id, na.rm = TRUE)) {
-    carbon <- sap_seedling2C(heightincm = height[small_id] * 100,
+    carbon <- sap_seedling2C(height = height[small_id],
                              type[small_id], re_h, re)
     r$AGC_WCC_t[small_id] <- carbon$carbon
     r$sig_AGC[small_id] <- carbon$sd
@@ -575,10 +575,10 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
 #' @description Calculate the total carbon content of tree seedlings
 #' (below and above ground)
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param heightincm tree height in centimetres
+#' @param height tree height in metres
 #' @param type 'conifer' or 'broadleaf'
 #' @param re relative error of estimates (default = 2.5%)
-#' @param re_h relative error of height measurement in cm (optional)
+#' @param re_h relative error of height measurement (optional)
 #' @return carbon in tonnes or if re_h provided then additionally the error
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
@@ -586,22 +586,25 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
 #' @importFrom utils data head tail
 #' @import remotes
 #' @examples
-#' sap_seedling2C(50, 'conifer')
-#' sap_seedling2C(heightincm = 900, type = 'broadleaf', re_h = 0.05)
+#' sap_seedling2C(0.5, 'conifer')
+#' sap_seedling2C(height = 9, type = 'broadleaf', re_h = 0.05)
 #' @aliases sap_seedling2C
 #' @export
 #'
-sap_seedling2C <- function(heightincm, type, re_h = NULL, re = 0.025) {
-  if (!is.numeric(heightincm)){
-    stop("Argument 'heightincm' must be numeric.")
+sap_seedling2C <- function(height, type, re_h = NULL, re = 0.025) {
+  if (!is.numeric(height)){
+    stop("Argument 'height' must be numeric.")
   }
-  if (any(heightincm < 1 | heightincm > 1000, na.rm=TRUE)){
-    warning("heightincm is only defined for values between 1 and 1000 cm.")
+  if (any(height < 0.01 | height > 10, na.rm=TRUE)){
+    warning("height is only defined for values between 0.01 and 10 metres.")
   }
   if (!any(type %in% c("broadleaf", "conifer"))){
     warning("type must be defined as 'broadleaf', 'conifer' for each tree")
   }
-  if (length(heightincm) != length(type)) stop("'heightincm' and 'type' must have the same length")
+  if (length(height) != length(type)) stop("'height' and 'type' must have the same length")
+
+  # Convert height from metres to centimetres for internal lookup
+  heightincm <- height * 100
 
   sapling_carbon <- function(h, t) {
 

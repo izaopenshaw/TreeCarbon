@@ -10,8 +10,8 @@ dbh    <- 74 # cm
 height <- 24 # m
 vol <- 50    # m^3
 
-# If height is < 6.5 cm, use sapling model
-sap_seedling2C(heightincm = height[i]*100, type, re_h = re_h, re = re)
+# If height is < 10 m or dbh < 7 cm, use sapling model
+sap_seedling2C(height = height, type = type, re_h = re_h, re = re)
 
 #==========Tariff Number===========
 #==Method A: felled tree

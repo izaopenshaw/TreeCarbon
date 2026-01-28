@@ -1,5 +1,5 @@
 ---
-title: "TreeCarbon: A Complete Workflow Guide"
+title: "TreeCarbon: A Workflow Guide"
 author: "Isabel Openshaw & Justin Moat"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -20,17 +20,18 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-The **TreeCarbon** package provides multiple allometric methods for estimating tree 
-biomass and carbon storage. This vignette walks through complete workflows for:
-1. **Single tree** calculations
-2. **Batch processing** multiple trees
-3. **Comparing methods** and quantifying differences
-4. **Sensitivity analysis** - How sensitive is carbon to method choice?
-5. **Uncertainty estimation** across methods
+The **TreeCarbon** package provides multiple allometric methods for estimating 
+tree biomass and carbon storage. This vignette walks through complete workflows 
+for:
+1. Single tree calculations
+2. Batch processing multiple trees
+3. Comparing methods and quantifying differences
+4. Sensitivity analysis - How sensitive is carbon to method choice?
+5. Uncertainty estimation across methods
 
 ## Available Methods
 
-| Method | Region | Height Required | Key Reference |
+| Method | Region | Height Required | Reference |
 |--------|--------|-----------------|---------------|
 | **WCC** | UK temperate | Yes | Woodland Carbon Code (2021) |
 | **Bunce** | UK deciduous | No | Bunce (1968) |
@@ -39,6 +40,8 @@ biomass and carbon storage. This vignette walks through complete workflows for:
 
 *Height estimated from coordinates if not provided.
 
+Diameter at breast height (DBH) is passed in centimeters and Height in meters.
+
 ```{r load-package, message=FALSE, warning=FALSE}
 library(TreeCarbon)
 library(ggplot2)
@@ -46,7 +49,7 @@ library(ggplot2)
 
 ---
 
-# Part 1: Single Tree Calculations
+# 1: Single Tree Calculations
 
 ## 1.1 Using the Woodland Carbon Code (WCC)
 
@@ -55,28 +58,18 @@ species, DBH, and height.
 
 ```{r single-wcc}
 # A single oak tree
-result_wcc <- fc_agc(
-  name = "Oak",
-  dbh = 45,        # cm
-  height = 18,     # m
-  type = "broadleaf"
-)
+result_wcc <- fc_agc(name = "Oak", dbh = 45, height = 18, type = "broadleaf")
 
 print(result_wcc)
 ```
 
-### With Full Metadata (Rich Output)
+### Full metadata (Rich Output)
 
 Use `rich_output = TRUE` to get comprehensive metadata including assumptions,
 citations, and validity warnings:
 ```{r single-wcc-rich}
-result_rich <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  rich_output = TRUE
-)
+result_rich <- fc_agc(name = "Oak", dbh = 45, height = 18, type = "broadleaf",
+                      rich_output = TRUE)
 
 # View the complete result
 print(result_rich)

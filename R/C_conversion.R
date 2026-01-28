@@ -192,16 +192,22 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
   }
 
   # ===== Get carbon fraction (CF) values =====
+  # Subset conversion factor table for method
   CF_data <- CVF_df[CVF_df$method == method, ]
 
+  # Replicate the CF for each input tree's biomass ready for multiplication
   if (method %in% c("IPCC1", "Matthews1")) {
     CF <- rep(CF_data$CVF, length(biomass)) / 100
 
   } else if (method == "Matthews2") {
+    # Get index values depending on type
     index <- match(type, CF_data$type)
+
+    # Change to a percentage
     CF <- CF_data$CVF[index] / 100
 
   } else {
+    # Check biome
     if(!all(biome %in% CF_data$biome)) {
       stop("Invalid biome for the chosen method. Choose from: ",
            paste(unique(CF_data$biome), collapse = ", "))
@@ -211,7 +217,6 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
     CF <- CF_data$CVF[index] / 100
     sig_CF <- CF_data$confidence[index] / 100 / 1.96
   }
-
   # If CF is not matched, then use IPCC1
   IPCC1 <- CVF_df$CVF[CVF_df$method == "IPCC1"]/100
   if (length(CF) == 0) {
@@ -573,4 +578,3 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
 
   return(result)
 }
-
