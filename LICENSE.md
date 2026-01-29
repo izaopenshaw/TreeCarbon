@@ -1,6 +1,7 @@
 # License
 
-TreeCarbon is licensed under the **GNU General Public License v3.0 (GPL-3)**.
+TreeCarbon is licensed under the **GNU General Public License v3.0 (GPL-3)**.  
+See the full license text in the [`LICENSE`](./LICENSE) file.
 
 ## Summary
 

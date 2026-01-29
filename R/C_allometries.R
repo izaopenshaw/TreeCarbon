@@ -28,8 +28,6 @@
 #     Methods in Ecology and Evolution, 13(2), 330-338.
 #     https://doi.org/10.1111/2041-210X.13756
 #
-# ==============================================================================
-#
 ############# Bunce Equation carbon calculation ########################
 #'
 #' @title Bunce biomass equation
