@@ -5,12 +5,13 @@
 \alias{buncedf}
 \title{Bunce equation coefficient data table}
 \format{
-A data frame with 4 columns:
+A data frame with 5 columns:
 \describe{
 \item{X}{Common name of the species}
 \item{spcode}{Abbreviation for the species}
 \item{a}{Bunce coefficient a}
 \item{b}{Bunce coefficient b}
+\item{N}{Sample size (number of trees), total N across all localities from Table 6}
 }
 }
 \source{

@@ -117,6 +117,10 @@ Using the BIOMASS package (Chave et al. pantropical equations)
 to calculate above-ground biomass with optional Monte Carlo uncertainty
 propagation.
 
+\strong{Required package}: This function requires the \code{BIOMASS} package,
+which is a dependency of TreeCarbon. If missing, install with:
+\code{install.packages("BIOMASS")}
+
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including method metadata, assumptions, validity warnings, and uncertainty.
 
@@ -125,6 +129,8 @@ propagate uncertainty from DBH measurement error, wood density uncertainty,
 and height estimation error, providing credible intervals and CV.
 }
 \examples{
+\dontrun{
+# BIOMASS package is a required dependency of TreeCarbon
 coords <- c(-0.088837, 51.071610)
 
 # Basic usage
@@ -144,6 +150,7 @@ result[, c("AGB_Biomass_kg", "AGB_sd_kg", "AGB_CV_pct")]
 result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
                   rich_output = TRUE, uncertainty = TRUE)
 print(result)
+}
 
 }
 \references{

@@ -20,6 +20,7 @@ allometries(
   re = 0.025,
   nsg = NULL,
   sig_nsg = 0.09413391,
+  height_timber = NULL,
   checkTaxo = FALSE,
   rich_output = FALSE
 )
@@ -31,7 +32,10 @@ allometries(
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{height}{in metres}
+\item{height}{in metres (total height). For broadleaf species, WCC protocol
+requires timber height (height to first branch). If \code{height_timber} is
+not provided, it will be estimated from total height using a ratio of 0.85.
+Other methods (BIOMASS, allodb, Bunce) use total height.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
@@ -57,6 +61,10 @@ coordinates for each tree of longitude and latitude}
 
 \item{sig_nsg}{sigma for nominal specific gravity}
 
+\item{height_timber}{timber height in metres (height to first branch or merchantable top).
+Required for accurate WCC protocol compliance for broadleaf species. If not provided
+for broadleaves, will be estimated from total height with a warning.}
+
 \item{checkTaxo}{If TRUE then BIOMASS::correctTaxo will check spelling of
 species name. This is included in output if there were modifications made.}
 
@@ -74,17 +82,38 @@ Function that inputs tree species, dbh, height and calculates
 carbon/biomass estimates using four different allometric methods: WCC, BIOMASS,
 allodb, and Bunce. Enables comparison across methods.
 
-When \code{rich_output = TRUE}, returns a comprehensive result object
+\strong{Required packages}: This function requires the optional packages
+\code{BIOMASS} and \code{allodb} to be installed. Install with:
+\code{install.packages(c("BIOMASS", "allodb"))}
+
+If you only need specific methods, use the individual functions:
+\itemize{
+\item WCC: \code{fc_agc()} or \code{fc_agc_error()} (no additional packages)
+\item Bunce: \code{Bunce()} (no additional packages)
+\item BIOMASS: \code{BIOMASS()} (requires BIOMASS package)
+\item allodb: \code{allodb()} (requires allodb package)
+}
+
+When \code{rich_output = TRUE}, returns a result object
 including method metadata, assumptions, validity warnings for each method,
 and uncertainty
 }
 \examples{
-# Standard output
+\dontrun{
+# Standard output (requires BIOMASS and allodb packages)
 allometries("Quercus", "robur", 20, 10)
 
 # Rich output with metadata for all methods
 result <- allometries("Quercus", "robur", 30, 15, rich_output = TRUE)
 print(result)
+}
+
+# If packages are not installed, use individual methods:
+# WCC (no additional packages required)
+fc_agc("Oak", dbh = 20, height = 10, type = "broadleaf")
+
+# Bunce (no additional packages required)
+Bunce("Oak", dbh = 20)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

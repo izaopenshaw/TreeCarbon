@@ -12,43 +12,21 @@
 #
 # ==============================================================================
 
-############# Method Metadata Registry ################
-#' @title Get allometric method metadata
-#' @description Returns comprehensive metadata for each allometric method including
-#'   references, assumptions, valid ranges, and regional applicability.
-#'   Metadata is loaded from the package data tables \code{method_metadata} and
-#'   \code{method_assumptions}.
-#' @param method Character string specifying the method. Options: "WCC", "BIOMASS",
-#'   "allodb", "Bunce", or "all" to return all methods.
-#' @return A list containing method metadata with components:
-#' \describe{
-#'   \item{full_name}{Descriptive name of the method}
-#'   \item{reference}{Reference for the method}
-#'   \item{reference_short}{Short reference (Author, Year)}
-#'   \item{assumptions}{Character vector of assumptions}
-#'   \item{region}{Geographic region(s) where method is applicable}
-#'   \item{biome}{Biome(s) where method is applicable}
-#'   \item{source_type}{Type of source (e.g., "peer-reviewed", "government")}
-#'   \item{dbh_range}{Valid DBH range in cm (min, max)}
-#'   \item{height_range}{Valid height range in m (min, max), NA if not required}
-#'   \item{height_required}{Logical, whether height is required}
-#'   \item{species_specific}{Logical, whether method is species-specific}
-#'   \item{wood_density_required}{Logical, whether wood density is needed}
-#'   \item{uncertainty_method}{How uncertainty is calculated}
-#' }
-#' @examples
-#' get_method_metadata("WCC")
-#' get_method_metadata("all")
-#' @seealso \code{\link{method_metadata}}, \code{\link{method_assumptions}}
-#' @export
 get_method_metadata <- function(method = "all") {
 
  # Use internal package data (method_metadata and method_assumptions)
   # These are loaded automatically with LazyData: true
   # Fallback to inline definition if data not available
 
-  meta_df <- .get_package_data("method_metadata")
-  assump_df <- .get_package_data("method_assumptions")
+  # Access lazy-loaded data directly (LazyData: true handles loading automatically)
+  # Check if data exists (should always be available in installed package)
+  if (!exists("method_metadata") || !exists("method_assumptions")) {
+    stop("Package data 'method_metadata' or 'method_assumptions' not found. ",
+         "This indicates a package installation problem.")
+  }
+
+  meta_df <- method_metadata
+  assump_df <- method_assumptions
 
   # If data tables are available, use them
   if (!is.null(meta_df) && !is.null(assump_df)) {
@@ -57,43 +35,6 @@ get_method_metadata <- function(method = "all") {
 
   # Fallback to inline definition (used during package build or if data missing)
   .get_method_metadata_inline(method)
-}
-
-#' @title Retrieve lazy-loaded package data
-#' @description Internal helper function to retrieve lazy-loaded package data tables.
-#'   Handles both library() and devtools::load_all() scenarios gracefully.
-#' @param name Character string. Name of the data object to retrieve.
-#' @return The requested data object, or NULL if not found.
-#' @keywords internal
-.get_package_data <- function(name) {
-  # Initialize result as NULL (will remain NULL if data not found)
-  result <- NULL
-
-  # ==== First attempt: Get from package namespace ====
-  # This is the most reliable method when package is properly loaded
-  tryCatch({
-    ns <- getNamespace("TreeCarbon")
-    # Check if data object exists in namespace (LazyData objects stored here)
-    if (exists(name, envir = ns, inherits = FALSE)) {
-      result <- get(name, envir = ns)
-    }
-  }, error = function(e) NULL)  # Silently fail if namespace not available
-
-  # ==== Second attempt: Use data() function ====
-  # Fallback for when package is not fully loaded (e.g., during development)
-  if (is.null(result)) {
-    tryCatch({
-      # Create isolated environment to avoid polluting global namespace
-      env <- new.env()
-      utils::data(list = name, package = "TreeCarbon", envir = env)
-      # Check if data was successfully loaded into environment
-      if (exists(name, envir = env)) {
-        result <- get(name, envir = env)
-      }
-    }, error = function(e) NULL)  # Silently fail if data() fails
-  }
-
-  return(result)
 }
 
 #' @title Build metadata list structure from data tables
@@ -105,22 +46,21 @@ get_method_metadata <- function(method = "all") {
 #' @return A list containing method metadata, or a nested list of all methods.
 #' @keywords internal
 .build_metadata_from_tables <- function(meta_df, assump_df, method) {
-  # Get list of all available methods from metadata table
-
-  methods <- meta_df$method
-
-  # ==== Build nested list structure for each method ====
-  metadata <- lapply(methods, function(m) {
+  # Helper function to build metadata for a single method
+  .build_single_method <- function(m) {
     # Extract single row for this method from metadata table
     row <- meta_df[meta_df$method == m, ]
+    if (nrow(row) == 0) {
+      stop("Method '", m, "' not found in metadata table")
+    }
     # Extract all assumptions for this method (may be multiple rows)
     assumptions <- assump_df$assumption[assump_df$method == m]
 
     # Construct metadata list with all required fields
     list(
       full_name = row$full_name,
-      reference = row$reference,
-      reference_short = row$reference_short,
+      reference = row$citation,
+      reference_short = row$citation_short,
       doi = row$doi,
       assumptions = assumptions,
       region = row$region,
@@ -133,18 +73,22 @@ get_method_metadata <- function(method = "all") {
       wood_density_required = row$wood_density_required,
       uncertainty_method = row$uncertainty_method
     )
-  })
-  # Name list elements by method for easy lookup
-  names(metadata) <- methods
+  }
 
   # ==== Return requested method(s) ====
   if (method == "all") {
+    # Build metadata for all methods
+    methods <- meta_df$method
+    metadata <- lapply(methods, .build_single_method)
+    names(metadata) <- methods
     return(metadata)
-  } else if (method %in% names(metadata)) {
-    return(metadata[[method]])
   } else {
-    stop("Unknown method: ", method, ". Choose from: ",
-         paste(names(metadata), collapse = ", "), ", or 'all'")
+    # Only build metadata for the requested method (more efficient)
+    if (!method %in% meta_df$method) {
+      available <- paste(meta_df$method, collapse = ", ")
+      stop("Unknown method: ", method, ". Choose from: ", available, ", or 'all'")
+    }
+    return(.build_single_method(method))
   }
 }
 
@@ -238,7 +182,9 @@ get_method_metadata <- function(method = "all") {
         "Dry weight estimated from girth (DBH) only",
         "Limited species coverage (mainly UK broadleaves)",
         "Historic dataset - calibration trees from 1960s",
-        "Simple power-law relationship"
+        "Simple power-law relationship",
+        "Confidence intervals are symmetric approximations (biomass ± 1.96 * sigma)",
+        "Table 6 shows some asymmetric limits at large DBH, but symmetric intervals are reasonable for CV < 30%"
       ),
       region = "United Kingdom",
       biome = c("temperate"),
@@ -283,31 +229,35 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
     methods <- method
   }
 
-  cat("--------- ALLOMETRIC METHOD REFERENCE GUIDE ---------\n")
+  cat("------------------- ALLOMETRIC METHOD REFERENCE GUIDE -------------------\n")
 
   for (m in methods) {
     meta <- get_method_metadata(m)
 
     cat("\n")
     cat(sprintf("  %s: %s\n", m, meta$full_name))
+    cat(" \n")
 
     # Citation
-    cat("\nREFERENCE:\n")
+    cat("--- REFERENCE ---\n")
     cat(sprintf("  %s\n", meta$reference))
     if (!is.na(meta$doi)) {
       cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
     }
+    cat(" \n")
 
     # Source type
-    cat(sprintf("\nSOURCE TYPE: %s\n", meta$source_type))
+    cat("--- SOURCE TYPE ---\n")
+    cat(sprintf("%s\n", meta$source_type))
+    cat(" \n")
 
     # Regional applicability
     cat(sprintf("REGION: %s\n", meta$region))
     cat(sprintf("BIOME(S): %s\n", paste(meta$biome, collapse = ", ")))
-
+    cat(" \n")
     # Valid ranges
     if (include_ranges) {
-      cat("\nVALID INPUT RANGES:\n")
+      cat("--- VALID INPUT RANGES ---\n")
       cat(sprintf("  DBH: %.0f - %.0f cm\n", meta$dbh_range[1], meta$dbh_range[2]))
       if (!all(is.na(meta$height_range))) {
         cat(sprintf("  Height: %.0f - %.0f m\n", meta$height_range[1], meta$height_range[2]))
@@ -317,17 +267,21 @@ print_method_info <- function(method = "all", include_assumptions = TRUE,
       cat(sprintf("  Height required: %s\n", ifelse(meta$height_required, "YES", "No")))
       cat(sprintf("  Species-specific: %s\n", ifelse(meta$species_specific, "YES", "No")))
       cat(sprintf("  Wood density required: %s\n", ifelse(meta$wood_density_required, "YES", "No")))
+      cat(" \n")
     }
 
     # Uncertainty
-    cat(sprintf("\nUNCERTAINTY METHOD:\n  %s\n", meta$uncertainty_method))
+    cat("--- UNCERTAINTY METHOD ---\n")
+    cat(sprintf("  %s\n", meta$uncertainty_method))
+    cat(" \n")
 
     # Assumptions
     if (include_assumptions) {
-      cat("\n ASSUMPTIONS:\n")
+      cat("--- ASSUMPTIONS ---\n")
       for (i in seq_along(meta$assumptions)) {
         cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
       }
+      cat(" \n")
     }
   }
 
@@ -573,3 +527,316 @@ validate_inputs_for_method <- function(method, dbh, height = NULL,
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
 
+#' @title Convert allometry_result to data frame
+#' @description Converts the result object to a single-row data frame for easy
+#'   combination with other results
+#' @param x An allometry_result object
+#' @param ... Additional arguments (unused)
+#' @return A data frame with one row
+#' @export
+as.data.frame.allometry_result <- function(x, ...) {
+  # Helper function to safely extract scalar values (always returns length 1)
+  get_scalar <- function(field, default) {
+    if (is.null(field) || length(field) == 0) return(default)
+    if (length(field) == 1) return(field)
+    return(field[1])  # Take first element if vector
+  }
+
+  # Helper function to safely paste character vectors (always returns length 1 string)
+  paste_safe <- function(field, collapse = "; ", default = "None") {
+    if (is.null(field) || length(field) == 0) return(default)
+    result <- paste(field, collapse = collapse)
+    if (length(result) == 0 || result == "") return(default)
+    return(result)
+  }
+
+  # Extract all fields with safe defaults - ensure all are length 1
+  value_scalar <- get_scalar(x$value, NA_real_)
+  measure_scalar <- get_scalar(x$measure, "")
+  unit_scalar <- get_scalar(x$unit, "")
+  method_scalar <- get_scalar(x$method, "")
+  method_full_name_scalar <- get_scalar(x$method_full_name, "")
+  reference_short_scalar <- get_scalar(x$reference_short, "")
+  source_type_scalar <- get_scalar(x$source_type, "")
+  region_scalar <- get_scalar(x$region, "")
+  uncertainty_scalar <- get_scalar(x$uncertainty, NA_real_)
+  ci_low_scalar <- get_scalar(x$ci_low, NA_real_)
+  ci_high_scalar <- get_scalar(x$ci_high, NA_real_)
+  height_required_scalar <- get_scalar(x$height_required, NA)
+
+  validity_warnings_str <- paste_safe(x$validity_warnings, collapse = "; ", default = "None")
+  flags_str <- paste_safe(x$flags, collapse = "; ", default = "None")
+  assumptions_str <- paste_safe(x$assumptions, collapse = " | ", default = "")
+
+  # Create data frame - all fields are guaranteed to be length 1
+  data.frame(
+    value = value_scalar,
+    measure = measure_scalar,
+    unit = unit_scalar,
+    method = method_scalar,
+    method_full_name = method_full_name_scalar,
+    reference_short = reference_short_scalar,
+    source_type = source_type_scalar,
+    region = region_scalar,
+    uncertainty = uncertainty_scalar,
+    ci_low = ci_low_scalar,
+    ci_high = ci_high_scalar,
+    validity_warnings = validity_warnings_str,
+    flags = flags_str,
+    assumptions = assumptions_str,
+    height_required = height_required_scalar,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' @title Summary method for allometry_result
+#' @description Quick summary of the result
+#' @param object An allometry_result object
+#' @param ... Additional arguments (unused)
+#' @export
+summary.allometry_result <- function(object, ...) {
+  cat(sprintf("%s estimate using %s: %.4f %s",
+              object$measure, object$method, object$value, object$unit))
+  if (!is.null(object$uncertainty)) {
+    cat(sprintf(" (+/- %.4f)", object$uncertainty))
+  }
+  cat("\n")
+  cat(sprintf("Source: %s (%s)\n", object$reference_short, object$source_type))
+  if (any(object$validity_warnings != "None")) {
+    cat(sprintf("WARNINGS: %s\n", paste(object$validity_warnings, collapse = "; ")))
+  }
+  invisible(object)
+}
+
+#' @title Print method for allometry_result
+#' @description Displays the result with assumptions prominently shown
+#' @param x An allometry_result object
+#' @param ... Additional arguments (unused)
+#' @export
+print.allometry_result <- function(x, ...) {
+
+  cat("------------------- ALLOMETRY RESULT ------------------- \n")
+
+  # Main estimate
+  cat(sprintf("ESTIMATE: %.4f %s (%s)\n", x$value, x$unit, x$measure))
+  if (!is.null(x$uncertainty) && !is.na(x$uncertainty)) {
+    cat(sprintf("UNCERTAINTY: +/- %.4f %s (SD)\n", x$uncertainty, x$unit))
+  }
+  if (!is.null(x$ci_low) && !is.na(x$ci_low)) {
+    cat(sprintf("95%% CI: [%.4f, %.4f] %s\n", x$ci_low, x$ci_high, x$unit))
+  }
+  cat(" \n")
+  cat("--- METHOD INFORMATION ---\n")
+  cat(sprintf("Method: %s\n", x$method_full_name))
+  cat(sprintf("Reference: %s\n", x$reference_short))
+  cat(sprintf("Source: %s\n", x$source_type))
+  cat(sprintf("Region: %s | Biome: %s\n", x$region, x$biome))
+  cat(" \n")
+  cat("--- ASSUMPTIONS ---\n")
+  for (i in seq_along(x$assumptions)) {
+    cat(sprintf("  %d. %s\n", i, x$assumptions[i]))
+  }
+  cat(" \n")
+  cat("--- VALIDITY & FLAGS ---\n")
+  cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", x$valid_dbh_range[1], x$valid_dbh_range[2]))
+  if (!all(is.na(x$valid_height_range))) {
+    cat(sprintf("Valid height range: %.0f - %.0f m\n", x$valid_height_range[1], x$valid_height_range[2]))
+  }
+  cat(sprintf("Height required: %s\n", ifelse(x$height_required, "YES", "No")))
+
+  if (any(x$validity_warnings != "None")) {
+    cat("\n*** WARNINGS ***\n")
+    for (w in x$validity_warnings) {
+      cat(sprintf("  ! %s\n", w))
+    }
+  }
+  if (any(x$flags != "None")) {
+    cat("\nFLAGS:\n")
+    for (f in x$flags) {
+      cat(sprintf("  - %s\n", f))
+    }
+  }
+  cat(" \n")
+  cat("--- REFERENCE ---\n")
+  cat(sprintf("  %s\n", x$reference))
+  if (!is.na(x$doi)) {
+    cat(sprintf("  DOI: https://doi.org/%s\n", x$doi))
+  }
+  invisible(x)
+}
+
+#################### Single Tree Rich Return ######################
+
+#' @title Create a rich allometry result object for a single tree entry
+#' @description Creates a standardized result object that includes the estimate,
+#'   method metadata, validity warnings, flags, and uncertainty information.
+#' @param value Numeric. The estimated value (biomass, carbon, etc.)
+#' @param method Character. The method identifier ("WCC", "BIOMASS", "allodb", "Bunce")
+#' @param measure Character. What was measured ("AGB", "AGC", "CO2e", "volume", etc.)
+#' @param unit Character. Unit of measurement ("t", "kg", "m3", etc.)
+#' @param uncertainty Numeric or NULL. Standard deviation/error of the estimate
+#' @param ci_low Numeric or NULL. Lower confidence interval bound
+#' @param ci_high Numeric or NULL. Upper confidence interval bound
+#' @param validity_warnings Character vector. Any validity warnings generated
+#' @param flags Character vector. Flags for extrapolation, defaults used, etc.
+#' @param inputs Named list. The input values used (dbh, height, species, etc.)
+#' @return An object of class "allometry_result" with standardized structure
+#' @examples
+#' # Internal use - creates rich result for downstream functions
+#' result <- single_tree_rich_output(value = 1.5, method = "WCC",
+#'   measure = "AGC", unit = "t", uncertainty = 0.15,
+#'   inputs = list(dbh = 30, height = 15, species = "Quercus robur"))
+#' print(result)
+#' @export
+single_tree_rich_output <- function(value, method, measure, unit,
+                                    uncertainty = NULL,
+                                    ci_low = NULL, ci_high = NULL,
+                                    validity_warnings = character(),
+                                    flags = character(),
+                                    inputs = list()) {
+
+  # Get method metadata
+
+  meta <- get_method_metadata(method)
+
+  # Calculate CI if we have uncertainty but not explicit CI
+  if (!is.null(uncertainty) && is.null(ci_low)) {
+    ci_low <- value - 1.96 * uncertainty
+    ci_high <- value + 1.96 * uncertainty
+  }
+
+  # Build the result object
+  result <- list(
+    # === Core estimate ===
+    value = value,
+    measure = measure,
+    unit = unit,
+
+    # === Method information ===
+    method = method,
+    method_full_name = meta$full_name,
+    reference = meta$reference,
+    reference_short = meta$reference_short,
+    doi = meta$doi,
+    source_type = meta$source_type,
+    region = meta$region,
+    biome = paste(meta$biome, collapse = "; "),
+
+    # === Assumptions (critical!) ===
+    assumptions = meta$assumptions,
+
+    # === Uncertainty ===
+    uncertainty = uncertainty,
+    uncertainty_method = meta$uncertainty_method,
+    ci_low = ci_low,
+    ci_high = ci_high,
+    ci_level = if (!is.null(ci_low)) 0.95 else NA,
+
+    # === Validity and flags ===
+    validity_warnings = if (length(validity_warnings) > 0) validity_warnings else "None",
+    flags = if (length(flags) > 0) flags else "None",
+
+    # === Valid ranges ===
+    valid_dbh_range = meta$dbh_range,
+    valid_height_range = meta$height_range,
+    height_required = meta$height_required,
+    species_specific = meta$species_specific,
+    wood_density_required = meta$wood_density_required,
+
+    # === Inputs used ===
+    inputs = inputs
+  )
+
+  class(result) <- c("allometry_result", "list")
+  return(result)
+}
+
+
+#################### Multiple Tree Rich Return ######################
+
+#' @title Create a rich allometry result object for multiple trees
+#' @description Creates a standardized result object that includes the estimate,
+#'   method metadata, validity warnings, flags, and uncertainty information.
+#' @param value Numeric. The total estimated value (biomass, carbon, etc.)
+#' @param method Character. The method identifier ("WCC", "BIOMASS", "allodb", "Bunce")
+#' @param measure Character. What was measured ("AGB", "AGC", "CO2e", "volume", etc.)
+#' @param unit Character. Unit of measurement ("t", "kg", "m3", etc.)
+#' @param sigma Numeric or NULL. Total sigma
+#' @param validity_warnings Character vector. Any validity warnings generated
+#' @param flags Character vector. Flags for extrapolation, defaults used, etc.
+#' @param inputs Named list. The input values used (dbh, height, species, etc.)
+#' @return An object of class "allometry_result" with standardized structure
+#' @examples
+#' # Internal use - creates rich result for downstream functions
+#' result <- multi_tree_rich_output(value = 1.5, method = "WCC",
+#'   measure = "AGC", unit = "t", uncertainty = 0.15,
+#'   inputs = list(dbh = 30, height = 15, species = "Quercus robur"))
+#' print(result)
+#' @export
+#'
+multi_tree_rich_output <- function(value, method, measure, unit, sigma = NULL,
+                                   validity_warnings = character(),
+                                   flags = character(), inputs = list())
+  {
+
+  # Input check
+  methods <- c("WCC", "BIOMASS", "allodb", "Bunce")
+  if (!missing(method) && !(method %in% methods)) {
+    stop("Invalid method. Choose from: ", paste(method, collapse = ", "))
+  }
+
+  # Get method metadata
+  meta_df <- method_metadata[method_metadata$method == method, ]
+  assump_df <- method_assumptions[method_assumptions$method == method, ]
+
+  # Calculate CI if we have uncertainty but not explicit CI
+  if (!is.null(uncertainty) && is.null(ci_low)) {
+    ci_low <- value - 1.96 * uncertainty
+    ci_high <- value + 1.96 * uncertainty
+  }
+
+  # Build the result object
+  result <- list(
+    # === Core estimate ===
+    value = value,
+    measure = measure,
+    unit = unit,
+
+    # === Method information ===
+    method = method,
+    method_full_name = meta$full_name,
+    reference = meta$reference,
+    reference_short = meta$reference_short,
+    doi = meta$doi,
+    source_type = meta$source_type,
+    region = meta$region,
+    biome = paste(meta$biome, collapse = "; "),
+
+    # === Assumptions (critical!) ===
+    assumptions = meta$assumptions,
+
+    # === Uncertainty ===
+    uncertainty = uncertainty,
+    uncertainty_method = meta$uncertainty_method,
+    ci_low = ci_low,
+    ci_high = ci_high,
+    ci_level = if (!is.null(ci_low)) 0.95 else NA,
+
+    # === Validity and flags ===
+    validity_warnings = if (length(validity_warnings) > 0) validity_warnings else "None",
+    flags = if (length(flags) > 0) flags else "None",
+
+    # === Valid ranges ===
+    valid_dbh_range = meta$dbh_range,
+    valid_height_range = meta$height_range,
+    height_required = meta$height_required,
+    species_specific = meta$species_specific,
+    wood_density_required = meta$wood_density_required,
+
+    # === Inputs used ===
+    inputs = inputs
+  )
+
+  class(result) <- c("allometry_result", "list")
+  return(result)
+}

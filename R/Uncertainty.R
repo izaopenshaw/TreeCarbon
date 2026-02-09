@@ -101,14 +101,15 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 
 ############# Core Monte Carlo Uncertainty Function #############
 #' Monte Carlo Uncertainty Propagation
-#' @description Propagates multiple sources of uncertainty through allometric fn
-#' using Monte Carlo simulation. Reports comprehensive uncertainty statistics
-#' including median, quantile intervals, and distribution shape metrics.
+#' @description Propagates uncertainty of the inputted allometric function with
+#' defined distribution of parameters using Monte Carlo simulation. Reports
+#' uncertainty statistics including median, quantile intervals, and distribution
+#'  shape metrics.
 #'
 #' \itemize{
-#'   \item Captures non-linear effects that first-order approximations miss
+#'   \item Custom function and parameter distribution inputs
 #'   \item Handles correlated inputs
-#'   \item Reports asymmetric uncertainty (common in log-transformed allometries)
+#'   \item Reports asymmetric uncertainty
 #'   \item Allows decomposition of uncertainty by source
 #' }
 #' @param fn A function that computes the biomass/carbon estimate.
@@ -172,15 +173,11 @@ error_product <- function(a, sig_a, b, sig_b, c = NULL, sig_c = NULL,
 #'
 #' @examples
 #' # Simple example: Bunce equation with measurement + parameter uncertainty
-#' bunce_fn <- function(dbh, a, b) {
-#'   exp(a + b * log(pi * dbh))
-#' }
+#' bunce_fn <- function(dbh, a, b) {exp(a + b * log(pi * dbh))}
 #'
-#' inputs <- list(
-#'   dbh = list(mean = 30, sd = 0.75, source = "measurement"),
-#'   a = list(mean = 1.868, sd = 0.047, source = "parameter"),
-#'   b = list(mean = 2.268, sd = 0.057, source = "parameter")
-#' )
+#' inputs <- list(dbh = list(mean = 30, sd = 0.75, source = "measurement"),
+#'                a = list(mean = 1.868, sd = 0.047, source = "parameter"),
+#'                b = list(mean = 2.268, sd = 0.057, source = "parameter"))
 #'
 #' result <- mc_uncertainty(bunce_fn, inputs, N = 1000, decompose = TRUE)
 #' print(result)
@@ -433,13 +430,14 @@ if (!is.null(seed)) set.seed(seed)
 #' @method print mc_uncertainty
 #' @export
 print.mc_uncertainty <- function(x, ...) {
-  cat("\n=== Monte Carlo Uncertainty Analysis ===\n\n")
+  cat("\n------------------- MONTE CARLO UNCERTAINTY ANALYSIS -------------------\n")
+  cat(" \n")
 
   cat(sprintf("Point Estimate:  %.4f\n", x$estimate))
   cat(sprintf("Median:          %.4f\n", x$median))
   cat(sprintf("Std. Deviation:  %.4f\n", x$sd))
   cat(sprintf("CV:              %.1f%%\n", x$cv))
-  cat(sprintf("\n%.0f%% Interval:    [%.4f, %.4f]\n",
+  cat(sprintf("%.0f%% Interval:    [%.4f, %.4f]\n",
               100 * x$conf, x$ci_low, x$ci_high))
 
   cat(sprintf("\nSkewness:        %.2f", x$skewness))
@@ -456,9 +454,10 @@ print.mc_uncertainty <- function(x, ...) {
 
   cat(sprintf("\nSamples used:    %d / %d (%.1f%%)\n",
               x$n_samples, x$n_requested, 100 * x$n_samples / x$n_requested))
+  cat(" \n")
 
   # Interpretation
-  cat("\n--- Interpretation ---\n")
+  cat("--- INTERPRETATION ---\n")
   if (x$cv < 10) {
     cat("LOW uncertainty: estimates are reliable\n")
   } else if (x$cv < 30) {
@@ -484,7 +483,7 @@ print.mc_uncertainty <- function(x, ...) {
 #' @method summary mc_uncertainty
 #' @export
 summary.mc_uncertainty <- function(object, ...) {
-  cat("---------- MONTE CARLO UNCERTAINTY SUMMARY ----------\n")
+  cat("------------------- MONTE CARLO UNCERTAINTY SUMMARY -------------------\n")
 
   # Main results
   cat("\nRESULTS:\n")
@@ -946,15 +945,16 @@ comprehensive_uncertainty <- function(fn, inputs, method_estimates = NULL,
 #' @method print comprehensive_uncertainty
 #' @export
 print.comprehensive_uncertainty <- function(x, ...) {
-  cat("--------- COMPREHENSIVE UNCERTAINTY ANALYSIS ---------\n")
+  cat("------------------- COMPREHENSIVE UNCERTAINTY ANALYSIS -------------------\n")
 
   cat(sprintf("Point Estimate: %.4f\n", x$estimate))
   cat(sprintf("Total SD:       %.4f\n", x$total_sd))
   cat(sprintf("Total CV:       %.1f%%\n", x$total_cv))
-  cat(sprintf("%.0f%% CI:        [%.4f, %.4f]\n\n",
+  cat(sprintf("%.0f%% CI:        [%.4f, %.4f]\n",
               100 * x$conf, x$ci[1], x$ci[2]))
+  cat(" \n")
 
-  cat("UNCERTAINTY BREAKDOWN:\n")
+  cat("--- UNCERTAINTY BREAKDOWN ---\n")
   for (i in seq_len(nrow(x$summary_table))) {
     row <- x$summary_table[i, ]
     if (row$source == "TOTAL")
@@ -971,7 +971,9 @@ print.comprehensive_uncertainty <- function(x, ...) {
 #'
 #' @description
 #' A convenience wrapper that sets up Monte Carlo uncertainty analysis
-#' with sensible defaults for common allometric equations.
+#' with built in defaults for common allometric equations. The equations are pre
+#' -defined between the allometric methods below. Distribution is Normal and
+#' uses absolute measurement errors.
 #'
 #' @param method Allometric method: "Bunce", "WCC", "Chave", "generic_power"
 #' @param dbh DBH in cm

@@ -1,0 +1,609 @@
+## ----setup, include = FALSE------------------------------------------------------------
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+
+
+## ----load-package, message=FALSE, warning=FALSE----------------------------------------
+library(TreeCarbon)
+library(ggplot2)
+
+
+## ----lookup-basic----------------------------------------------------------------------
+# Lookup by common name
+lookupcode("Oak")
+
+
+## ----lookup-botanical------------------------------------------------------------------
+# Lookup by botanical name
+lookupcode("Quercus robur")
+
+
+## ----lookup-multiple-------------------------------------------------------------------
+# Lookup multiple species
+species <- c("Oak", "Beech", "Scots Pine", "Ash")
+lookupcode(species)
+
+
+## ----lookup-type-----------------------------------------------------------------------
+# Pine could be several species - specify conifer
+lookupcode("Pine", type = "conifer")
+
+
+## ----lookup-specific-------------------------------------------------------------------
+# Get NSG (wood density)
+lookupcode("Oak", code = "NSG")
+
+# Get Crown code
+lookupcode("Oak", code = "Crown")
+
+# Get Root code
+lookupcode("Oak", code = "Root")
+
+
+## ----tariff-vol-area-------------------------------------------------------------------
+# Example: Tree with measured volume
+tariff <- tariff_vol_area(
+  vol = 0.5,      # m³
+  dbh = 24,       # cm
+  sig_vol = 0.01, # uncertainty in volume
+  re_dbh = 0.025  # 2.5% DBH measurement error
+)
+
+print(tariff)
+
+
+## ----tariff-conifer--------------------------------------------------------------------
+# Scots Pine
+tariff_pine <- conifer_tariff(
+  spcode = "PS",  # Pinus sylvestris code
+  height = 20,    # m
+  dbh = 30,       # cm
+  re_h = 0.05,    # 5% height error
+  re_dbh = 0.025  # 2.5% DBH error
+)
+
+print(tariff_pine)
+
+
+## ----tariff-broadleaf------------------------------------------------------------------
+# Oak
+tariff_oak <- broadleaf_tariff(
+  spcode = "OK",  # Quercus code
+  height = 18,    # m
+  dbh = 45,       # cm
+  re_h = 0.05,
+  re_dbh = 0.025
+)
+
+print(tariff_oak)
+
+
+## ----tariff-stand----------------------------------------------------------------------
+# Stand-level tariff (no DBH needed)
+stand_tariff <- stand_tariff(
+  spcode = "OK",
+  height = 18,
+  re_h = 0.05
+)
+
+print(stand_tariff)
+
+
+## ----tariff-auto-----------------------------------------------------------------------
+# Automatically uses conifer or broadleaf based on species
+tariff_auto <- tariffs(
+  spcode = "OK",  # Oak
+  height = 18,
+  dbh = 45,
+  type = "broadleaf",
+  re_h = 0.05,
+  re_dbh = 0.025
+)
+
+print(tariff_auto)
+
+
+## ----merch-vol-------------------------------------------------------------------------
+# Calculate merchantable volume from tariff
+merch_vol <- merchtreevol(
+  dbh = 45,
+  tariff = tariff_auto$tariff,
+  re_dbh = 0.025,
+  sig_tariff = tariff_auto$sigma
+)
+
+print(merch_vol)
+
+
+## ----stem-vol--------------------------------------------------------------------------
+# Calculate stem volume from merchantable volume
+stem_vol <- treevol(
+  mtreevol = merch_vol$volume,
+  dbh = 45,
+  sig_mtreevol = merch_vol$sigma,
+  re = 0.025
+)
+
+print(stem_vol)
+
+
+## ----wood-bio--------------------------------------------------------------------------
+# Get NSG (wood density) from lookup - lookupcode converts species name to the chosen code
+nsg_lookup <- lookupcode("Oak", code = "NSG")
+nsg <- nsg_lookup$code
+
+# Calculate wood biomass
+wood_bio <- woodbiomass(
+  treevol = stem_vol$stemvolume,
+  nsg = nsg,
+  sig_treevol = stem_vol$sigma,
+  sig_nsg = 0.094  # Default NSG uncertainty
+)
+
+print(wood_bio)
+
+
+## ----crown-bio-------------------------------------------------------------------------
+# Calculate crown biomass
+crown_bio <- crownbiomass(
+  spcode = "OK",
+  dbh = 45,
+  re_d = 0.025,
+  re = 0.025
+)
+
+print(crown_bio)
+
+
+## ----root-bio--------------------------------------------------------------------------
+# Calculate root biomass
+root_bio <- rootbiomass(
+  spcode = "OK",
+  dbh = 45,
+  re_dbh = 0.025,
+  re = 0.025
+)
+
+print(root_bio)
+
+
+## ----agb-------------------------------------------------------------------------------
+# Sum wood and crown biomass
+agb <- wood_bio$woodbiomass + crown_bio$biomass
+agb_sigma <- sqrt(wood_bio$sigma^2 + crown_bio$sigma^2)
+
+cat(sprintf("Above-ground biomass: %.3f ± %.3f t\n", agb, agb_sigma))
+
+
+## ----biomass2c-------------------------------------------------------------------------
+# Using Thomas method (species-specific)
+carbon_thomas <- biomass2c(
+  biomass = agb,
+  method = "Thomas",
+  type = "broadleaf",
+  sig_biomass = agb_sigma
+)
+
+print(carbon_thomas)
+
+# Using IPCC2 method (IPCC default 0.47)
+carbon_ipcc <- biomass2c(
+  biomass = agb,
+  method = "IPCC2",
+  type = "broadleaf",
+  sig_biomass = agb_sigma
+)
+
+print(carbon_ipcc)
+
+
+## ----complete-pipeline-----------------------------------------------------------------
+# === Step 1: Species lookup ===
+species_name <- "Oak"
+spcode_result <- lookupcode(species_name, type = "broadleaf")
+spcode <- spcode_result$code
+# Get NSG (wood density) when needed
+nsg_lookup <- lookupcode(species_name, code = "NSG")
+nsg <- nsg_lookup$code
+
+cat("=== Step 1: Species Lookup ===\n")
+cat(sprintf("Species: %s\n", species_name))
+cat(sprintf("WCC Code: %s\n", spcode))
+cat(sprintf("NSG: %s\n", nsg))
+cat("\n")
+
+# === Step 2: Tariff calculation ===
+dbh <- 45  # cm
+height <- 18  # m
+tariff_result <- tariffs(
+  spcode = spcode,
+  height = height,
+  dbh = dbh,
+  type = "broadleaf",
+  re_h = 0.05,
+  re_dbh = 0.025
+)
+
+cat("=== Step 2: Tariff Calculation ===\n")
+cat(sprintf("Tariff: %.2f ± %.2f\n", tariff_result$tariff, tariff_result$sigma))
+cat("\n")
+
+# === Step 3: Volume estimation ===
+merch_vol <- merchtreevol(
+  dbh = dbh,
+  tariff = tariff_result$tariff,
+  re_dbh = 0.025,
+  sig_tariff = tariff_result$sigma
+)
+
+stem_vol <- treevol(
+  mtreevol = merch_vol$volume,
+  dbh = dbh,
+  sig_mtreevol = merch_vol$sigma
+)
+
+cat("=== Step 3: Volume Estimation ===\n")
+cat(sprintf("Merchantable volume: %.3f ± %.3f m³\n", 
+            merch_vol$volume, merch_vol$sigma))
+cat(sprintf("Stem volume: %.3f ± %.3f m³\n", 
+            stem_vol$stemvolume, stem_vol$sigma))
+cat("\n")
+
+# === Step 4: Biomass calculation ===
+# Get NSG (wood density) from lookup
+nsg_lookup <- lookupcode(species_name, code = "NSG")
+nsg <- nsg_lookup$code
+wood_bio <- woodbiomass(
+  treevol = stem_vol$stemvolume,
+  nsg = nsg,
+  sig_treevol = stem_vol$sigma,
+  sig_nsg = 0.094
+)
+
+crown_bio <- crownbiomass(
+  spcode = spcode,
+  dbh = dbh,
+  re_d = 0.025
+)
+
+agb <- wood_bio$woodbiomass + crown_bio$biomass
+agb_sigma <- sqrt(wood_bio$sigma^2 + crown_bio$sigma^2)
+
+cat("=== Step 4: Biomass Calculation ===\n")
+cat(sprintf("Wood biomass: %.3f ± %.3f t\n", 
+            wood_bio$woodbiomass, wood_bio$sigma))
+cat(sprintf("Crown biomass: %.3f ± %.3f t\n", 
+            crown_bio$biomass, crown_bio$sigma))
+cat(sprintf("Total AGB: %.3f ± %.3f t\n", agb, agb_sigma))
+cat("\n")
+
+# === Step 5: Carbon conversion ===
+carbon <- biomass2c(
+  biomass = agb,
+  method = "Thomas",
+  type = "broadleaf",
+  sig_biomass = agb_sigma
+)
+
+cat("=== Step 5: Carbon Conversion ===\n")
+cat(sprintf("Above-ground carbon: %.3f ± %.3f t C\n", 
+            carbon$AGC, carbon$sig_AGC))
+cat("\n")
+
+# === Summary ===
+cat("=== FINAL RESULT ===\n")
+cat(sprintf("Tree: %s (DBH: %d cm, Height: %d m)\n", species_name, dbh, height))
+cat(sprintf("Above-ground carbon: %.3f ± %.3f t C\n", 
+            carbon$AGC, carbon$sig_AGC))
+cat(sprintf("95%% CI: [%.3f, %.3f] t C\n",
+            carbon$AGC - 1.96 * carbon$sig_AGC,
+            carbon$AGC + 1.96 * carbon$sig_AGC))
+
+
+## ----fc-agc-simple---------------------------------------------------------------------
+# Simple calculation - returns carbon only
+carbon_simple <- fc_agc(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  output.all = FALSE
+)
+
+cat(sprintf("Carbon: %.3f tonnes\n", carbon_simple))
+
+
+## ----fc-agc-detailed-------------------------------------------------------------------
+# Get all intermediate values
+carbon_detailed <- fc_agc(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  output.all = TRUE
+)
+
+print(carbon_detailed)
+
+
+## ----fc-agc-error----------------------------------------------------------------------
+# Include uncertainty estimates
+carbon_error <- fc_agc_error(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  re_dbh = 0.025,  # 2.5% DBH error
+  re_h = 0.05,     # 5% height error
+  re = 0.025       # 2.5% coefficient error
+)
+
+# View key results
+cat("=== Carbon with Uncertainty ===\n")
+cat(sprintf("Carbon: %.3f ± %.3f t C\n", 
+            carbon_error$AGC_WCC_t, carbon_error$sig_AGC))
+cat(sprintf("95%% CI: [%.3f, %.3f] t C\n",
+            carbon_error$AGC_WCC_t - 1.96 * carbon_error$sig_AGC,
+            carbon_error$AGC_WCC_t + 1.96 * carbon_error$sig_AGC))
+
+
+## ----fc-agc-rich-----------------------------------------------------------------------
+# Get comprehensive metadata
+carbon_rich <- fc_agc(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  rich_output = TRUE
+)
+
+print(carbon_rich)
+
+
+## ----batch-fc-agc----------------------------------------------------------------------
+# Create sample data
+trees <- data.frame(
+  name = c("Oak", "Beech", "Ash", "Birch"),
+  dbh = c(45, 38, 52, 28),
+  height = c(18, 22, 24, 15),
+  type = rep("broadleaf", 4)
+)
+
+# Calculate carbon for all trees
+results <- fc_agc(
+  name = trees$name,
+  dbh = trees$dbh,
+  height = trees$height,
+  type = trees$type,
+  output.all = TRUE
+)
+
+# Summary
+cat("=== Batch Results ===\n")
+cat(sprintf("Total carbon: %.2f tonnes\n", sum(results$AGC_WCC_t, na.rm = TRUE)))
+cat(sprintf("Mean per tree: %.3f tonnes\n", mean(results$AGC_WCC_t, na.rm = TRUE)))
+print(results[, c("name", "dbh", "height", "AGC_WCC_t")])
+
+
+## ----batch-fc-agc-error----------------------------------------------------------------
+# With uncertainty
+results_error <- fc_agc_error(
+  name = trees$name,
+  dbh = trees$dbh,
+  height = trees$height,
+  type = trees$type,
+  re_dbh = 0.025,
+  re_h = 0.05,
+  re = 0.025
+)
+
+# Calculate total uncertainty (error propagation for sum)
+total_carbon <- sum(results_error$AGC_WCC_t, na.rm = TRUE)
+total_uncertainty <- sqrt(sum(results_error$sig_AGC^2, na.rm = TRUE))
+
+cat("=== Batch Results with Uncertainty ===\n")
+cat(sprintf("Total carbon: %.2f ± %.2f tonnes\n", total_carbon, total_uncertainty))
+cat(sprintf("95%% CI: [%.2f, %.2f] tonnes\n",
+            total_carbon - 1.96 * total_uncertainty,
+            total_carbon + 1.96 * total_uncertainty))
+
+
+## ----batch-rich------------------------------------------------------------------------
+# Rich output for multiple trees
+results_rich <- fc_agc(
+  name = trees$name,
+  dbh = trees$dbh,
+  height = trees$height,
+  type = trees$type,
+  rich_output = TRUE
+)
+
+print(results_rich)
+
+
+## ----seedlings-------------------------------------------------------------------------
+# Seedling/sapling carbon (height in cm for this function)
+seedling_carbon <- sap_seedling2C(
+  height = 50,      # cm
+  type = "broadleaf",
+  re_h = 0.05,
+  re = 0.025
+)
+
+cat(sprintf("Seedling carbon: %.4f ± %.4f t C\n",
+            seedling_carbon$carbon, seedling_carbon$sd))
+
+
+## ----custom-nsg------------------------------------------------------------------------
+# Get wood density from BIOMASS package
+if (requireNamespace("BIOMASS", quietly = TRUE)) {
+  wd <- BIOMASS::getWoodDensity("Quercus", "robur", region = "Europe")
+  
+  # Use custom NSG
+  carbon_custom <- fc_agc(
+    name = "Oak",
+    dbh = 45,
+    height = 18,
+    type = "broadleaf",
+    nsg = wd$meanWD
+  )
+  
+  cat("=== Using Custom Wood Density ===\n")
+  cat(sprintf("NSG from BIOMASS: %.3f\n", wd$meanWD))
+  cat(sprintf("Carbon: %.3f tonnes\n", carbon_custom$AGC_WCC_t))
+}
+
+
+## ----plot-dbh, fig.height=5------------------------------------------------------------
+# Create data for plotting
+dbh_range <- seq(10, 100, by = 5)
+carbon_range <- fc_agc(
+  name = rep("Oak", length(dbh_range)),
+  dbh = dbh_range,
+  height = rep(18, length(dbh_range)),
+  type = rep("broadleaf", length(dbh_range)),
+  output.all = FALSE
+)
+
+plot_data <- data.frame(
+  dbh = dbh_range,
+  carbon = carbon_range
+)
+
+ggplot(plot_data, aes(x = dbh, y = carbon)) +
+  geom_line(linewidth = 1.2, color = "darkgreen") +
+  geom_point(size = 2, color = "darkgreen") +
+  labs(
+    title = "Above-Ground Carbon vs DBH (Oak, Height = 18m)",
+    x = "DBH (cm)",
+    y = "Above-Ground Carbon (tonnes)"
+  ) +
+  theme_minimal()
+
+
+## ----plot-uncertainty, fig.height=5----------------------------------------------------
+# Calculate with uncertainty
+dbh_range <- seq(20, 80, by = 5)
+results_unc <- fc_agc_error(
+  name = rep("Oak", length(dbh_range)),
+  dbh = dbh_range,
+  height = rep(18, length(dbh_range)),
+  type = rep("broadleaf", length(dbh_range)),
+  re_dbh = 0.025,
+  re_h = 0.05
+)
+
+plot_data <- data.frame(
+  dbh = dbh_range,
+  carbon = results_unc$AGC_WCC_t,
+  ci_low = results_unc$AGC_WCC_t - 1.96 * results_unc$sig_AGC,
+  ci_high = results_unc$AGC_WCC_t + 1.96 * results_unc$sig_AGC
+)
+
+ggplot(plot_data, aes(x = dbh, y = carbon)) +
+  geom_ribbon(aes(ymin = ci_low, ymax = ci_high), 
+              alpha = 0.2, fill = "darkgreen") +
+  geom_line(linewidth = 1.2, color = "darkgreen") +
+  geom_point(size = 2, color = "darkgreen") +
+  labs(
+    title = "Above-Ground Carbon vs DBH with 95% Confidence Intervals",
+    x = "DBH (cm)",
+    y = "Above-Ground Carbon (tonnes)"
+  ) +
+  theme_minimal()
+
+
+## ----stand-inventory-------------------------------------------------------------------
+# Example: Forest stand with multiple species
+stand_data <- data.frame(
+  species = c("Oak", "Beech", "Ash", "Birch", "Oak", "Beech"),
+  dbh = c(45, 38, 52, 28, 55, 42),
+  height = c(18, 22, 24, 15, 20, 21),
+  type = c("broadleaf", "broadleaf", "broadleaf", "broadleaf", 
+           "broadleaf", "broadleaf")
+)
+
+# Calculate carbon
+stand_results <- fc_agc_error(
+  name = stand_data$species,
+  dbh = stand_data$dbh,
+  height = stand_data$height,
+  type = stand_data$type,
+  re_dbh = 0.025,
+  re_h = 0.05
+)
+
+# Summary by species
+stand_summary <- aggregate(
+  list(AGC = stand_results$AGC_WCC_t,
+       Uncertainty = stand_results$sig_AGC),
+  by = list(Species = stand_results$name),
+  FUN = function(x) c(Total = sum(x, na.rm = TRUE), 
+                      Mean = mean(x, na.rm = TRUE))
+)
+
+cat("=== Stand Carbon Inventory ===\n")
+print(stand_summary)
+
+# Total stand carbon
+total_stand_carbon <- sum(stand_results$AGC_WCC_t, na.rm = TRUE)
+total_stand_uncertainty <- sqrt(sum(stand_results$sig_AGC^2, na.rm = TRUE))
+
+cat(sprintf("\nTotal Stand Carbon: %.2f ± %.2f tonnes C\n",
+            total_stand_carbon, total_stand_uncertainty))
+
+
+## ----per-area--------------------------------------------------------------------------
+# Calculate carbon density (tonnes C per hectare)
+stand_area_ha <- 0.5  # 0.5 hectares
+
+carbon_density <- total_stand_carbon / stand_area_ha
+carbon_density_uncertainty <- total_stand_uncertainty / stand_area_ha
+
+cat("=== Carbon Density ===\n")
+cat(sprintf("Stand area: %.2f ha\n", stand_area_ha))
+cat(sprintf("Carbon density: %.2f ± %.2f t C/ha\n",
+            carbon_density, carbon_density_uncertainty))
+
+
+## ----troubleshooting-species-----------------------------------------------------------
+# Unknown species - will use type-based defaults
+result_unknown <- fc_agc(
+  name = "Unknown Species",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf"  # Important: specify type
+)
+
+cat("Using type-based defaults for unknown species\n")
+print(result_unknown)
+
+
+## ----troubleshooting-range-------------------------------------------------------------
+# Very small tree - may trigger warnings
+result_small <- fc_agc(
+  name = "Oak",
+  dbh = 5,      # Very small - below WCC minimum
+  height = 3,   # Very small
+  type = "broadleaf"
+)
+
+# Check for warnings/flags
+cat("Small tree calculation (may have validity warnings)\n")
+
+
+## ----troubleshooting-height------------------------------------------------------------
+# Option 1: Use Bunce method instead (no height needed)
+bunce_result <- Bunce(name = "Oak", dbh = 45)
+
+# Option 2: Estimate height from DBH (not recommended for WCC)
+# WCC requires measured height for accurate carbon accounting
+
+
+## ----session-info----------------------------------------------------------------------
+sessionInfo()
+

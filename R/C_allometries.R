@@ -41,8 +41,8 @@
 #' @param name species name (common or binomial)
 #' @param type 'broadleaf' or 'conifer' (optional)
 #' @param dbh diameter at breast height (cm)
-#' @param re_dbh relative measurement error for diameter at breast height (optional)
-#' @param re  relative error of coefficients (default = 0.025)
+#' @param re_dbh relative error for DBH measurement (optional). Expressed as proportion (e.g., 0.025 = 2.5%). If provided, uncertainty will be calculated.
+#' @param re relative error for model residual. Default = NULL (uses species-specific values from Table 6 in Bunce 1968, ranging 0.12-0.15). If provided, overrides species-specific defaults. Accounts for model prediction error. Based on Bunce (1968) R² values ~0.85-0.95 and Table 6 confidence limits.
 #' @param rich_output Logical. If TRUE, returns a rich result object with
 #'   metadata including: value, method, reference, assumptions, validity_warning,
 #'   flags, uncertainty interval, region, and source type. Default FALSE for
@@ -83,7 +83,7 @@
 #' @export
 #' @aliases Bunce
 #'
-Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025,
+Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = NULL,
                   rich_output = FALSE) {
 
   # ==== Input validation ====
@@ -123,123 +123,249 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025,
   r$a[is.na(r$a)] <- buncedf$a[6]
   r$b[is.na(r$b)] <- buncedf$b[6]
 
+  # Update matched_index for fallback species to point to XB (row 6)
+  matched_index[is.na(matched_index)] <- 6
+
   # ==== Calculate Biomass ====
   r$biomass <- exp(r$a + r$b * log(pi * r$dbh))
 
   # ==== Calculate uncertainty if error terms provided ====
-  # Error propagation for Bunce equation: biomass = exp(a + b * ln(pi * d))
+  # Error propagation log-linear regression: ln(biomass) = a + b * ln(pi * d)
   #
-  # The Bunce equation is a log-linear regression:
-  #   ln(biomass) = a + b * ln(pi * d)
+  # For log-linear models, uncertainty is calculated in the log domain and
+  # converted to the original scale. This properly accounts for:
+  #   1. Parameter uncertainty in coefficients a and b (increases with DBH)
+  #      - Uses fixed defaults: a_se = 0.05, b_se = 0.06 (typical allometric regression SEs)
+  #   2. DBH measurement error (user-provided via re_dbh)
+  #   3. Model residual error (species-specific defaults from Table 6, or user-provided)
   #
-  # For log-linear models, we use the residual standard error (RSE) approach:
-  # The RSE in the log domain translates to a coefficient of variation (CV)
-  # in the original domain due to properties of log-normal distributions.
+  # Uncertainty in log domain:
+  #   Var(ln(biomass)) = Var(a) + [ln(pi*d)]^2 * Var(b) + b^2 * Var(ln(pi*d)) + residual_var
   #
-  # Based on typical allometric regression statistics:
-  #   - Model RSE in log domain: ~0.15-0.25 (corresponds to CV of ~15-25%)
-  #   - This is combined with DBH measurement error
+  # Where:
+  #   - Var(a) = a_se^2 (parameter uncertainty in intercept, fixed default)
+  #   - Var(b) = b_se^2 (parameter uncertainty in slope, fixed default)
+  #   - Var(ln(pi*d)) ≈ (re_dbh)^2 for small relative errors
+  #   - residual_var = residual_cv^2 (model prediction error)
   #
-  # Using partial derivative for DBH only (measurable uncertainty):
-  #   d(biomass)/d(d) = biomass * b/d
-  #   sigma_dbh = biomass * (b/d) * sigma_d = biomass * b * re_dbh
+  # Total CV in log domain:
+  #   CV_log = sqrt(a_se^2 + [ln(pi*d)]^2 * b_se^2 + (b * re_dbh)^2 + residual_cv^2)
   #
-  # Combined uncertainty (model + measurement):
-  #   sigma = biomass * sqrt(model_cv^2 + (b * re_dbh)^2)
-  #
-  # Where model_cv accounts for:
-  #   - Regression residual error
-  #   - Parameter uncertainty in a and b
-  #   - Model structural uncertainty
+  # This increases with DBH because ln(pi*d) increases, matching Monte Carlo results.
+  # For small CVs, this approximates the CV in the original domain.
 
-  r$sigma <- NA
   if (!is.null(re_dbh)) {
-    # Model CV based on typical allometric regression uncertainty
-    # This accounts for parameter uncertainty and residual error
-    # Bunce (1968) reported R² values ~0.85-0.95, suggesting RSE ~15-20%
-    model_cv <- re  # Use the 're' parameter as model CV (default 2.5% may be too low)
 
-    # For more realistic uncertainty, use a minimum model CV of 10%
-    # This is conservative for allometric equations without published SEs
-    effective_model_cv <- max(model_cv, 0.10)
+    # === Get N and re from buncedf ===
+    r$N <- buncedf$N[matched_index]
+    r$N[is.na(r$N)] <- buncedf$N[6]  # Fallback to XB (generic broadleaf)
 
-    # DBH measurement error contribution
-    dbh_error_contribution <- (r$b * re_dbh)^2
+    r$re <- buncedf$re[matched_index]
+    # For unknown species use highest re value found in Table 6, Bunce (at 0.15)
+    r$re[is.na(r$re)] <- 0.15 # for conservative uncertainty
 
-    # Combined uncertainty
-    r$sigma <- r$biomass * sqrt(effective_model_cv^2 + dbh_error_contribution)
-  }
+    # ==== Species-specific Confidence limits (CO) lookup using DBH ranges ====
+    # Access lazy-loaded data directly (LazyData: true handles loading automatically)
+
+    # Initialize result vectors
+    r$co_lower_vec <- r$co_upper_vec <- numeric(length(r$dbh))
+
+    # For each unique species, lookup CO values
+    unique_spcodes <- unique(r$spcode)
+
+    for (sp in unique_spcodes) {
+      # Get CO lookup table for this species
+      sp_co <- bunce_co_lookup[bunce_co_lookup$spcode == sp, ]
+
+      # If species not found, use fallback (XB - Combined)
+      if (nrow(sp_co) == 0) {
+        sp_co <- bunce_co_lookup[bunce_co_lookup$spcode == "XB", ]
+        if (nrow(sp_co) == 0) {
+          # Ultimate fallback: use default values
+          warning("CO lookup table not found for species ", sp, ". Using default values.")
+          r$co_lower_vec[r$spcode == sp] <- 10.00 / 100  # Default 10%
+          r$co_upper_vec[r$spcode == sp] <- 10.00 / 100
+          next
+        }
+      }
+
+      # Get trees of this species
+      sp_mask <- r$spcode == sp
+      sp_dbh <- r$dbh[sp_mask]
+
+      # Find DBH range
+      range_idx <- findInterval(sp_dbh, sp_co$lower_dbh, rightmost.closed = FALSE)
+
+      # Values below first range: use first range
+      range_idx[range_idx == 0] <- 1
+
+      # Extract CO values for this species
+      r$co_lower_vec[sp_mask] <- sp_co$co_lower_pct[range_idx] / 100
+      r$co_upper_vec[sp_mask] <- sp_co$co_upper_pct[range_idx] / 100
+
+      }
+
+    # === Convert CO 95% CI to sd ===
+    # CI = biomass ± (CO % * biomass)
+    # Use average of lower and upper CO for symmetric approximation
+    # sigma ≈ (average_CO * biomass) / 1.96
+    r$co_avg <- (r$co_lower_vec + r$co_upper_vec) / 2
+
+    # ==== N-based adjustment of uncertainty ====
+    # To account for parameter uncertainty differences due to sample size
+    N_ref <- 73 # Use max species-specific N as reference to ensure unknown
+                #  species have higher uncertainty than well-sampled species
+
+    # Adjust CO-based uncertainty for each tree based on its species' N value
+    # If N < N_ref, uncertainty increases; if N > N_ref, uncertainty decreases
+    # adjusted_CO = CO_base * sqrt(N_ref / N_actual)
+    n_adjustment <- sqrt(N_ref / r$N)
+    r$co_avg_adjusted <- r$co_avg * n_adjustment
+
+    # Convert adjusted CO to standard deviation
+    r$sigma <- r$biomass * r$co_avg_adjusted / 1.96
+
+    # Calculate CI
+    r$ci_low_val <- r$biomass - 1.96 * r$sigma
+    r$ci_high_val <- r$biomass + 1.96 * r$sigma
+
+    }
 
   # ==== Return rich output if requested ====
   if (rich_output) {
 
     # For single tree, return single allometry_result
     if (length(dbh) == 1) {
-      return(create_allometry_result(
-        value = r$biomass[1],
-        method = "Bunce",
-        measure = "AGB",
-        unit = "kg",
-        uncertainty = if (!is.na(r$sigma[1])) r$sigma[1] else NULL,
-        validity_warnings = warnings_list,
-        flags = flags,
-        inputs = list(
-          name = name,
-          dbh = dbh,
-          spcode = r$spcode[1],
-          type = type
-        )
-      ))
-    }
+      # Check if sigma exists and has a valid value
+      uncertainty_val <- NULL
+      if (!is.null(re_dbh) && "sigma" %in% names(r) && length(r$sigma) > 0 && !is.na(r$sigma[1])) {
+        uncertainty_val <- r$sigma[1]
+      }
+      
+      return(single_tree_rich_output(value = r$biomass[1], method = "Bunce",
+        measure = "AGB",                                   unit = "kg",
+        uncertainty = uncertainty_val,
+        validity_warnings = warnings_list,                 flags = flags,
+        inputs = list(name = name,                         dbh = dbh,
+                      spcode = r$spcode[1],                type = type)
+        ))
+    } else { # For multiple trees, return list of results with combined summary
+      # Extract metadata from data tables (once, shared for all trees)
+      bunce_meta <- method_metadata[method_metadata$method == "Bunce", ]
+      bunce_assumptions <- method_assumptions$assumption[method_assumptions$method == "Bunce"]
 
-    # For multiple trees, return list of results with combined summary
-    results_list <- lapply(seq_len(nrow(r)), function(i) {
-      # Individual tree flags
-      tree_flags <- flags
-      if (used_fallback[i]) {
-        tree_flags <- c(tree_flags, "Used_fallback_coefficients")
+      # Calculate totals first (vectorized)
+      total_biomass_kg <- sum(r$biomass, na.rm = TRUE)
+      total_uncertainty_kg <- if (!is.null(re_dbh) && !all(is.na(r$sigma))) {
+        sqrt(sum(r$sigma^2, na.rm = TRUE))
+      } else {
+        NULL
       }
 
-      create_allometry_result(
-        value = r$biomass[i],
-        method = "Bunce",
-        measure = "AGB",
-        unit = "kg",
-        uncertainty = if (!is.na(r$sigma[i])) r$sigma[i] else NULL,
-        validity_warnings = warnings_list,
-        flags = tree_flags,
-        inputs = list(
-          name = name[i],
-          dbh = dbh[i],
-          spcode = r$spcode[i],
-          type = if (!is.null(type)) type[min(i, length(type))] else NULL
-        )
+      # Collect all unique flags from all trees (vectorized)
+      # Each tree may have different flags, so we collect from the flags vector
+      # and from used_fallback if it exists
+      all_flags_vec <- if (length(flags) > 0 && flags[1] != "None") flags else character()
+      if (exists("used_fallback") && any(used_fallback)) {
+        all_flags_vec <- unique(c(all_flags_vec, "Used_fallback_coefficients"))
+      }
+      all_flags <- unique(all_flags_vec)
+
+      # Create summary table (vectorized)
+      combined_df <- data.frame(
+        tree_id = seq_len(nrow(r)),
+        species_name = r$species_name,
+        dbh = r$dbh,
+        biomass_kg = r$biomass,
+        uncertainty_kg = if (!is.null(re_dbh)) r$sigma else NA_real_,
+        spcode = r$spcode,
+        stringsAsFactors = FALSE
       )
-    })
 
-    # Create combined data frame
-    combined_df <- do.call(rbind, lapply(results_list, as.data.frame.allometry_result))
-    combined_df$tree_id <- seq_len(nrow(combined_df))
-    combined_df$species_name <- name
-    combined_df$spcode <- r$spcode
+      # Add CI columns if uncertainty was calculated
+      if (!is.null(re_dbh) && !all(is.na(r$sigma))) {
+        combined_df$ci_low_kg <- r$ci_low_val
+        combined_df$ci_high_kg <- r$ci_high_val
+      }
 
-    # Return as a special multi-tree result
-    result <- list(
-      trees = results_list,
-      summary_table = combined_df,
-      n_trees = length(dbh),
-      total_biomass_kg = sum(r$biomass, na.rm = TRUE),
-      mean_biomass_kg = mean(r$biomass, na.rm = TRUE),
-      validation = validation
-    )
-    class(result) <- c("bunce_multi_result", "list")
+      # Create lightweight result objects (vectorized - no lapply)
+      # Pre-calculate tree-specific values (vectorized)
+      uncertainty_vals <- if (!is.null(re_dbh)) r$sigma else rep(NA_real_, nrow(r))
+      ci_low_vals <- if (!is.null(re_dbh) && !all(is.na(r$sigma))) {
+        r$biomass - 1.96 * r$sigma
+      } else {
+        rep(NA_real_, nrow(r))
+      }
+      ci_high_vals <- if (!is.null(re_dbh) && !all(is.na(r$sigma))) {
+        r$biomass + 1.96 * r$sigma
+      } else {
+        rep(NA_real_, nrow(r))
+      }
+      
+      # Tree-specific flags (each tree may have different flags)
+      tree_flags_list <- if (exists("used_fallback")) {
+        lapply(seq_len(nrow(r)), function(i) {
+          tree_flags <- flags
+          if (used_fallback[i]) {
+            tree_flags <- c(tree_flags, "Used_fallback_coefficients")
+          }
+          if (length(tree_flags) > 0 && tree_flags[1] != "None") tree_flags else "None"
+        })
+      } else {
+        rep(list(if (length(flags) > 0 && flags[1] != "None") flags else "None"), nrow(r))
+      }
 
-    return(result)
+      # Create results_list (vectorized structure, but list of lists for compatibility)
+      results_list <- lapply(seq_len(nrow(r)), function(i) {
+        list(
+          value = r$biomass[i],
+          measure = "AGB",
+          unit = "kg",
+          method = "Bunce",
+          method_full_name = bunce_meta$full_name,
+          reference = bunce_meta$reference,
+          reference_short = bunce_meta$reference_short,
+          doi = bunce_meta$doi,
+          source_type = bunce_meta$source_type,
+          region = bunce_meta$region,
+          biome = strsplit(bunce_meta$biome, "; ")[[1]],
+          assumptions = bunce_assumptions,
+          uncertainty = if (!is.na(uncertainty_vals[i])) uncertainty_vals[i] else NULL,
+          uncertainty_method = bunce_meta$uncertainty_method,
+          ci_low = if (!is.na(ci_low_vals[i])) ci_low_vals[i] else NULL,
+          ci_high = if (!is.na(ci_high_vals[i])) ci_high_vals[i] else NULL,
+          validity_warnings = if (length(warnings_list) > 0) warnings_list else "None",
+          flags = tree_flags_list[[i]],
+          valid_dbh_range = c(bunce_meta$dbh_min_cm, bunce_meta$dbh_max_cm),
+          valid_height_range = c(bunce_meta$height_min_m, bunce_meta$height_max_m),
+          height_required = bunce_meta$height_required,
+          species_specific = bunce_meta$species_specific,
+          wood_density_required = bunce_meta$wood_density_required
+        )
+      })
+
+      # Return as a special multi-tree result
+      result <- list(
+        trees = results_list,
+        summary_table = combined_df,
+        n_trees = length(dbh),
+        total_biomass_kg = total_biomass_kg,
+        total_uncertainty_kg = total_uncertainty_kg,
+        validation = validation
+      )
+      class(result) <- c("bunce_multi_result", "list")
+
+      return(result)
+    }
   }
 
-  # ==== Standard return (backwards compatible) ====
-  r <- r[, !(names(r) %in% c("a", "b"))]
-  return(r)
+  # ==== Standard return ====
+  if(is.null(re_dbh)) {
+    return(r[,c(1:6)])
+  } else {
+    return(r[,c(1:6,13)])
+  }
+
 }
 
 #' @title Print method for multiple Bunce results
@@ -249,53 +375,245 @@ Bunce <- function(name, dbh, type = NULL, re_dbh = NULL, re = 0.025,
 #' @export
 print.bunce_multi_result <- function(x, ...) {
 
-  cat("---------- BUNCE BIOMASS ESTIMATES ----------\n")
-  cat("             Multiple trees \n\n")
-
+  cat("------------------- ALLOMETRY RESULT -------------------\n")
   cat(sprintf("Number of trees: %d\n", x$n_trees))
-  cat(sprintf("Total biomass: %.2f kg (%.4f t)\n", x$total_biomass_kg, x$total_biomass_kg / 1000))
-  cat(sprintf("Mean biomass per tree: %.2f kg\n", x$mean_biomass_kg))
+  cat(sprintf("Total AGB estimate: %.2f kg\n", x$total_biomass_kg))
+
+  # Add uncertainty and CI if available
+  if (!is.null(x$total_uncertainty_kg)) {
+    cat(sprintf("Uncertainty: +/- %.2f kg (SD)\n", x$total_uncertainty_kg))
+    ci_low <- x$total_biomass_kg - 1.96 * x$total_uncertainty_kg
+    ci_high <- x$total_biomass_kg + 1.96 * x$total_uncertainty_kg
+    cat(sprintf("95%% CI: [%.2f, %.2f] kg\n", ci_low, ci_high))
+  }
+  cat(" \n")
 
   # Get method metadata (from first tree)
   meta <- x$trees[[1]]
 
-  cat("METHOD INFORMATION\n")
+  cat("--- METHOD INFORMATION ---\n")
   cat(sprintf("Method: %s\n", meta$method_full_name))
-  cat(sprintf("Reference: %s\n", meta$reference_short))
-  cat(sprintf("Source: %s | Region: %s\n", meta$source_type, meta$region))
+  cat(sprintf("Source: %s\n", meta$source_type))
+  cat(sprintf("Region: %s | Biome: %s\n", meta$region, paste(meta$biome, collapse = "; ")))
+  cat(" \n")
 
-  cat(" ASSUMPTIONS \n")
+  cat("--- ASSUMPTIONS ---\n")
   for (i in seq_along(meta$assumptions)) {
     cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
   }
+  cat(" \n")
 
-  cat("VALIDITY\n")
+  cat("--- VALIDITY & FLAGS ---\n")
   cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", meta$valid_dbh_range[1], meta$valid_dbh_range[2]))
 
-  if (any(x$validation$validity_warnings != "None")) {
-    cat("\n WARNINGS \n")
-    for (w in x$validation$validity_warnings) {
-      cat(sprintf("  ! %s\n", w))
+  # Collect all unique flags from all trees
+  all_flags <- unique(unlist(lapply(x$trees, function(tree) {
+    if (is.character(tree$flags) && length(tree$flags) > 0 && tree$flags[1] != "None") {
+      tree$flags
+    } else {
+      character()
     }
-  }
+  })))
 
-  if (any(x$validation$flags != "None")) {
-    cat("\nFLAGS:\n")
-    for (f in x$validation$flags) {
+  if (length(all_flags) > 0) {
+    cat("FLAGS:\n")
+    for (f in all_flags) {
       cat(sprintf("  - %s\n", f))
     }
   }
+  cat(" \n")
 
-  cat("SUMMARY TABLE (first 10 rows)\n")
-  print(utils::head(x$summary_table[, c("tree_id", "species_name", "value", "uncertainty", "flags")], 10))
+  # Collect all unique warnings
+  all_warnings <- unique(c(
+    if (any(x$validation$validity_warnings != "None")) x$validation$validity_warnings[x$validation$validity_warnings != "None"] else character(),
+    unlist(lapply(x$trees, function(tree) {
+      if (is.character(tree$validity_warnings) && length(tree$validity_warnings) > 0 && tree$validity_warnings[1] != "None") {
+        tree$validity_warnings[tree$validity_warnings != "None"]
+      } else {
+        character()
+      }
+    }))
+  ))
 
-  if (x$n_trees > 10) {
-    cat(sprintf("... and %d more trees\n", x$n_trees - 10))
+  if (length(all_warnings) > 0) {
+    cat("--- WARNINGS ---\n")
+    for (w in all_warnings) {
+      cat(sprintf("  %s\n", w))
+    }
+    cat(" \n")
   }
 
-  cat("Reference:\n")
+  cat("--- REFERENCE ---\n")
   cat(sprintf("  %s\n", meta$reference))
-  if (!is.na(meta$doi)) {
+  if (!is.na(meta$doi) && !is.null(meta$doi)) {
+    cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
+  }
+
+  invisible(x)
+}
+
+#' @title Print method for biomass_multi_result
+#' @description Formatted display for BIOMASS multi-tree results
+#' @param x A biomass_multi_result object
+#' @param ... Additional arguments (unused)
+#' @export
+print.biomass_multi_result <- function(x, ...) {
+
+  cat("------------------- ALLOMETRY RESULT -------------------\n")
+  cat(sprintf("Number of trees: %d\n", x$n_trees))
+  cat(sprintf("Total AGB estimate: %.2f kg\n", x$total_AGB_kg))
+
+  # Add uncertainty and CI if available
+  if (!is.null(x$total_AGB_sd_kg)) {
+    cat(sprintf("Uncertainty: +/- %.2f kg (SD)\n", x$total_AGB_sd_kg))
+    ci_low <- x$total_AGB_kg - 1.96 * x$total_AGB_sd_kg
+    ci_high <- x$total_AGB_kg + 1.96 * x$total_AGB_sd_kg
+    cat(sprintf("95%% CI: [%.2f, %.2f] kg\n", ci_low, ci_high))
+  }
+  cat(" \n")
+
+  # Get method metadata (from first tree)
+  meta <- x$trees[[1]]
+
+  cat("--- METHOD INFORMATION ---\n")
+  cat(sprintf("Method: %s\n", meta$method_full_name))
+  cat(sprintf("Source: %s\n", meta$source_type))
+  cat(sprintf("Region: %s | Biome: %s\n", meta$region, paste(meta$biome, collapse = "; ")))
+  cat(" \n")
+
+  cat("--- ASSUMPTIONS ---\n")
+  for (i in seq_along(meta$assumptions)) {
+    cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
+  }
+  cat(" \n")
+
+  cat("--- VALIDITY & FLAGS ---\n")
+  cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", meta$valid_dbh_range[1], meta$valid_dbh_range[2]))
+
+  # Collect all unique flags from all trees
+  all_flags <- unique(unlist(lapply(x$trees, function(tree) {
+    if (is.character(tree$flags) && length(tree$flags) > 0 && tree$flags[1] != "None") {
+      tree$flags
+    } else {
+      character()
+    }
+  })))
+
+  if (length(all_flags) > 0) {
+    cat("FLAGS:\n")
+    for (f in all_flags) {
+      cat(sprintf("  - %s\n", f))
+    }
+  }
+  cat(" \n")
+
+  # Collect all unique warnings
+  all_warnings <- unique(c(
+    if (any(x$validation$validity_warnings != "None")) x$validation$validity_warnings[x$validation$validity_warnings != "None"] else character(),
+    unlist(lapply(x$trees, function(tree) {
+      if (is.character(tree$validity_warnings) && length(tree$validity_warnings) > 0 && tree$validity_warnings[1] != "None") {
+        tree$validity_warnings[tree$validity_warnings != "None"]
+      } else {
+        character()
+      }
+    }))
+  ))
+
+  if (length(all_warnings) > 0) {
+    cat("--- WARNINGS ---\n")
+    for (w in all_warnings) {
+      cat(sprintf("  %s\n", w))
+    }
+    cat(" \n")
+  }
+
+  cat("--- REFERENCE ---\n")
+  cat(sprintf("  %s\n", meta$reference))
+  if (!is.na(meta$doi) && !is.null(meta$doi)) {
+    cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
+  }
+
+  invisible(x)
+}
+
+#' @title Print method for allodb_multi_result
+#' @description Formatted display for allodb multi-tree results
+#' @param x An allodb_multi_result object
+#' @param ... Additional arguments (unused)
+#' @export
+print.allodb_multi_result <- function(x, ...) {
+
+  cat("------------------- ALLOMETRY RESULT -------------------\n")
+  cat(sprintf("Number of trees: %d\n", x$n_trees))
+  cat(sprintf("Total AGB estimate: %.2f kg\n", x$total_AGB_kg))
+
+  # Add uncertainty and CI if available
+  if (!is.null(x$total_uncertainty_kg)) {
+    cat(sprintf("Uncertainty: +/- %.2f kg (SD)\n", x$total_uncertainty_kg))
+    ci_low <- x$total_AGB_kg - 1.96 * x$total_uncertainty_kg
+    ci_high <- x$total_AGB_kg + 1.96 * x$total_uncertainty_kg
+    cat(sprintf("95%% CI: [%.2f, %.2f] kg\n", ci_low, ci_high))
+  }
+  cat(" \n")
+
+  # Get method metadata (from first tree)
+  meta <- x$trees[[1]]
+
+  cat("--- METHOD INFORMATION ---\n")
+  cat(sprintf("Method: %s\n", meta$method_full_name))
+  cat(sprintf("Source: %s\n", meta$source_type))
+  cat(sprintf("Region: %s | Biome: %s\n", meta$region, paste(meta$biome, collapse = "; ")))
+  cat(" \n")
+
+  cat("--- ASSUMPTIONS ---\n")
+  for (i in seq_along(meta$assumptions)) {
+    cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
+  }
+  cat(" \n")
+
+  cat("--- VALIDITY & FLAGS ---\n")
+  cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", meta$valid_dbh_range[1], meta$valid_dbh_range[2]))
+
+  # Collect all unique flags from all trees
+  all_flags <- unique(unlist(lapply(x$trees, function(tree) {
+    if (is.character(tree$flags) && length(tree$flags) > 0 && tree$flags[1] != "None") {
+      tree$flags
+    } else {
+      character()
+    }
+  })))
+
+  if (length(all_flags) > 0) {
+    cat("FLAGS:\n")
+    for (f in all_flags) {
+      cat(sprintf("  - %s\n", f))
+    }
+  }
+  cat(" \n")
+
+  # Collect all unique warnings
+  all_warnings <- unique(c(
+    if (any(x$validation$validity_warnings != "None")) x$validation$validity_warnings[x$validation$validity_warnings != "None"] else character(),
+    unlist(lapply(x$trees, function(tree) {
+      if (is.character(tree$validity_warnings) && length(tree$validity_warnings) > 0 && tree$validity_warnings[1] != "None") {
+        tree$validity_warnings[tree$validity_warnings != "None"]
+      } else {
+        character()
+      }
+    }))
+  ))
+
+  if (length(all_warnings) > 0) {
+    cat("--- WARNINGS ---\n")
+    for (w in all_warnings) {
+      cat(sprintf("  %s\n", w))
+    }
+    cat(" \n")
+  }
+
+  cat("--- REFERENCE ---\n")
+  cat(sprintf("  %s\n", meta$reference))
+  if (!is.na(meta$doi) && !is.null(meta$doi)) {
     cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
   }
 
@@ -308,6 +626,10 @@ print.bunce_multi_result <- function(x, ...) {
 #' @description Using the BIOMASS package (Chave et al. pantropical equations)
 #' to calculate above-ground biomass with optional Monte Carlo uncertainty
 #' propagation.
+#'
+#'   **Required package**: This function requires the \code{BIOMASS} package,
+#'   which is a dependency of TreeCarbon. If missing, install with:
+#'   \code{install.packages("BIOMASS")}
 #'
 #'   When \code{rich_output = TRUE}, returns a comprehensive result object
 #'   including method metadata, assumptions, validity warnings, and uncertainty.
@@ -401,6 +723,8 @@ print.bunce_multi_result <- function(x, ...) {
 #' aboveground biomass of tropical trees. Global Change Biology, 20, 3177-3190.
 #'
 #' @examples
+#' \dontrun{
+#' # BIOMASS package is a required dependency of TreeCarbon
 #' coords <- c(-0.088837, 51.071610)
 #'
 #' # Basic usage
@@ -420,6 +744,7 @@ print.bunce_multi_result <- function(x, ...) {
 #' result <- BIOMASS(30, 15, 'Quercus', 'robur', coords,
 #'                   rich_output = TRUE, uncertainty = TRUE)
 #' print(result)
+#' }
 #'
 #' @aliases biomass
 #' @export
@@ -606,17 +931,11 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
     }
 
     mc_result <- tryCatch({
-      BIOMASS::AGBmonteCarlo(
-        D = df$dbh,
-        WD = df$Wood_Density,
-        errWD = df$Wood_Density_sd,
-        H = if (!height_estimated) df$height else NULL,
-        errH = mc_errH,
-        HDmodel = HDmodel_mc,
+      BIOMASS::AGBmonteCarlo(D = df$dbh, WD = df$Wood_Density,
+        errWD = df$Wood_Density_sd, H = if (!height_estimated) df$height else NULL,
+        errH = mc_errH, HDmodel = HDmodel_mc,
         coord = if (height_estimated && is.null(HDmodel_mc)) coords else NULL,
-        Dpropag = Dpropag,
-        n = n_mc
-      )
+        Dpropag = Dpropag,               n = n_mc)
     }, error = function(e) {
       warning("AGBmonteCarlo failed: ", e$message, ". Returning point estimate only.")
       NULL
@@ -690,25 +1009,15 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
   # ==== Return rich output if requested ====
   if (rich_output) {
     if (length(dbh) == 1) {
-      return(create_allometry_result(
-        value = df$AGB_Biomass_kg[1],
-        method = "BIOMASS",
-        measure = "AGB",
-        unit = "kg",
+      return(single_tree_rich_output(value = df$AGB_Biomass_kg[1],
+        method = "BIOMASS",          measure = "AGB",          unit = "kg",
         uncertainty = if (!is.null(agb_sd)) agb_sd[1] else NULL,
-        validity_warnings = warnings_list,
-        flags = flags,
-        inputs = list(
-          genus = genus,
-          species = species,
-          dbh = dbh,
+        validity_warnings = warnings_list,                     flags = flags,
+        inputs = list(genus = genus, species = species,        dbh = dbh,
           height = if (height_estimated) df$height[1] else height,
-          height_estimated = height_estimated,
-          wood_density = df$Wood_Density[1],
-          wood_density_sd = df$Wood_Density_sd[1],
-          wood_density_source = wd_source,
-          region = region,
-          coords = coords,
+          height_estimated = height_estimated, wood_density = df$Wood_Density[1],
+          wood_density_sd = df$Wood_Density_sd[1], wood_density_source = wd_source,
+          region = region,                        coords = coords,
           uncertainty_method = if (uncertainty) "AGBmonteCarlo" else NULL,
           n_mc = if (uncertainty) n_mc else NULL,
           CI_5_pct = if (!is.null(agb_credible)) agb_credible$CI_5[1] else NULL,
@@ -720,42 +1029,137 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
     }
 
     # Multiple trees
+    # Get shared method metadata once (same for all trees) - direct access
+    biomass_meta <- method_metadata[method_metadata$method == "BIOMASS", ]
+    biomass_assumptions <- method_assumptions$assumption[method_assumptions$method == "BIOMASS"]
+
+    # Calculate totals first (vectorized)
+    total_AGB_kg <- sum(df$AGB_Biomass_kg, na.rm = TRUE)
+    total_AGB_sd_kg <- if (!is.null(agb_sd) && !all(is.na(agb_sd))) {
+      sqrt(sum(agb_sd^2, na.rm = TRUE))
+    } else {
+      NULL
+    }
+
+    # Collect all unique flags from all trees (vectorized)
+    all_flags <- if (length(flags) > 0 && flags[1] != "None") unique(flags) else character()
+
+    # Pre-calculate tree-specific values (vectorized)
+    uncertainty_vals <- if (!is.null(agb_sd)) {
+      ifelse(!is.na(agb_sd), agb_sd, NA_real_)
+    } else {
+      rep(NA_real_, nrow(df))
+    }
+    
+    ci_low_vals <- if (!is.null(agb_credible)) {
+      agb_credible$CI_5
+    } else if (!is.null(agb_sd) && !all(is.na(agb_sd))) {
+      df$AGB_Biomass_kg - 1.96 * agb_sd
+    } else {
+      rep(NA_real_, nrow(df))
+    }
+    
+    ci_high_vals <- if (!is.null(agb_credible)) {
+      agb_credible$CI_95
+    } else if (!is.null(agb_sd) && !all(is.na(agb_sd))) {
+      df$AGB_Biomass_kg + 1.96 * agb_sd
+    } else {
+      rep(NA_real_, nrow(df))
+    }
+
+    # Create summary table directly from df + agb_sd + agb_credible (vectorized)
+    combined_df <- data.frame(
+      tree_id = seq_len(nrow(df)),
+      genus = df$genus,
+      species = df$species,
+      dbh = df$dbh,
+      height = df$height,
+      biomass_kg = df$AGB_Biomass_kg,
+      uncertainty_kg = uncertainty_vals,
+      stringsAsFactors = FALSE
+    )
+
+    # Add Monte Carlo CI columns if available
+    if (!is.null(agb_credible)) {
+      combined_df$ci_low_kg <- agb_credible$CI_5
+      combined_df$ci_high_kg <- agb_credible$CI_95
+      combined_df$median_kg <- agb_credible$median
+      if (!is.null(df$AGB_CV_pct)) {
+        combined_df$cv_pct <- df$AGB_CV_pct
+      }
+    } else if (!is.null(agb_sd) && !all(is.na(agb_sd))) {
+      # Use symmetric CI approximation if only SD available
+      combined_df$ci_low_kg <- ci_low_vals
+      combined_df$ci_high_kg <- ci_high_vals
+    }
+
+    # Create result objects (vectorized structure, but list of lists for compatibility)
     results_list <- lapply(seq_len(nrow(df)), function(i) {
-      create_allometry_result(
-        value = df$AGB_Biomass_kg[i],
-        method = "BIOMASS",
+      # Create lightweight result object with shared metadata
+      result <- list(
+        # === Core estimate (tree-specific) ===
+        value = if (!is.na(df$AGB_Biomass_kg[i])) df$AGB_Biomass_kg[i] else NA_real_,
         measure = "AGB",
         unit = "kg",
-        uncertainty = if (!is.null(agb_sd)) agb_sd[i] else NULL,
-        validity_warnings = warnings_list,
-        flags = flags,
+
+        # === Method information (shared - from metadata) ===
+        method = "BIOMASS",
+        method_full_name = biomass_meta$full_name,
+        reference = biomass_meta$reference,
+        reference_short = biomass_meta$reference_short,
+        doi = biomass_meta$doi,
+        source_type = biomass_meta$source_type,
+        region = biomass_meta$region,
+        biome = strsplit(biomass_meta$biome, "; ")[[1]],
+
+        # === Assumptions (shared - from metadata) ===
+        assumptions = biomass_assumptions,
+
+        # === Uncertainty (tree-specific) ===
+        uncertainty = if (!is.na(uncertainty_vals[i])) uncertainty_vals[i] else NULL,
+        uncertainty_method = biomass_meta$uncertainty_method,
+        ci_low = if (!is.na(ci_low_vals[i])) ci_low_vals[i] else NULL,
+        ci_high = if (!is.na(ci_high_vals[i])) ci_high_vals[i] else NULL,
+        ci_level = if (!is.na(ci_low_vals[i])) 0.95 else NA,
+
+        # === Validity and flags (tree-specific) ===
+        validity_warnings = if (length(warnings_list) > 0) warnings_list else "None",
+        flags = if (length(flags) > 0) flags else "None",
+
+        # === Valid ranges (shared - from metadata) ===
+        valid_dbh_range = c(biomass_meta$dbh_min_cm, biomass_meta$dbh_max_cm),
+        valid_height_range = c(biomass_meta$height_min_m, biomass_meta$height_max_m),
+        height_required = biomass_meta$height_required,
+        species_specific = biomass_meta$species_specific,
+        wood_density_required = biomass_meta$wood_density_required,
+
+        # === Inputs (minimal - only additional fields, since genus/species/dbh/height are in df) ===
         inputs = list(
-          genus = genus[i],
-          species = species[i],
-          dbh = dbh[i],
-          height = df$height[i],
+          height_estimated = height_estimated,
           wood_density = df$Wood_Density[i],
           wood_density_sd = df$Wood_Density_sd[i],
           wood_density_source = wd_source,
+          region = region,
+          coords = coords,
+          uncertainty_method = if (uncertainty) "AGBmonteCarlo" else NULL,
+          n_mc = if (uncertainty) n_mc else NULL,
           CI_5_pct = if (!is.null(agb_credible)) agb_credible$CI_5[i] else NULL,
           CI_95_pct = if (!is.null(agb_credible)) agb_credible$CI_95[i] else NULL,
+          median = if (!is.null(agb_credible)) agb_credible$median[i] else NULL,
           CV_pct = if (!is.null(df$AGB_CV_pct)) df$AGB_CV_pct[i] else NULL
         )
       )
+      class(result) <- "allometry_result"
+      return(result)
     })
-
-    combined_df <- do.call(rbind, lapply(results_list, as.data.frame.allometry_result))
-    combined_df$tree_id <- seq_len(nrow(combined_df))
-    combined_df$genus <- genus
-    combined_df$species <- species
 
     result <- list(
       trees = results_list,
       summary_table = combined_df,
       n_trees = length(dbh),
-      total_AGB_kg = sum(df$AGB_Biomass_kg, na.rm = TRUE),
+      total_AGB_kg = total_AGB_kg,
       mean_AGB_kg = mean(df$AGB_Biomass_kg, na.rm = TRUE),
-      total_AGB_sd_kg = if (!is.null(mc_result)) sqrt(sum(agb_sd^2, na.rm = TRUE)) else NULL,
+      total_AGB_sd_kg = total_AGB_sd_kg,
       mc_result = mc_result,
       validation = validation,
       detailed_output = if (output.all) df else NULL
@@ -776,6 +1180,10 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 #' @title Estimate Tree Biomass using allodb R package
 #' @description Use the allodb R package to calculate above-ground biomass
 #' using a weighted combination of multiple published allometric equations.
+#'
+#'   **Required package**: This function requires the \code{allodb} package,
+#'   which is a dependency of TreeCarbon. If missing, install from GitHub with:
+#'   \code{remotes::install_github("ropensci/allodb")}
 #'
 #'   When \code{rich_output = TRUE}, returns a comprehensive result object
 #'   including method metadata, assumptions, validity warnings, and uncertainty
@@ -800,7 +1208,8 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 #'   'allodb_b', 'allodb_sigma' (where AGB = a*dbh^b+e, e ~ N(0,sigma^2)).
 #'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @examples
-#' remotes::install_github('ropensci/allodb')
+#' \dontrun{
+#' # allodb package is a required dependency of TreeCarbon
 #' coords <- c(-0.088837,51.071610)
 #' allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
 #' allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
@@ -808,6 +1217,7 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
 #' # Rich output with metadata
 #' result <- allodb(50, "Quercus", "robur", coords, rich_output = TRUE)
 #' print(result)
+#' }
 #' @import remotes
 #' @export
 #' @aliases allodb
@@ -841,12 +1251,6 @@ allodb <- function(dbh, genus, species, coords, output.all = TRUE,
   flags <- if (validation$flags[1] != "None") validation$flags else character()
   warnings_list <- if (validation$validity_warnings[1] != "None") validation$validity_warnings else character()
 
-  # Ensure the allodb package is installed
-  if (nchar(system.file(package = 'allodb')) == 0) {
-    warning("The 'allodb' package is not installed. Installing it now...")
-    remotes::install_github("ropensci/allodb")
-  }
-
   if(output.all == TRUE && is.null(new.eqtable)){
     # Output dataframe
     df <- data.frame(dbh = dbh, genus = genus, species = species,
@@ -877,7 +1281,7 @@ allodb <- function(dbh, genus, species, coords, output.all = TRUE,
     # ==== Return rich output if requested ====
     if (rich_output) {
       if (length(dbh) == 1) {
-        return(create_allometry_result(
+        return(single_tree_rich_output(
           value = df$AGB_allodb_kg[1],
           method = "allodb",
           measure = "AGB",
@@ -897,34 +1301,108 @@ allodb <- function(dbh, genus, species, coords, output.all = TRUE,
       }
 
       # Multiple trees
+      # Get shared method metadata once (same for all trees) - direct access
+      allodb_meta <- method_metadata[method_metadata$method == "allodb", ]
+      allodb_assumptions <- method_assumptions$assumption[method_assumptions$method == "allodb"]
+
+      # Calculate totals first (vectorized)
+      total_AGB_kg <- sum(df$AGB_allodb_kg, na.rm = TRUE)
+      total_uncertainty_kg <- if (!all(is.na(df$allodb_sigma))) {
+        sqrt(sum(df$allodb_sigma^2, na.rm = TRUE))
+      } else {
+        NULL
+      }
+
+      # Collect all unique flags from all trees (vectorized)
+      all_flags <- if (length(flags) > 0 && flags[1] != "None") unique(flags) else character()
+
+      # Pre-calculate tree-specific values (vectorized)
+      uncertainty_vals <- ifelse(!is.na(df$allodb_sigma), df$allodb_sigma, NA_real_)
+      ci_low_vals <- if (!all(is.na(df$allodb_sigma))) {
+        df$AGB_allodb_kg - 1.96 * df$allodb_sigma
+      } else {
+        rep(NA_real_, nrow(df))
+      }
+      ci_high_vals <- if (!all(is.na(df$allodb_sigma))) {
+        df$AGB_allodb_kg + 1.96 * df$allodb_sigma
+      } else {
+        rep(NA_real_, nrow(df))
+      }
+
+      # Create summary table directly from df (vectorized)
+      combined_df <- data.frame(
+        tree_id = seq_len(nrow(df)),
+        genus = df$genus,
+        species = df$species,
+        dbh = df$dbh,
+        biomass_kg = df$AGB_allodb_kg,
+        uncertainty_kg = uncertainty_vals,
+        stringsAsFactors = FALSE
+      )
+
+      # Add CI columns if uncertainty was calculated
+      if (!all(is.na(df$allodb_sigma))) {
+        combined_df$ci_low_kg <- ci_low_vals
+        combined_df$ci_high_kg <- ci_high_vals
+      }
+
+      # Create result objects (vectorized structure, but list of lists for compatibility)
       results_list <- lapply(seq_len(nrow(df)), function(i) {
-        create_allometry_result(
-          value = df$AGB_allodb_kg[i],
-          method = "allodb",
+        # Create lightweight result object with shared metadata
+        result <- list(
+          # === Core estimate (tree-specific) ===
+          value = if (!is.na(df$AGB_allodb_kg[i])) df$AGB_allodb_kg[i] else NA_real_,
           measure = "AGB",
           unit = "kg",
-          uncertainty = df$allodb_sigma[i],
-          validity_warnings = warnings_list,
-          flags = flags,
+
+          # === Method information (shared - from metadata) ===
+          method = "allodb",
+          method_full_name = allodb_meta$full_name,
+          reference = allodb_meta$reference,
+          reference_short = allodb_meta$reference_short,
+          doi = allodb_meta$doi,
+          source_type = allodb_meta$source_type,
+          region = allodb_meta$region,
+          biome = strsplit(allodb_meta$biome, "; ")[[1]],
+
+          # === Assumptions (shared - from metadata) ===
+          assumptions = allodb_assumptions,
+
+          # === Uncertainty ===
+          uncertainty = if (!is.na(uncertainty_vals[i])) uncertainty_vals[i] else NULL,
+          uncertainty_method = allodb_meta$uncertainty_method,
+          ci_low = if (!is.na(ci_low_vals[i])) ci_low_vals[i] else NULL,
+          ci_high = if (!is.na(ci_high_vals[i])) ci_high_vals[i] else NULL,
+
+          # === Validity and flags (tree-specific) ===
+          validity_warnings = if (length(warnings_list) > 0) warnings_list else "None",
+          flags = if (length(flags) > 0) flags else "None",
+
+          # === Valid ranges (shared - from metadata) ===
+          valid_dbh_range = c(allodb_meta$dbh_min_cm, allodb_meta$dbh_max_cm),
+          valid_height_range = c(allodb_meta$height_min_m, allodb_meta$height_max_m),
+          height_required = allodb_meta$height_required,
+          species_specific = allodb_meta$species_specific,
+          wood_density_required = allodb_meta$wood_density_required,
+
+          # === Inputs (minimal - only coords and coefficients, since genus/species/dbh are in df) ===
           inputs = list(
-            genus = genus[i],
-            species = species[i],
-            dbh = dbh[i]
+            coords = coords,
+            allodb_a = df$allodb_a[i],
+            allodb_b = df$allodb_b[i]
           )
         )
+        class(result) <- "allometry_result"
+        return(result)
       })
-
-      combined_df <- do.call(rbind, lapply(results_list, as.data.frame.allometry_result))
-      combined_df$tree_id <- seq_len(nrow(combined_df))
-      combined_df$genus <- genus
-      combined_df$species <- species
 
       result <- list(
         trees = results_list,
         summary_table = combined_df,
         n_trees = length(dbh),
-        total_AGB_kg = sum(df$AGB_allodb_kg, na.rm = TRUE),
+        total_AGB_kg = total_AGB_kg,
         mean_AGB_kg = mean(df$AGB_allodb_kg, na.rm = TRUE),
+        total_uncertainty_kg = total_uncertainty_kg,
         validation = validation,
         detailed_output = df
       )
@@ -942,7 +1420,7 @@ allodb <- function(dbh, genus, species, coords, output.all = TRUE,
                                    new_eqtable = new.eqtable)
 
     if (rich_output && length(dbh) == 1) {
-      return(create_allometry_result(
+      return(single_tree_rich_output(
         value = biomass,
         method = "allodb",
         measure = "AGB",

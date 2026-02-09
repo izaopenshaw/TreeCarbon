@@ -372,7 +372,7 @@ ui <- dashboardPage(
       tabItem(tabName = "per_area",
               fluidRow(
                 box(title = "Carbon per Unit Area", width = 12, status = "primary", solidHeader = TRUE,
-                    p("Calculate carbon density (carbon per unit area) for your tree data ",
+                    p("Calculate carbon density (carbon per unit area) for your tree data"),
                     hr(),
                     fluidRow(
                       column(4,
@@ -390,7 +390,7 @@ ui <- dashboardPage(
                                                      "allodb" = "allodb", "Bunce" = "Bunce"),
                                          selected = c("WCC", "BIOMASS", "allodb", "Bunce"),
                                          multiple = TRUE),
-                             checkboxInput("per_area_include_error", "Include uncertainty estimates", value = TRUE),
+                             checkboxInput("per_area_include_error", "Include uncertainty estimates", value = TRUE)
                       ),
                       column(4,
                              selectInput("output_unit", "Output Carbon Unit:",

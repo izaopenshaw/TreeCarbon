@@ -1,0 +1,734 @@
+---
+title: "Uncertainty Propagation and Method Comparison"
+author: "Isabel Openshaw & Justin Moat"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Uncertainty Propagation and Method Comparison}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# Introduction
+
+This vignette explains how TreeCarbon handles uncertainty propagation and provides detailed guidance on comparing different allometric methods. Understanding uncertainty is crucial for carbon accounting, as it quantifies the confidence in your estimates.
+
+**Key concepts covered:**
+
+1. **Measurement uncertainty** - Error in DBH, height measurements
+2. **Parameter uncertainty** - Uncertainty in allometric equation coefficients
+3. **Model uncertainty** - Residual error from regression equations
+4. **Method comparison** - Quantifying differences between allometric methods
+5. **Sensitivity analysis** - How sensitive are estimates to method choice?
+
+```{r load-package, message=FALSE, warning=FALSE}
+library(TreeCarbon)
+library(ggplot2)
+```
+
+---
+
+# Part 1: Understanding Uncertainty Sources
+
+## 1.1 Types of Uncertainty
+
+Carbon estimates have three main sources of uncertainty:
+
+### Measurement Uncertainty
+
+Error in field measurements (DBH, height):
+
+```{r measurement-unc}
+# Example: DBH measurement with 2.5% error
+dbh_measured <- 45  # cm
+dbh_error_pct <- 2.5
+dbh_sd <- dbh_measured * (dbh_error_pct / 100)
+
+cat(sprintf("DBH: %.1f ± %.2f cm (%.1f%% error)\n", 
+            dbh_measured, dbh_sd, dbh_error_pct))
+cat(sprintf("95%% CI: [%.1f, %.1f] cm\n",
+            dbh_measured - 1.96 * dbh_sd,
+            dbh_measured + 1.96 * dbh_sd))
+```
+
+### Parameter Uncertainty
+
+Uncertainty in allometric equation coefficients (a, b):
+
+```{r parameter-unc}
+# Bunce equation: biomass = exp(a + b * ln(π * dbh))
+# Coefficients have standard errors from regression
+a_mean <- -5.445  # Intercept
+a_se <- 0.05      # Standard error of intercept
+b_mean <- 2.505   # Slope
+b_se <- 0.06      # Standard error of slope
+
+cat("=== Parameter Uncertainty ===\n")
+cat(sprintf("Intercept (a): %.3f ± %.3f\n", a_mean, a_se))
+cat(sprintf("Slope (b): %.3f ± %.3f\n", b_mean, b_se))
+```
+
+### Model/Residual Uncertainty
+
+Error from the regression model itself:
+
+```{r model-unc}
+# Residual error (model fit uncertainty)
+# Typically expressed as relative error (CV)
+residual_cv <- 0.10  # 10% residual CV
+
+cat("=== Model Uncertainty ===\n")
+cat(sprintf("Residual CV: %.1f%%\n", residual_cv * 100))
+```
+
+---
+
+# Part 2: Error Propagation in TreeCarbon
+
+## 2.1 WCC Error Propagation
+
+The WCC method propagates error through each step of the calculation:
+
+```{r wcc-error-prop}
+# Calculate carbon with error propagation
+result <- fc_agc_error(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  re_dbh = 0.025,  # 2.5% DBH measurement error
+  re_h = 0.05,     # 5% height measurement error
+  re = 0.025       # 2.5% coefficient error
+)
+
+cat("=== WCC Error Propagation ===\n")
+cat(sprintf("Carbon: %.3f ± %.3f t C\n",
+            result$AGC_WCC_t, result$sig_AGC))
+cat(sprintf("CV: %.1f%%\n", 100 * result$sig_AGC / result$AGC_WCC_t))
+cat(sprintf("95%% CI: [%.3f, %.3f] t C\n",
+            result$AGC_WCC_t - 1.96 * result$sig_AGC,
+            result$AGC_WCC_t + 1.96 * result$sig_AGC))
+```
+
+### How WCC Propagates Error
+
+The WCC pipeline propagates uncertainty through:
+
+1. **Tariff calculation** - Combines DBH and height errors
+2. **Volume estimation** - Propagates tariff and DBH errors
+3. **Biomass calculation** - Combines volume and wood density errors
+4. **Carbon conversion** - Adds conversion factor uncertainty
+
+Each step uses error propagation formulas appropriate for the mathematical operations (multiplication, addition, etc.).
+
+## 2.2 Bunce Error Propagation
+
+The Bunce method uses a simplified approach with CO lookup from Table 6:
+
+```{r bunce-error-prop}
+# Bunce with error propagation
+result_bunce <- Bunce(
+  name = "Oak",
+  dbh = 45,
+  re_dbh = 0.025  # Only DBH error needed
+)
+
+cat("=== Bunce Error Propagation ===\n")
+cat(sprintf("Biomass: %.1f ± %.1f kg\n",
+            result_bunce$biomass, result_bunce$sigma))
+cat(sprintf("CV: %.1f%%\n", 
+            100 * result_bunce$sigma / result_bunce$biomass))
+```
+
+### Bunce Uncertainty Method
+
+The Bunce function uses:
+
+1. **CO lookup** - Confidence limits from Bunce (1968) Table 6
+2. **N-based adjustment** - Adjusts for sample size differences
+3. **Species-specific values** - Uses species-specific CO when available
+4. **Error propagation formula** - Combines measurement and parameter uncertainty
+
+```{r bunce-method-detail}
+# With rich output to see methodology
+result_bunce_rich <- Bunce(
+  name = "Oak",
+  dbh = 45,
+  re_dbh = 0.025,
+  rich_output = TRUE
+)
+
+print(result_bunce_rich)
+```
+
+## 2.3 BIOMASS Monte Carlo Uncertainty
+
+The BIOMASS package uses Monte Carlo simulation:
+
+```{r biomass-mc, eval=requireNamespace("BIOMASS", quietly = TRUE)}
+# BIOMASS with Monte Carlo uncertainty
+result_biomass <- BIOMASS(
+  dbh = 45,
+  height = 18,
+  genus = "Quercus",
+  species = "robur",
+  coords = c(-0.29, 51.48),
+  uncertainty = TRUE,
+  n_mc = 1000  # Number of Monte Carlo iterations
+)
+
+cat("=== BIOMASS Monte Carlo Uncertainty ===\n")
+cat(sprintf("AGB: %.1f ± %.1f kg\n",
+            result_biomass$AGB_Biomass_kg,
+            result_biomass$AGB_sd_kg))
+cat(sprintf("CV: %.1f%%\n", result_biomass$AGB_CV_pct))
+cat(sprintf("95%% CI: [%.1f, %.1f] kg\n",
+            result_biomass$AGB_CI_low_kg,
+            result_biomass$AGB_CI_high_kg))
+```
+
+---
+
+# Part 3: Comparing Uncertainty Methods
+
+## 3.1 Visual Comparison
+
+Compare how uncertainty varies with tree size:
+
+```{r compare-unc-methods, fig.height=6}
+# Create data for multiple DBH values
+dbh_range <- seq(20, 80, by = 5)
+
+# WCC uncertainty
+wcc_results <- fc_agc_error(
+  name = rep("Oak", length(dbh_range)),
+  dbh = dbh_range,
+  height = rep(18, length(dbh_range)),
+  type = rep("broadleaf", length(dbh_range)),
+  re_dbh = 0.025,
+  re_h = 0.05
+)
+
+# Bunce uncertainty
+bunce_results <- Bunce(
+  name = rep("Oak", length(dbh_range)),
+  dbh = dbh_range,
+  re_dbh = 0.025
+)
+
+# Combine for plotting
+plot_data <- data.frame(
+  dbh = rep(dbh_range, 2),
+  method = rep(c("WCC", "Bunce"), each = length(dbh_range)),
+  carbon = c(wcc_results$AGC_WCC_t, bunce_results$biomass / 1000 * 0.5),
+  uncertainty = c(wcc_results$sig_AGC, bunce_results$sigma / 1000 * 0.5)
+)
+
+plot_data$cv <- 100 * plot_data$uncertainty / plot_data$carbon
+
+ggplot(plot_data, aes(x = dbh, y = cv, color = method)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Coefficient of Variation (CV) vs DBH",
+    subtitle = "Comparing WCC and Bunce uncertainty methods",
+    x = "DBH (cm)",
+    y = "CV (%)",
+    color = "Method"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set2")
+```
+
+## 3.2 Uncertainty Decomposition
+
+For advanced users, you can decompose uncertainty by source:
+
+```{r uncertainty-decomp, eval=requireNamespace("BIOMASS", quietly = TRUE)}
+# Use mc_uncertainty for detailed decomposition
+bunce_fn <- function(dbh, a, b) {
+  exp(a + b * log(pi * dbh))
+}
+
+# Define inputs with uncertainties
+inputs <- list(
+  dbh = list(mean = 45, sd = 1.13, source = "measurement"),
+  a = list(mean = -5.445, sd = 0.05, source = "parameter"),
+  b = list(mean = 2.505, sd = 0.06, source = "parameter")
+)
+
+# Run Monte Carlo with decomposition
+mc_result <- mc_uncertainty(
+  bunce_fn,
+  inputs,
+  N = 2000,
+  decompose = TRUE
+)
+
+# View decomposition
+if (!is.null(mc_result$decomposition)) {
+  cat("=== Uncertainty Decomposition ===\n")
+  print(mc_result$decomposition$by_source)
+}
+```
+
+---
+
+# Part 4: Method Comparison Methodology
+
+## 4.1 Why Compare Methods?
+
+Different allometric methods can give different estimates for the same tree. Understanding these differences is crucial for:
+
+- **Carbon accounting** - Reporting defensible estimates
+- **Method selection** - Choosing the most appropriate method
+- **Uncertainty quantification** - Understanding total uncertainty including method choice
+
+## 4.2 Using allometries() for Comparison
+
+The `allometries()` function runs all methods simultaneously:
+
+```{r allometries-compare, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Compare all methods for a single tree
+comparison <- allometries(
+  genus = "Quercus",
+  species = "robur",
+  dbh = 45,
+  height = 18,
+  coords = c(-0.29, 51.48),
+  returnv = "AGC"
+)
+
+cat("=== Method Comparison (Single Tree) ===\n")
+print(comparison[, c("genus", "species", "dbh", "height",
+                      "WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")])
+```
+
+## 4.3 Quantifying Method Differences
+
+### Absolute Differences
+
+```{r method-diff-abs}
+# Extract estimates
+estimates <- c(
+  WCC = comparison$WCC_C_t,
+  BIOMASS = comparison$biomass_C_t,
+  allodb = comparison$allodb_C_t,
+  Bunce = comparison$Bunce_C_t
+)
+
+# Remove NA values
+estimates <- estimates[!is.na(estimates)]
+
+cat("=== Absolute Differences ===\n")
+cat(sprintf("Range: %.3f - %.3f t C\n", min(estimates), max(estimates)))
+cat(sprintf("Spread: %.3f t C (%.1f%% of mean)\n",
+            max(estimates) - min(estimates),
+            100 * (max(estimates) - min(estimates)) / mean(estimates)))
+cat(sprintf("Mean: %.3f t C\n", mean(estimates)))
+cat(sprintf("SD: %.3f t C (CV = %.1f%%)\n",
+            sd(estimates), 100 * sd(estimates) / mean(estimates)))
+```
+
+### Relative Differences
+
+```{r method-diff-rel}
+# Calculate relative differences from mean
+mean_estimate <- mean(estimates)
+relative_diff <- 100 * (estimates - mean_estimate) / mean_estimate
+
+diff_table <- data.frame(
+  Method = names(estimates),
+  Estimate_tC = estimates,
+  Difference_pct = relative_diff
+)
+
+cat("=== Relative Differences (from mean) ===\n")
+print(diff_table)
+```
+
+## 4.4 Using compare_allometries()
+
+The `compare_allometries()` function provides detailed statistics:
+
+```{r compare-allometries-func, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Get comparison statistics
+comp_stats <- compare_allometries(
+  comparison,
+  reference = "WCC"  # Use WCC as reference
+)
+
+print(comp_stats)
+```
+
+---
+
+# Part 5: Batch Method Comparison
+
+## 5.1 Multiple Trees
+
+Compare methods across multiple trees:
+
+```{r batch-compare, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Sample tree data
+trees <- data.frame(
+  genus = c("Quercus", "Fagus", "Fraxinus", "Betula"),
+  species = c("robur", "sylvatica", "excelsior", "pendula"),
+  dbh = c(45, 38, 52, 28),
+  height = c(18, 22, 24, 15)
+)
+
+# Compare all methods
+batch_comparison <- allometries(
+  genus = trees$genus,
+  species = trees$species,
+  dbh = trees$dbh,
+  height = trees$height,
+  coords = c(-0.29, 51.48),
+  returnv = "AGC"
+)
+
+cat("=== Batch Method Comparison ===\n")
+print(batch_comparison[, c("genus", "species", "dbh",
+                           "WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")])
+```
+
+## 5.2 Method Agreement Statistics
+
+```{r method-agreement}
+# Calculate cross-method statistics for each tree
+methods <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+
+batch_comparison$mean_estimate <- apply(
+  batch_comparison[, methods], 1, mean, na.rm = TRUE
+)
+batch_comparison$sd_estimate <- apply(
+  batch_comparison[, methods], 1, sd, na.rm = TRUE
+)
+batch_comparison$cv_pct <- 100 * batch_comparison$sd_estimate / batch_comparison$mean_estimate
+
+cat("=== Method Agreement by Tree ===\n")
+print(batch_comparison[, c("genus", "species", "dbh", "mean_estimate", "cv_pct")])
+
+cat("\n=== Overall Agreement ===\n")
+cat(sprintf("Mean CV across methods: %.1f%%\n",
+            mean(batch_comparison$cv_pct, na.rm = TRUE)))
+cat(sprintf("Range of CV: %.1f%% - %.1f%%\n",
+            min(batch_comparison$cv_pct, na.rm = TRUE),
+            max(batch_comparison$cv_pct, na.rm = TRUE)))
+```
+
+## 5.3 Visualizing Method Differences
+
+```{r plot-method-diff, fig.height=6, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Reshape data for plotting
+library(tidyr)
+
+plot_data <- batch_comparison %>%
+  select(genus, species, dbh, WCC_C_t, biomass_C_t, allodb_C_t, Bunce_C_t) %>%
+  pivot_longer(
+    cols = c(WCC_C_t, biomass_C_t, allodb_C_t, Bunce_C_t),
+    names_to = "method",
+    values_to = "carbon"
+  )
+
+plot_data$method <- gsub("_C_t", "", plot_data$method)
+plot_data$method <- gsub("biomass", "BIOMASS", plot_data$method)
+
+ggplot(plot_data, aes(x = dbh, y = carbon, color = method, shape = method)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "loess", se = FALSE, linewidth = 0.8) +
+  labs(
+    title = "Carbon Estimates by Method vs DBH",
+    x = "DBH (cm)",
+    y = "Above-Ground Carbon (tonnes)",
+    color = "Method",
+    shape = "Method"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set2")
+```
+
+---
+
+# Part 6: Sensitivity Analysis
+
+## 6.1 What is Sensitivity Analysis?
+
+Sensitivity analysis answers: **"How much does my carbon estimate change depending on which allometric method I use?"**
+
+This is crucial for carbon accounting because:
+- Method choice can significantly affect estimates
+- You need to justify your method selection
+- You should report the range of possible estimates
+
+## 6.2 Single Tree Sensitivity
+
+```{r sensitivity-single, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Single tree sensitivity
+single_tree <- data.frame(
+  dbh = 45,
+  height = 18,
+  genus = "Quercus",
+  species = "robur"
+)
+
+# Get estimates from all methods
+estimates_all <- allometries(
+  genus = single_tree$genus,
+  species = single_tree$species,
+  dbh = single_tree$dbh,
+  height = single_tree$height,
+  coords = c(-0.29, 51.48),
+  returnv = "AGC"
+)
+
+# Calculate sensitivity metrics
+carbon_vals <- c(
+  estimates_all$WCC_C_t,
+  estimates_all$biomass_C_t,
+  estimates_all$allodb_C_t,
+  estimates_all$Bunce_C_t
+)
+carbon_vals <- carbon_vals[!is.na(carbon_vals)]
+
+mean_carbon <- mean(carbon_vals)
+sd_carbon <- sd(carbon_vals)
+cv_carbon <- 100 * sd_carbon / mean_carbon
+spread_pct <- 100 * (max(carbon_vals) - min(carbon_vals)) / mean_carbon
+range_ratio <- max(carbon_vals) / min(carbon_vals)
+
+cat("=== Single Tree Sensitivity Analysis ===\n")
+cat(sprintf("Mean estimate: %.3f t C\n", mean_carbon))
+cat(sprintf("SD: %.3f t C\n", sd_carbon))
+cat(sprintf("CV: %.1f%%\n", cv_carbon))
+cat(sprintf("Spread: %.1f%%\n", spread_pct))
+cat(sprintf("Range ratio: %.2fx\n", range_ratio))
+cat(sprintf("Range: %.3f - %.3f t C\n", min(carbon_vals), max(carbon_vals)))
+
+# Interpretation
+if (cv_carbon < 10) {
+  interpretation <- "LOW sensitivity - method choice has minimal impact"
+} else if (cv_carbon < 25) {
+  interpretation <- "MODERATE sensitivity - typical variation"
+} else if (cv_carbon < 50) {
+  interpretation <- "HIGH sensitivity - method choice matters"
+} else {
+  interpretation <- "VERY HIGH sensitivity - investigate data quality"
+}
+
+cat(sprintf("\nInterpretation: %s\n", interpretation))
+```
+
+## 6.3 Batch Sensitivity Analysis
+
+```{r sensitivity-batch, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# Multiple trees
+forest_data <- data.frame(
+  tree_id = 1:10,
+  genus = rep(c("Quercus", "Fagus", "Fraxinus", "Betula", "Acer"), 2),
+  species = rep(c("robur", "sylvatica", "excelsior", "pendula", "pseudoplatanus"), 2),
+  dbh = c(45, 38, 52, 28, 42, 50, 35, 48, 40, 30),
+  height = c(18, 22, 24, 15, 20, 21, 19, 23, 18, 14)
+)
+
+# Compare all methods
+batch_results <- allometries(
+  genus = forest_data$genus,
+  species = forest_data$species,
+  dbh = forest_data$dbh,
+  height = forest_data$height,
+  coords = c(-0.29, 51.48),
+  returnv = "AGC"
+)
+
+# Calculate per-tree sensitivity
+methods <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")
+batch_results$mean_est <- apply(batch_results[, methods], 1, mean, na.rm = TRUE)
+batch_results$sd_est <- apply(batch_results[, methods], 1, sd, na.rm = TRUE)
+batch_results$cv_pct <- 100 * batch_results$sd_est / batch_results$mean_est
+
+cat("=== Batch Sensitivity Analysis ===\n")
+cat("Per-tree CV across methods:\n")
+print(batch_results[, c("genus", "species", "dbh", "cv_pct")])
+
+cat(sprintf("\nOverall mean CV: %.1f%%\n",
+            mean(batch_results$cv_pct, na.rm = TRUE)))
+```
+
+## 6.4 Sensitivity Interpretation Guide
+
+| CV (%) | Level | Interpretation | Action |
+|--------|-------|----------------|--------|
+| < 10 | LOW | Method choice has minimal impact | Use any method; report single estimate |
+| 10-25 | MODERATE | Typical variation between methods | Report range; justify method choice |
+| 25-50 | HIGH | Significant impact of method choice | Report all methods; discuss differences |
+| > 50 | VERY HIGH | Large disagreement | Investigate data quality; check method applicability |
+
+---
+
+# Part 7: Combining Measurement and Method Uncertainty
+
+## 7.1 Total Uncertainty
+
+Total uncertainty includes both:
+- **Measurement uncertainty** (from field measurements)
+- **Method uncertainty** (from choice of allometric equation)
+
+```{r total-uncertainty, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
+# For a single tree, get estimates with uncertainty from each method
+tree_dbh <- 45
+tree_height <- 18
+
+# WCC with measurement uncertainty
+wcc_result <- fc_agc_error(
+  name = "Oak",
+  dbh = tree_dbh,
+  height = tree_height,
+  type = "broadleaf",
+  re_dbh = 0.025,
+  re_h = 0.05
+)
+
+# Bunce with measurement uncertainty
+bunce_result <- Bunce(
+  name = "Oak",
+  dbh = tree_dbh,
+  re_dbh = 0.025
+)
+
+# Method uncertainty (spread across methods)
+all_methods <- allometries(
+  genus = "Quercus",
+  species = "robur",
+  dbh = tree_dbh,
+  height = tree_height,
+  coords = c(-0.29, 51.48),
+  returnv = "AGC"
+)
+
+method_estimates <- c(
+  all_methods$WCC_C_t,
+  all_methods$biomass_C_t,
+  all_methods$allodb_C_t,
+  all_methods$Bunce_C_t
+)
+method_estimates <- method_estimates[!is.na(method_estimates)]
+method_uncertainty <- sd(method_estimates)
+
+cat("=== Total Uncertainty Breakdown ===\n")
+cat("WCC (with measurement error):\n")
+cat(sprintf("  Estimate: %.3f ± %.3f t C\n",
+            wcc_result$AGC_WCC_t, wcc_result$sig_AGC))
+
+cat("\nBunce (with measurement error):\n")
+cat(sprintf("  Estimate: %.3f ± %.3f t C\n",
+            bunce_result$biomass / 1000 * 0.5,
+            bunce_result$sigma / 1000 * 0.5))
+
+cat("\nMethod uncertainty (spread across methods):\n")
+cat(sprintf("  SD across methods: %.3f t C\n", method_uncertainty))
+cat(sprintf("  Mean estimate: %.3f t C\n", mean(method_estimates)))
+
+# Combined uncertainty (rough approximation)
+# This is a simplified approach - for rigorous analysis, use Monte Carlo
+mean_estimate <- mean(method_estimates)
+measurement_unc <- mean(c(wcc_result$sig_AGC, bunce_result$sigma / 1000 * 0.5))
+total_unc <- sqrt(measurement_unc^2 + method_uncertainty^2)
+
+cat("\nCombined uncertainty (approximate):\n")
+cat(sprintf("  Total SD: %.3f t C\n", total_unc))
+cat(sprintf("  Total CV: %.1f%%\n", 100 * total_unc / mean_estimate))
+```
+
+## 7.2 Reporting Uncertainty
+
+When reporting carbon estimates, include:
+
+1. **Point estimate** - Mean or preferred method estimate
+2. **Measurement uncertainty** - From field measurement errors
+3. **Method uncertainty** - Range across different allometric methods
+4. **Total uncertainty** - Combined (if appropriate)
+
+Example reporting format:
+
+```
+Carbon estimate: 0.850 ± 0.085 t C (95% CI: [0.683, 1.017])
+Method range: 0.720 - 0.920 t C (CV = 8.5%)
+Total uncertainty includes measurement error (2.5% DBH, 5% height) 
+and method choice uncertainty.
+```
+
+---
+
+# Part 8: Best Practices
+
+## 8.1 When to Include Uncertainty
+
+**Always include uncertainty when:**
+- Reporting for carbon markets or offsetting
+- Publishing research results
+- Making policy decisions
+- Comparing different sites or time periods
+
+**Uncertainty is less critical for:**
+- Exploratory analysis
+- Internal planning
+- Rough estimates
+
+## 8.2 Choosing Error Parameters
+
+**DBH measurement error (re_dbh):**
+- High precision: 0.01-0.02 (1-2%)
+- Standard: 0.025 (2.5%)
+- Low precision: 0.05-0.10 (5-10%)
+
+**Height measurement error (re_h):**
+- High precision: 0.03-0.05 (3-5%)
+- Standard: 0.05-0.10 (5-10%)
+- Low precision: 0.10-0.15 (10-15%)
+
+## 8.3 Method Selection Guidelines
+
+1. **UK temperate woodland** → Use WCC
+2. **UK deciduous, no height** → Use Bunce
+3. **Tropical forests** → Use BIOMASS
+4. **Global extratropical** → Use allodb
+5. **Multiple methods available** → Compare and report range
+
+## 8.4 Reporting Recommendations
+
+When reporting carbon estimates:
+
+1. **State the method(s) used**
+2. **Report uncertainty** (SD or 95% CI)
+3. **Include method range** if multiple methods used
+4. **Document assumptions** (measurement errors, etc.)
+5. **Justify method choice** if only one method used
+
+---
+
+# References
+
+1. **Error Propagation**: Chave, J., Condit, R., Aguilar, S., et al. (2004). Error propagation and scaling for tropical forest biomass estimates. *Philosophical Transactions of the Royal Society B*, 359(1443), 409-420.
+
+2. **Method Comparison**: Réjou-Méchain, M., Tanguy, A., Piponiot, C., Chave, J., & Hérault, B. (2017). BIOMASS: An R package for estimating above-ground biomass and its uncertainty in tropical forests. *Methods in Ecology and Evolution*, 8(9), 1163-1167.
+
+3. **Uncertainty Quantification**: Gonzalez-Akre, E., Piponiot, C., Lepore, M., et al. (2022). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. *Methods in Ecology and Evolution*, 13(2), 330-338.
+
+---
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```

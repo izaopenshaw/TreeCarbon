@@ -2,7 +2,7 @@
 % Please edit documentation in R/Compare_allometry.R
 \name{compare_allometries}
 \alias{compare_allometries}
-\title{Comprehensive comparison of allometric methods}
+\title{Comparison of allometric methods}
 \usage{
 compare_allometries(
   df,

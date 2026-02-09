@@ -13,6 +13,7 @@ fc_agc(
   biome = "temperate",
   output.all = TRUE,
   nsg = NULL,
+  height_timber = NULL,
   rich_output = FALSE
 )
 }
@@ -21,7 +22,8 @@ fc_agc(
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{height}{tree height in metres}
+\item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
+for WCC protocol compliance.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
@@ -33,6 +35,9 @@ fc_agc(
 
 \item{nsg}{nominal specific gravity. Optionally specified, else will use that
 given by the WCC}
+
+\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
+for broadleaf species. If not provided, total height will be used with a warning.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,

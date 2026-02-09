@@ -403,7 +403,7 @@ sensitivity_analysis <- function(data,  methods = c("WCC", "BIOMASS", "allodb", 
 #' @export
 print.sensitivity_analysis <- function(x, ...) {
 
-  cat("------------ SENSITIVITY ANALYSIS ------------\n")
+  cat("------------------- SENSITIVITY ANALYSIS -------------------\n")
   cat("Method Choice Impact on Carbon \n\n")
 
   # Key metrics
@@ -424,7 +424,8 @@ print.sensitivity_analysis <- function(x, ...) {
               level_colors[[x$sensitivity_level]], m$cv_across_methods))
 
   # Method comparison table
-  cat("METHOD COMPARISON:\n")
+  cat(" \n")
+  cat("--- METHOD COMPARISON ---\n")
   cat("--------------------------------------------------------------------------------\n")
   cat(sprintf("%-12s %12s %12s %12s %8s\n",
               "Method", "Total (t)", "Mean/tree", "vs Ref (%)", "Rank"))
@@ -436,24 +437,24 @@ print.sensitivity_analysis <- function(x, ...) {
     cat(sprintf("%-12s %12.3f %12.3f %12s %8d\n",
                 ms$method[i], ms$total[i], ms$mean_per_tree[i], ref_diff, ms$rank[i]))
   }
-  cat("--------------------------------------------------------------------------------\n\n")
+  cat("--------------------------------------------------------------------------------\n")
+  cat(" \n")
 
   # Key statistics
-  cat("KEY STATISTICS:\n")
+  cat("--- KEY STATISTICS ---\n")
   cat(sprintf("  - CV across methods:  %.1f%%\n", m$cv_across_methods))
   cat(sprintf("  - Spread:             %.1f%%\n", m$spread_pct))
-  cat(sprintf("  - Range ratio:        %.2fx (max/min)\n\n", m$range_ratio))
+  cat(sprintf("  - Range ratio:        %.2fx (max/min)\n", m$range_ratio))
+  cat(" \n")
 
   # Interpretation
-  cat("INTERPRETATION:\n")
+  cat("--- INTERPRETATION ---\n")
   cat(strwrap(x$interpretation, width = 78, prefix = "  "), sep = "\n")
-  cat("\n")
+  cat(" \n")
 
   # Recommendation
-  cat("RECOMMENDATION:\n")
+  cat("--- RECOMMENDATION ---\n")
   cat(strwrap(x$recommendation, width = 78, prefix = "  "), sep = "\n")
-  cat("\n")
-  cat("================================================================================\n")
 
   invisible(x)
 }
@@ -906,15 +907,17 @@ bootstrap_sensitivity <- function(data,
 #' @export
 print.bootstrap_sensitivity <- function(x, ...) {
 
-  cat("-------- BOOTSTRAP SENSITIVITY ANALYSIS: Measurement Uncertainty --------)\n")
+  cat("------------------- BOOTSTRAP SENSITIVITY ANALYSIS: Measurement Uncertainty -------------------\n")
 
   cat(sprintf("Trees analyzed:       %d\n", x$n_trees))
   cat(sprintf("Methods compared:     %s\n", paste(x$methods, collapse = ", ")))
   cat(sprintf("Bootstrap iterations: %d (%d successful)\n", x$n_boot, x$n_successful))
-  cat(sprintf("Measurement error:    DBH CV = %.1f%%, Height CV = %.1f%%\n\n",
+  cat(sprintf("Measurement error:    DBH CV = %.1f%%, Height CV = %.1f%%\n",
               100 * x$dbh_cv, 100 * x$height_cv))
+  cat(" \n")
 
-  cat("--- SENSITIVITY METRICS WITH CONFIDENCE INTERVALS ---\n\n")
+  cat("--- SENSITIVITY METRICS WITH CONFIDENCE INTERVALS ---\n")
+  cat(" \n")
 
   cat(sprintf("CV across methods:\n"))
   cat(sprintf("  Point estimate:     %.1f%%\n", x$cv_observed))
@@ -928,7 +931,8 @@ print.bootstrap_sensitivity <- function(x, ...) {
 
   cat(sprintf("Spread (%% of mean):\n"))
   cat(sprintf("  Point estimate:     %.1f%%\n", x$spread_pct_observed))
-  cat(sprintf("  95%% CI:             [%.1f%%, %.1f%%]\n\n", x$spread_pct_ci[1], x$spread_pct_ci[2]))
+  cat(sprintf("  95%% CI:             [%.1f%%, %.1f%%]\n", x$spread_pct_ci[1], x$spread_pct_ci[2]))
+  cat(" \n")
 
   cat("--- INTERPRETATION ---\n")
   cat(strwrap(x$interpretation, width = 78, prefix = "  "), sep = "\n")

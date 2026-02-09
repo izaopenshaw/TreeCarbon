@@ -30,7 +30,19 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #' carbon/biomass estimates using four different allometric methods: WCC, BIOMASS,
 #' allodb, and Bunce. Enables comparison across methods.
 #'
-#'   When \code{rich_output = TRUE}, returns a comprehensive result object
+#'   **Required packages**: This function requires the optional packages
+#'   \code{BIOMASS} and \code{allodb} to be installed. Install with:
+#'   \code{install.packages(c("BIOMASS", "allodb"))}
+#'
+#'   If you only need specific methods, use the individual functions:
+#'   \itemize{
+#'     \item WCC: \code{fc_agc()} or \code{fc_agc_error()} (no additional packages)
+#'     \item Bunce: \code{Bunce()} (no additional packages)
+#'     \item BIOMASS: \code{BIOMASS()} (requires BIOMASS package)
+#'     \item allodb: \code{allodb()} (requires allodb package)
+#'   }
+#'
+#'   When \code{rich_output = TRUE}, returns a result object
 #'   including method metadata, assumptions, validity warnings for each method,
 #'   and uncertainty
 #'
@@ -38,7 +50,13 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #' @param genus First part of species binomial
 #' @param species Second part of species binomial
 #' @param dbh diameter at breast height in centimetres
-#' @param height in metres
+#' @param height in metres (total height). For broadleaf species, WCC protocol
+#'   requires timber height (height to first branch). If \code{height_timber} is
+#'   not provided, it will be estimated from total height using a ratio of 0.85.
+#'   Other methods (BIOMASS, allodb, Bunce) use total height.
+#' @param height_timber timber height in metres (height to first branch or merchantable top).
+#'   Required for accurate WCC protocol compliance for broadleaf species. If not provided
+#'   for broadleaves, will be estimated from total height with a warning.
 #' @param type either 'broadleaf' or 'conifer'
 #' @param method method of converting biomass to carbon. Either 'Thomas' or
 #' 'IPCC2' has the error associated and "Matthews1", "Matthews2" or "IPCC1" do not.
@@ -74,12 +92,21 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #'  Woodland: I. Girth and height as Parameters for the Estimation of Tree Dry
 #'  Weight" (1968)
 #' @examples
-#' # Standard output
+#' \dontrun{
+#' # Standard output (requires BIOMASS and allodb packages)
 #' allometries("Quercus", "robur", 20, 10)
 #'
 #' # Rich output with metadata for all methods
 #' result <- allometries("Quercus", "robur", 30, 15, rich_output = TRUE)
 #' print(result)
+#' }
+#'
+#' # If packages are not installed, use individual methods:
+#' # WCC (no additional packages required)
+#' fc_agc("Oak", dbh = 20, height = 10, type = "broadleaf")
+#'
+#' # Bunce (no additional packages required)
+#' Bunce("Oak", dbh = 20)
 #' @importFrom utils data
 #' @export
 #'
@@ -87,7 +114,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
                         returnv = "AGC", region = "Europe", biome = "temperate",
                         coords = c(-0.088837,51.071610), re_dbh = 0.05,
                         re_h = 0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
-                        checkTaxo = FALSE, rich_output = FALSE){
+                        height_timber = NULL, checkTaxo = FALSE, rich_output = FALSE){
 
   # ==== Input checks ====
   if (!is.character(genus) || !is.character(species))
@@ -98,6 +125,14 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 
   if (!is.numeric(height) || any(height < 0, na.rm = TRUE))
     stop("height must be numeric and positive")
+
+  # Check height_timber if provided
+  if (!is.null(height_timber)) {
+    if (!is.numeric(height_timber) || any(height_timber < 0, na.rm = TRUE))
+      stop("height_timber must be numeric and positive")
+    if (length(height_timber) != length(height))
+      stop("height_timber must have the same length as height")
+  }
 
   if (!is.numeric(coords) || length(coords) != 2) {
     stop("coords must be a numeric vector of length 2 (longitude, latitude).")}
@@ -120,6 +155,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   #### Check spelling ####
   modified_names <- FALSE
   if(checkTaxo){
+    # BIOMASS package already checked above, safe to use here
     correct <- BIOMASS::correctTaxo(genus = genus, species = species, useCache = TRUE)
     modified_names <- any(correct$nameModified == "TRUE", na.rm = TRUE)
     if (modified_names) {
@@ -139,12 +175,32 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   #### Woodland Carbon Code ####
   name <- paste(genus, species)
 
+  # Determine height_timber for WCC (for broadleaves)
+  # If not provided, estimate from total height using average ratio
+  # Average timber:total height ratio for UK broadleaves is approximately 0.85
+  # This is an approximation - actual ratio varies by species, age, and site conditions
+  wcc_height_timber <- height_timber
+  if (is.null(wcc_height_timber)) {
+    # Estimate timber height for broadleaves if type is known
+    # Use average ratio of 0.85 (timber height is typically 85% of total height for broadleaves)
+    estimated_timber_ratio <- 0.85
+    wcc_height_timber <- height * estimated_timber_ratio
+    # Only apply to broadleaves (will be filtered in fc_agc functions)
+    if (any(type == "broadleaf", na.rm = TRUE)) {
+      warning("Timber height not provided for broadleaf species. Estimated from total height using ratio of 0.85. ",
+              "For accurate WCC protocol compliance and method comparison, measure and provide timber height (height to first branch). ",
+              "Actual timber:total height ratios vary by species (typically 0.75-0.95).")
+    }
+  }
+
   if(method %in% c("Thomas", "IPCC2")){ # These methods contain errors for biomass conversion
     WCC <- suppressWarnings(fc_agc_error(name, dbh, height, type, method,
-                                         biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg))
+                                         biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg,
+                                         height_timber = wcc_height_timber))
   } else if((method %in% c("Matthews1", "Matthews2", "IPCC1"))) {
     WCC <- suppressWarnings(fc_agc(name, dbh, height, type,
-                                   method, output.all = TRUE))
+                                   method, output.all = TRUE,
+                                   height_timber = wcc_height_timber))
   } else {
     stop("Invalid method specified. Choose from 'Thomas', 'IPCC2', 'Matthews1',
          'Matthews2', or 'IPCC1'.")
@@ -270,6 +326,19 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
         coords = coords
       ),
 
+      # Methodological notes
+      methodological_notes = list(
+        height_measurement = if (any(type0 == "broadleaf", na.rm = TRUE)) {
+          if (is.null(height_timber)) {
+            "WCC method for broadleaves requires timber height (height to first branch) for tariff calculations. Timber height was estimated from total height using a ratio of 0.85. For accurate WCC protocol compliance and fair method comparison, measure and provide timber height. Other methods (BIOMASS, allodb, Bunce) use total height."
+          } else {
+            "WCC method for broadleaves uses timber height (height to first branch) for tariff calculations, while other methods use total height. This methodological difference may cause WCC estimates to differ from other methods even for the same tree."
+          }
+        } else {
+          "All methods use total height measurements."
+        }
+      ),
+
       # Summary stats
       n_trees = length(dbh),
       return_type = returnv
@@ -288,13 +357,14 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
 #' @param ... Additional arguments (unused)
 #' @export
 print.allometries_rich_result <- function(x, ...) {
-  cat("------------- MULTI-METHOD ALLOMETRY COMPARISON RESULTS -------------\n")
+  cat("------------------- MULTI-METHOD ALLOMETRY COMPARISON RESULTS -------------------\n")
 
   cat(sprintf("Trees analysed: %d\n", x$n_trees))
   cat(sprintf("Output type: %s\n", x$return_type))
   cat(sprintf("Species: %s %s\n", x$inputs$genus[1], x$inputs$species[1]))
+  cat(" \n")
 
-  cat("ESTIMATES BY METHOD\n")
+  cat("--- ESTIMATES BY METHOD ---\n")
 
   for (m_name in names(x$methods)) {
     m <- x$methods[[m_name]]
@@ -315,7 +385,17 @@ print.allometries_rich_result <- function(x, ...) {
     }
   }
 
-  cat(" ASSUMPTIONS BY METHOD \n")
+  # Display methodological notes
+  if (!is.null(x$methodological_notes) &&
+      !is.null(x$methodological_notes$height_measurement)) {
+    cat(" \n")
+    cat("--- METHODOLOGICAL NOTES ---\n")
+    cat(x$methodological_notes$height_measurement, "\n")
+  }
+
+  cat(" \n")
+  cat("--- ASSUMPTIONS BY METHOD ---\n")
+  cat(" \n")
 
   for (m_name in names(x$methods)) {
     m <- x$methods[[m_name]]
@@ -1371,7 +1451,7 @@ compare_methods <- function(results_df, returnv = "AGC") {
 
 
 #'
-#' @title Comprehensive comparison of allometric methods
+#' @title Comparison of allometric methods
 #' @description Compares different allometric methods (WCC, BIOMASS, allodb, Bunce)
 #' providing a detailed side-by-side comparison table with estimates, uncertainty,
 #' percent differences, extrapolation flags, and method assumptions.
@@ -1830,7 +1910,8 @@ compare_allometries <- function(df,
 #' @export
 print.allometry_comparison <- function(x, ...) {
 
-  cat("\n=== Allometric Method Comparison ===\n\n")
+  cat("\n------------------- ALLOMETRIC METHOD COMPARISON -------------------\n")
+  cat(" \n")
 
   ref <- attr(x, "reference_method")
   ret <- attr(x, "return_type")
@@ -1850,20 +1931,23 @@ print.allometry_comparison <- function(x, ...) {
 
   print.data.frame(x[, display_cols], row.names = FALSE)
 
-  cat("\n--- Summary Statistics ---\n")
+  cat(" \n")
+  cat("--- Summary Statistics ---\n")
   cat(sprintf("CV across methods: %.2f%%\n", attr(x, "cv_across_methods")))
   cat(sprintf("Range: %.4f to %.4f (spread: %.4f)\n",
               attr(x, "range_min"), attr(x, "range_max"), attr(x, "spread")))
   cat(sprintf("Agreement: %s\n", attr(x, "agreement_summary")))
 
-  cat("\n--- Citations ---\n")
+  cat(" \n")
+  cat("--- Citations ---\n")
   unique_methods <- unique(x$method)
   for (m in unique_methods) {
     reference <- x$reference[x$method == m][1]
     cat(sprintf("  %s: %s\n", m, reference))
   }
 
-  cat("\n--- Validity Warnings ---\n")
+  cat(" \n")
+  cat("--- Validity Warnings ---\n")
   for (m in unique_methods) {
     warning_msg <- x$validity_warning[x$method == m][1]
     if (warning_msg != "None") {
@@ -1885,7 +1969,8 @@ print.allometry_comparison <- function(x, ...) {
 #' @export
 summary.allometry_comparison <- function(object, ...) {
 
-  cat("\n====== ALLOMETRIC COMPARISON SUMMARY ======\n\n")
+  cat("\n------------------- ALLOMETRIC COMPARISON SUMMARY -------------------\n")
+  cat(" \n")
 
   ref <- attr(object, "reference_method")
   ret <- attr(object, "return_type")
@@ -1976,204 +2061,5 @@ summary.allometry_comparison <- function(object, ...) {
 }
 
 
-#############################################################################
-#                   STANDARDIZED RICH RETURN STRUCTURE                      #
-#############################################################################
 
-#' @title Create a rich allometry result object
-#' @description Creates a standardized result object that includes the estimate,
-#'   method metadata, validity warnings, flags, and uncertainty information.
-#'   This structure ensures assumptions and limitations are "impossible to miss".
-#' @param value Numeric. The estimated value (biomass, carbon, etc.)
-#' @param method Character. The method identifier ("WCC", "BIOMASS", "allodb", "Bunce")
-#' @param measure Character. What was measured ("AGB", "AGC", "CO2e", "volume", etc.)
-#' @param unit Character. Unit of measurement ("t", "kg", "m3", etc.)
-#' @param uncertainty Numeric or NULL. Standard deviation/error of the estimate
-#' @param ci_low Numeric or NULL. Lower confidence interval bound
-#' @param ci_high Numeric or NULL. Upper confidence interval bound
-#' @param validity_warnings Character vector. Any validity warnings generated
-#' @param flags Character vector. Flags for extrapolation, defaults used, etc.
-#' @param inputs Named list. The input values used (dbh, height, species, etc.)
-#' @return An object of class "allometry_result" with standardized structure
-#' @examples
-#' # Internal use - creates rich result for downstream functions
-#' result <- create_allometry_result(
-#'   value = 1.5,
-#'   method = "WCC",
-#'   measure = "AGC",
-#'   unit = "t",
-#'   uncertainty = 0.15,
-#'   inputs = list(dbh = 30, height = 15, species = "Quercus robur")
-#' )
-#' print(result)
-#' @export
-create_allometry_result <- function(value, method, measure, unit,
-                                    uncertainty = NULL,
-                                    ci_low = NULL, ci_high = NULL,
-                                    validity_warnings = character(),
-                                    flags = character(),
-                                    inputs = list()) {
-
-  # Get method metadata
-
-  meta <- get_method_metadata(method)
-
-  # Calculate CI if we have uncertainty but not explicit CI
-  if (!is.null(uncertainty) && is.null(ci_low)) {
-    ci_low <- value - 1.96 * uncertainty
-    ci_high <- value + 1.96 * uncertainty
-  }
-
-  # Build the result object
-  result <- list(
-    # === Core estimate ===
-    value = value,
-    measure = measure,
-    unit = unit,
-
-    # === Method information ===
-    method = method,
-    method_full_name = meta$full_name,
-    reference = meta$reference,
-    reference_short = meta$reference_short,
-    doi = meta$doi,
-    source_type = meta$source_type,
-    region = meta$region,
-    biome = paste(meta$biome, collapse = "; "),
-
-    # === Assumptions (critical!) ===
-    assumptions = meta$assumptions,
-
-    # === Uncertainty ===
-    uncertainty = uncertainty,
-    uncertainty_method = meta$uncertainty_method,
-    ci_low = ci_low,
-    ci_high = ci_high,
-    ci_level = if (!is.null(ci_low)) 0.95 else NA,
-
-    # === Validity and flags ===
-    validity_warnings = if (length(validity_warnings) > 0) validity_warnings else "None",
-    flags = if (length(flags) > 0) flags else "None",
-
-    # === Valid ranges ===
-    valid_dbh_range = meta$dbh_range,
-    valid_height_range = meta$height_range,
-    height_required = meta$height_required,
-    species_specific = meta$species_specific,
-    wood_density_required = meta$wood_density_required,
-
-    # === Inputs used ===
-    inputs = inputs
-  )
-
-  class(result) <- c("allometry_result", "list")
-  return(result)
-}
-
-#' @title Print method for allometry_result
-#' @description Displays the result with assumptions prominently shown
-#' @param x An allometry_result object
-#' @param ... Additional arguments (unused)
-#' @export
-print.allometry_result <- function(x, ...) {
-
-  cat("------------------- ALLOMETRY RESULT ------------------- \n")
-
-  # Main estimate
-  cat(sprintf("ESTIMATE: %.4f %s (%s)\n", x$value, x$unit, x$measure))
-  if (!is.null(x$uncertainty) && !is.na(x$uncertainty)) {
-    cat(sprintf("UNCERTAINTY: +/- %.4f %s (SD)\n", x$uncertainty, x$unit))
-  }
-  if (!is.null(x$ci_low) && !is.na(x$ci_low)) {
-    cat(sprintf("95%% CI: [%.4f, %.4f] %s\n", x$ci_low, x$ci_high, x$unit))
-  }
-
-  cat(" METHOD INFORMATION \n")
-  cat(sprintf("Method: %s\n", x$method_full_name))
-  cat(sprintf("Reference: %s\n", x$reference_short))
-  cat(sprintf("Source: %s\n", x$source_type))
-  cat(sprintf("Region: %s | Biome: %s\n", x$region, x$biome))
-
-  cat(" ASSUMPTIONS ")
-  for (i in seq_along(x$assumptions)) {
-    cat(sprintf("  %d. %s\n", i, x$assumptions[i]))
-  }
-
-  cat(" VALIDITY & FLAGS \n")
-  cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", x$valid_dbh_range[1], x$valid_dbh_range[2]))
-  if (!all(is.na(x$valid_height_range))) {
-    cat(sprintf("Valid height range: %.0f - %.0f m\n", x$valid_height_range[1], x$valid_height_range[2]))
-  }
-  cat(sprintf("Height required: %s\n", ifelse(x$height_required, "YES", "No")))
-
-  if (any(x$validity_warnings != "None")) {
-    cat("\n*** WARNINGS ***\n")
-    for (w in x$validity_warnings) {
-      cat(sprintf("  ! %s\n", w))
-    }
-  }
-
-  if (any(x$flags != "None")) {
-    cat("\nFLAGS:\n")
-    for (f in x$flags) {
-      cat(sprintf("  - %s\n", f))
-    }
-  }
-
-  cat("REFERENCE:\n")
-  cat(sprintf("  %s\n", x$reference))
-  if (!is.na(x$doi)) {
-    cat(sprintf("  DOI: https://doi.org/%s\n", x$doi))
-  }
-  cat("================================================================================\n\n")
-
-  invisible(x)
-}
-
-#' @title Convert allometry_result to data frame
-#' @description Converts the result object to a single-row data frame for easy
-#'   combination with other results
-#' @param x An allometry_result object
-#' @param ... Additional arguments (unused)
-#' @return A data frame with one row
-#' @export
-as.data.frame.allometry_result <- function(x, ...) {
-  data.frame(
-    value = x$value,
-    measure = x$measure,
-    unit = x$unit,
-    method = x$method,
-    method_full_name = x$method_full_name,
-    reference_short = x$reference_short,
-    source_type = x$source_type,
-    region = x$region,
-    uncertainty = ifelse(is.null(x$uncertainty), NA, x$uncertainty),
-    ci_low = ifelse(is.null(x$ci_low), NA, x$ci_low),
-    ci_high = ifelse(is.null(x$ci_high), NA, x$ci_high),
-    validity_warnings = paste(x$validity_warnings, collapse = "; "),
-    flags = paste(x$flags, collapse = "; "),
-    assumptions = paste(x$assumptions, collapse = " | "),
-    height_required = x$height_required,
-    stringsAsFactors = FALSE
-  )
-}
-
-#' @title Summary method for allometry_result
-#' @description Quick summary of the result
-#' @param object An allometry_result object
-#' @param ... Additional arguments (unused)
-#' @export
-summary.allometry_result <- function(object, ...) {
-  cat(sprintf("%s estimate using %s: %.4f %s",
-              object$measure, object$method, object$value, object$unit))
-  if (!is.null(object$uncertainty)) {
-    cat(sprintf(" (+/- %.4f)", object$uncertainty))
-  }
-  cat("\n")
-  cat(sprintf("Source: %s (%s)\n", object$reference_short, object$source_type))
-  if (any(object$validity_warnings != "None")) {
-    cat(sprintf("WARNINGS: %s\n", paste(object$validity_warnings, collapse = "; ")))
-  }
-  invisible(object)
-}
 

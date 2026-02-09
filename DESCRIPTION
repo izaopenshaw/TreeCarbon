@@ -48,8 +48,8 @@ Imports:
     utils,
     stats,
     remotes,
+    ggplot2,
     allodb,
     BIOMASS,
-    ggplot2,
     scales
 LazyData: true

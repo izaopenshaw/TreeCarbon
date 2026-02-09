@@ -183,11 +183,12 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
 ############# Broadleaf tree tariff number (WCC Eq 2) ##########################
 #'
 #' @title Carbon tariff number for broadleaf tree
-#' @description Use dbh and tree height to derive the tariff number of each
-#' sample tree. species-specific estimates of a1-a4 are found in the
-#' R data file, 'tariff_broaddf'.
+#' @description Use dbh and timber height (height to first branch or merchantable top)
+#' to derive the tariff number of each sample tree. Species-specific estimates of
+#' a1-a4 are found in the R data file, 'tariff_broaddf'. According to WCC protocol,
+#' broadleaf species require timber height, not total height, for tariff calculations.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param height tree height in metres
+#' @param height_timber timber height in metres (height to first branch or merchantable top)
 #' @param dbh diameter at breast height in centimetres
 #' @param spcode species code (single)
 #' @param re_h relative error of height measurement (optional)
@@ -196,25 +197,25 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
 #' @return  tariff number or if relative errors are provided returns a list of
 #' tariff number and an estimate for sigma
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
+#' Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 4.
 #' @importFrom utils data
-#' @examples broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-#' broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, re_dbh = 0.05, re_h = 0.1)
-#' broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, re_dbh = 0.05, re_h = 0.1)
+#' @examples broadleaf_tariff(spcode = 'OK', height_timber = 20, dbh = 75)
+#' broadleaf_tariff(spcode = "OK", height_timber = 20, dbh = 15, re_dbh = 0.05, re_h = 0.1)
+#' broadleaf_tariff(spcode = "OK", height_timber = 19, dbh = 15, re_dbh = 0.05, re_h = 0.1)
 #' @export
 #' @aliases broadleaf_tariff
 #'
-broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re = 0.025) {
+broadleaf_tariff <- function(spcode, height_timber, dbh, re_dbh = NULL, re_h = 0.1, re = 0.025) {
 
   # Check inputs are numeric and positive
-  if (!is.numeric(height) | any(height < 0, na.rm = TRUE) |
+  if (!is.numeric(height_timber) | any(height_timber < 0, na.rm = TRUE) |
       !is.numeric(dbh) | any(dbh < 0, na.rm = TRUE)){
-    stop("dbh must be numeric and positive")
+    stop("dbh and height_timber must be numeric and positive")
   }
 
   # Check input lengths are the same
-  if (!(length(spcode) == length(height) && length(height) == length(dbh))) {
-    stop("Input vectors for spcode, height & dbh must have the same length.")
+  if (!(length(spcode) == length(height_timber) && length(height_timber) == length(dbh))) {
+    stop("Input vectors for spcode, height_timber & dbh must have the same length.")
   }
 
   # Lookup coefficients for tariff equation by spcode in tariff_broaddf
@@ -244,7 +245,8 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re 
   }
 
   # Calculate tariff number using coefficients stored in tb
-  tariff <- tb$a1 + (tb$a2 * height) + (tb$a3 * dbh) + (tb$a4 * dbh * height)
+  # Note: Uses timber height (height to first branch) as per WCC protocol
+  tariff <- tb$a1 + (tb$a2 * height_timber) + (tb$a3 * dbh) + (tb$a4 * dbh * height_timber)
 
   # If re_h is specified and not null, then calculate the error
   if (!is.null(re_dbh)) {
@@ -259,9 +261,9 @@ broadleaf_tariff <- function(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re 
 
     # Propagate the error using error_product formula
     sigma <- sqrt((re * tb$a1)^2 +
-                    error_product(tb$a2, re*tb$a2, height, re_h*height) +
+                    error_product(tb$a2, re*tb$a2, height_timber, re_h*height_timber) +
                     error_product(tb$a3, re*tb$a3, dbh, re_dbh*dbh) +
-                    error_product(tb$a4, re*tb$a4, dbh, re_dbh*dbh, height, re_h*height)
+                    error_product(tb$a4, re*tb$a4, dbh, re_dbh*dbh, height_timber, re_h*height_timber)
     )
 
     return(data.frame(tariff = tariff, sigma = sigma))
@@ -356,12 +358,15 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
 #' @title Calculate tariff numbers for list of trees
 #' @description Depending on inputs, calcualte the tariff number using either
 #' stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
+#' For broadleaf species, uses timber height (height_timber) if provided,
+#' otherwise uses total height. WCC protocol requires timber height for broadleaves.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param spcode species code (short)
-#' @param height tree height in metres
+#' @param height tree height in metres (total height for conifers, used as fallback for broadleaves)
 #' @param re_h relative error of height measurement (optional)
 #' @param dbh diameter at breast height in centimetres
 #' @param type conifer or broadleaf
+#' @param height_timber timber height in metres (height to first branch, for broadleaves only)
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients (default = 0.025)
 #' @return either tariff number or if re_h is provided, then returns a list
@@ -377,7 +382,7 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
 #' @aliases tariffs
 #'
 tariffs <- function(spcode, height, dbh = NULL, type = NULL,
-                    re_h = NULL, re_dbh = 0.05, re = 0.025) {
+                    height_timber = NULL, re_h = NULL, re_dbh = 0.05, re = 0.025) {
 
   # Check spcode is a character
   if (!is.character(spcode)) warning("spcode must be characters")
@@ -387,6 +392,12 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
   # Check that input lengths are consistent
   if (!(length(spcode) == n || length(dbh) == n )) {
     stop("Input vectors (spcode, height, dbh) must have the same length.")
+  }
+
+  if (!is.null(height_timber)) {
+    if (is.numeric(height_timber)) {
+      stop("height_timber be numeric")
+    }
   }
 
   # Lookup type (conifer or broadleaf classification) using lookup_df
@@ -440,8 +451,15 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
     results <- process_result(tariff_output, conifer_indices, results, error)
   }
   if (any(broadleaf_indices, na.rm = TRUE)) {
+    # For broadleaves, use height_timber if provided, otherwise use height
+    # Note: WCC protocol requires timber height for broadleaves
+    broadleaf_height <- if (!is.null(height_timber)) {
+      height_timber[broadleaf_indices]
+    } else {
+      height[broadleaf_indices]
+    }
     tariff_output <- suppressWarnings(
-      broadleaf_tariff(spcode[broadleaf_indices], height[broadleaf_indices],
+      broadleaf_tariff(spcode[broadleaf_indices], broadleaf_height,
                        dbh[broadleaf_indices], re_h, re_dbh, re))
     results <- process_result(tariff_output, broadleaf_indices, results, error)
   }
@@ -453,7 +471,13 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
 
   # Handle Mixed species Case
   if (any(mixed_indices, na.rm = TRUE)) {
-    broadleaf_values <- broadleaf_tariff(rep("XB", sum(mixed_indices)), height[mixed_indices], dbh[mixed_indices], re_h, re_dbh, re)
+    # For mixed species, use height_timber for broadleaf component if provided
+    mixed_height_timber <- if (!is.null(height_timber)) {
+      height_timber[mixed_indices]
+    } else {
+      height[mixed_indices]
+    }
+    broadleaf_values <- broadleaf_tariff(rep("XB", sum(mixed_indices)), mixed_height_timber, dbh[mixed_indices], re_h, re_dbh, re)
     conifer_values <- conifer_tariff(rep("XC", sum(mixed_indices)), height[mixed_indices], dbh[mixed_indices], re_h, re_dbh, re)
 
     if (error) {
@@ -684,6 +708,7 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
     stop("Argument 're' must be a positive numeric")
   }
 
+  # Access lazy-loaded data directly (LazyData: true handles loading automatically)
   # Vectorized lookup for species codes
   id <- match(spcode, crown_biomasdf$Code)
 

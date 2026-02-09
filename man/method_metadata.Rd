@@ -36,9 +36,13 @@ A dataset containing comprehensive metadata for each allometric method
 supported by the TreeCarbon package. Includes references, valid ranges,
 regional applicability, and source information.
 }
+\details{
+This dataset is user-accessible and can be used to programmatically inspect
+method properties, filter methods by characteristics, or understand method
+applicability. The data is lazy-loaded and can be accessed directly by name.
+}
 \examples{
-# View all method metadata
-data(method_metadata)
+# Access the data directly (lazy-loaded automatically)
 method_metadata
 
 # Get metadata for a specific method
@@ -47,8 +51,12 @@ method_metadata[method_metadata$method == "WCC", ]
 # Check which methods require height
 method_metadata[method_metadata$height_required, c("method", "full_name")]
 
+# Find methods applicable to temperate biome
+method_metadata[grepl("temperate", method_metadata$biome), ]
+
 }
 \seealso{
-\code{\link{method_assumptions}} for detailed assumptions per method
+\code{\link{method_assumptions}} for detailed assumptions per method,
+\code{\link{get_method_metadata}} for a function-based API to access this data
 }
 \keyword{datasets}

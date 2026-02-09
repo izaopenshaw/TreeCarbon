@@ -287,7 +287,7 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
 #' @param ... Additional arguments (unused)
 #' @export
 print.biomass2c_result <- function(x, ...) {
-  cat(" --------- BIOMASS TO CARBON CONVERSION RESULT ---------\n")
+  cat("------------------- BIOMASS TO CARBON CONVERSION RESULT -------------------\n")
 
   cat(sprintf("CARBON ESTIMATE: %.4f (same units as biomass input)\n", sum(x$carbon)))
   if (!is.null(x$uncertainty)) {
@@ -295,19 +295,22 @@ print.biomass2c_result <- function(x, ...) {
   }
   cat(sprintf("CARBON FRACTION USED: %.3f (%.1f%%)\n", mean(x$carbon_fraction_used),
               mean(x$carbon_fraction_used) * 100))
+  cat(" \n")
 
-  cat("CONVERSION METHOD\n")
+  cat("--- CONVERSION METHOD ---\n")
   cat(sprintf("Method: %s\n", x$conversion_method))
   cat(sprintf("Reference: %s\n", x$reference))
   cat(sprintf("Source: %s\n", x$source_type))
+  cat(" \n")
 
-  cat(" ASSUMPTIONS \n")
+  cat("--- ASSUMPTIONS ---\n")
   for (i in seq_along(x$assumptions)) {
     cat(sprintf("  %d. %s\n", i, x$assumptions[i]))
   }
+  cat(" \n")
 
   if (any(x$flags != "None")) {
-    cat("\nFLAGS:\n")
+    cat("--- FLAGS ---\n")
     for (f in x$flags) {
       cat(sprintf("  - %s\n", f))
     }

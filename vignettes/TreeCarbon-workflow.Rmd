@@ -824,6 +824,368 @@ cat(sprintf("\nTotal CO2 equivalent: %.2f tonnes\n", sum(results$CO2e_t, na.rm =
 
 ---
 
+# Part 8: Working with Real Data
+
+## 8.1 Reading Data from CSV
+
+```{r read-csv}
+# Example: Reading tree data from CSV file
+# Your CSV should have columns: name (or genus/species), dbh, height, type
+
+# Example data structure:
+example_data <- data.frame(
+  name = c("Oak", "Beech", "Ash"),
+  dbh = c(45, 38, 52),
+  height = c(18, 22, 24),
+  type = rep("broadleaf", 3)
+)
+
+# Uncomment to read from file:
+# tree_data <- read.csv("your_trees.csv", stringsAsFactors = FALSE)
+
+# Process the data
+results <- fc_agc(
+  name = example_data$name,
+  dbh = example_data$dbh,
+  height = example_data$height,
+  type = example_data$type
+)
+
+print(results)
+```
+
+## 8.2 Handling Missing Data
+
+```{r missing-data}
+# Example with missing values
+trees_with_na <- data.frame(
+  name = c("Oak", "Beech", NA, "Ash"),
+  dbh = c(45, 38, 52, NA),
+  height = c(18, 22, 24, 15),
+  type = c("broadleaf", "broadleaf", "broadleaf", "broadleaf")
+)
+
+# TreeCarbon handles NA values gracefully
+results_na <- fc_agc(
+  name = trees_with_na$name,
+  dbh = trees_with_na$dbh,
+  height = trees_with_na$height,
+  type = trees_with_na$type
+)
+
+cat("=== Results with Missing Data ===\n")
+cat("Note: Trees with missing data will have NA results\n")
+print(results_na[, c("name", "dbh", "height", "AGC_WCC_t")])
+```
+
+## 8.3 Data Validation
+
+```{r data-validation}
+# Check data before processing
+validate_data <- function(trees) {
+  issues <- character()
+  
+  if (any(trees$dbh <= 0, na.rm = TRUE)) {
+    issues <- c(issues, "Some DBH values are <= 0")
+  }
+  if (any(trees$height <= 0, na.rm = TRUE)) {
+    issues <- c(issues, "Some height values are <= 0")
+  }
+  if (any(trees$dbh > 200, na.rm = TRUE)) {
+    issues <- c(issues, "Some DBH values are very large (>200 cm)")
+  }
+  if (any(trees$height > 60, na.rm = TRUE)) {
+    issues <- c(issues, "Some height values are very large (>60 m)")
+  }
+  
+  if (length(issues) > 0) {
+    warning("Data validation issues found:\n", paste(issues, collapse = "\n"))
+  } else {
+    cat("Data validation passed\n")
+  }
+}
+
+# Validate example data
+validate_data(trees)
+```
+
+---
+
+# Part 9: Advanced Topics
+
+## 9.1 Custom Wood Density
+
+You can specify your own wood density instead of using WCC defaults:
+
+```{r custom-wood-density}
+# Get wood density from BIOMASS package
+if (requireNamespace("BIOMASS", quietly = TRUE)) {
+  wd <- BIOMASS::getWoodDensity("Quercus", "robur", region = "Europe")
+  
+  # Use custom NSG (Nominal Specific Gravity)
+  result_custom <- fc_agc(
+    name = "Oak",
+    dbh = 45,
+    height = 18,
+    type = "broadleaf",
+    nsg = wd$meanWD  # Custom wood density
+  )
+  
+  cat("=== Using Custom Wood Density ===\n")
+  cat(sprintf("NSG from BIOMASS: %.3f\n", wd$meanWD))
+  cat(sprintf("Carbon: %.3f tonnes\n", result_custom$AGC_WCC_t))
+}
+```
+
+## 9.2 Seedlings and Saplings
+
+For trees with DBH < 7 cm or height < 10 m, use the seedling/sapling model:
+
+```{r seedlings-saplings}
+# Seedling/sapling carbon (height in cm for this function)
+seedling_result <- sap_seedling2C(
+  height = 50,      # cm (not metres!)
+  type = "broadleaf",
+  re_h = 0.05,
+  re = 0.025
+)
+
+cat("=== Seedling/Sapling Carbon ===\n")
+cat(sprintf("Carbon: %.4f ± %.4f t C\n",
+            seedling_result$carbon, seedling_result$sd))
+```
+
+## 9.3 Carbon to CO2 Conversion
+
+Convert carbon to CO2 equivalent:
+
+```{r co2-conversion}
+# Carbon to CO2 conversion (1 t C = 3.67 t CO2)
+carbon_t <- 1.0
+co2_t <- ctoco2e(carbon_t)
+
+cat("=== Carbon to CO2 Conversion ===\n")
+cat(sprintf("%.2f tonnes C = %.2f tonnes CO2 equivalent\n", carbon_t, co2_t))
+```
+
+## 9.4 Working with Rich Output
+
+Rich output provides comprehensive metadata:
+
+```{r rich-output-details}
+# Get rich output
+result_rich <- fc_agc(
+  name = "Oak",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf",
+  rich_output = TRUE
+)
+
+# Access individual components
+cat("=== Rich Output Components ===\n")
+cat(sprintf("Value: %.3f %s\n", result_rich$value, result_rich$unit))
+cat(sprintf("Method: %s\n", result_rich$method_full_name))
+cat(sprintf("Reference: %s\n", result_rich$reference))
+if (!is.null(result_rich$doi)) {
+  cat(sprintf("DOI: %s\n", result_rich$doi))
+}
+cat(sprintf("Region: %s\n", result_rich$region))
+cat("\nAssumptions:\n")
+for (i in seq_along(result_rich$assumptions)) {
+  cat(sprintf("  %d. %s\n", i, result_rich$assumptions[i]))
+}
+```
+
+---
+
+# Part 10: Troubleshooting and Common Issues
+
+## 10.1 Species Not Found
+
+If a species isn't in the database:
+
+```{r troubleshooting-species}
+# Unknown species - will use type-based defaults
+result_unknown <- fc_agc(
+  name = "Unknown Species",
+  dbh = 45,
+  height = 18,
+  type = "broadleaf"  # Important: specify type
+)
+
+cat("=== Unknown Species Handling ===\n")
+cat("Using type-based defaults for unknown species\n")
+print(result_unknown)
+```
+
+## 10.2 Invalid Input Ranges
+
+```{r troubleshooting-ranges}
+# Very small or large trees may trigger warnings
+result_small <- fc_agc(
+  name = "Oak",
+  dbh = 5,      # Very small - below WCC minimum
+  height = 3,   # Very small
+  type = "broadleaf"
+)
+
+# Check for warnings/flags in rich output
+result_small_rich <- fc_agc(
+  name = "Oak",
+  dbh = 5,
+  height = 3,
+  type = "broadleaf",
+  rich_output = TRUE
+)
+
+cat("=== Small Tree (may have validity warnings) ===\n")
+print(result_small_rich)
+```
+
+## 10.3 Missing Height for WCC
+
+WCC requires height. If you don't have height:
+
+```{r troubleshooting-height}
+# Option 1: Use Bunce method instead (no height needed)
+bunce_no_height <- Bunce(name = "Oak", dbh = 45)
+
+cat("=== Bunce Method (No Height Required) ===\n")
+cat(sprintf("Biomass: %.1f kg\n", bunce_no_height$biomass))
+
+# Option 2: Estimate height (not recommended for WCC)
+# WCC requires measured height for accurate carbon accounting
+```
+
+## 10.4 Package Dependencies
+
+Some methods require optional packages:
+
+```{r troubleshooting-deps}
+# Check if optional packages are available
+cat("=== Package Availability ===\n")
+cat(sprintf("BIOMASS: %s\n", requireNamespace("BIOMASS", quietly = TRUE)))
+cat(sprintf("allodb: %s\n", requireNamespace("allodb", quietly = TRUE)))
+cat(sprintf("shiny: %s\n", requireNamespace("shiny", quietly = TRUE)))
+
+# Install missing packages if needed:
+# install.packages(c("BIOMASS", "allodb", "shiny"))
+```
+
+---
+
+# Part 11: Performance Tips
+
+## 11.1 Vectorization
+
+TreeCarbon functions are vectorized - process all trees at once:
+
+```{r performance-vectorized}
+# GOOD: Vectorized (fast)
+trees <- data.frame(
+  name = rep("Oak", 100),
+  dbh = rnorm(100, 45, 5),
+  height = rnorm(100, 18, 2),
+  type = rep("broadleaf", 100)
+)
+
+system.time({
+  results <- fc_agc(
+    name = trees$name,
+    dbh = trees$dbh,
+    height = trees$height,
+    type = trees$type
+  )
+})
+
+cat("Vectorized processing: efficient for large datasets\n")
+```
+
+## 11.2 Rich Output Performance
+
+Rich output is slightly slower but provides more information:
+
+```{r performance-rich}
+# Standard output (faster)
+system.time({
+  results_std <- fc_agc(
+    name = trees$name[1:10],
+    dbh = trees$dbh[1:10],
+    height = trees$height[1:10],
+    type = trees$type[1:10],
+    rich_output = FALSE
+  )
+})
+
+# Rich output (slightly slower, more information)
+system.time({
+  results_rich <- fc_agc(
+    name = trees$name[1:10],
+    dbh = trees$dbh[1:10],
+    height = trees$height[1:10],
+    type = trees$type[1:10],
+    rich_output = TRUE
+  )
+})
+
+cat("Rich output provides metadata but is slightly slower\n")
+```
+
+---
+
+# Part 12: Exporting and Reporting
+
+## 12.1 Export Results to CSV
+
+```{r export-csv}
+# Calculate results
+results <- fc_agc(
+  name = trees$species,
+  dbh = trees$dbh,
+  height = trees$height,
+  type = trees$type,
+  output.all = TRUE
+)
+
+# Create export table
+export_table <- data.frame(
+  Species = results$name,
+  DBH_cm = results$dbh,
+  Height_m = results$height,
+  AGC_tonnes = results$AGC_WCC_t,
+  stringsAsFactors = FALSE
+)
+
+# Export (uncomment to save)
+# write.csv(export_table, "carbon_results.csv", row.names = FALSE)
+
+cat("=== Export Table ===\n")
+print(head(export_table))
+```
+
+## 12.2 Creating Reports
+
+```{r create-report}
+# Summary statistics for reporting
+summary_stats <- data.frame(
+  Metric = c("Total trees", "Total carbon (t C)", "Mean carbon (t C)",
+             "Min carbon (t C)", "Max carbon (t C)"),
+  Value = c(
+    nrow(results),
+    sum(results$AGC_WCC_t, na.rm = TRUE),
+    mean(results$AGC_WCC_t, na.rm = TRUE),
+    min(results$AGC_WCC_t, na.rm = TRUE),
+    max(results$AGC_WCC_t, na.rm = TRUE)
+  )
+)
+
+cat("=== Summary Statistics for Report ===\n")
+print(summary_stats)
+```
+
+---
+
 # References
 
 1. **Woodland Carbon Code**: UK Woodland Carbon Code (2021). Carbon Assessment 
@@ -842,6 +1204,19 @@ cat(sprintf("\nTotal CO2 equivalent: %.2f tonnes\n", sum(results$CO2e_t, na.rm =
 5. **allodb**: Gonzalez-Akre, E., et al. (2022). allodb: An R package for biomass 
    estimation at globally distributed extratropical forest plots. Methods in 
    Ecology and Evolution, 13(2), 330-338.
+
+---
+
+# Additional Resources
+
+- **Vignettes**: 
+  - `vignette("getting-started")` - Quick start guide
+  - `vignette("WCC-methods")` - Complete WCC methodology guide
+  - `vignette("uncertainty-and-comparison")` - Uncertainty and method comparison
+
+- **Example Scripts**: See `inst/examples/` for runnable R scripts
+
+- **Shiny Apps**: Use `run_shiny_app(1)` or `run_shiny_app(2)` for interactive interfaces
 
 ---
 

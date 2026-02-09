@@ -187,7 +187,7 @@ base_tree <- list(
 )
 
 # Calculate base case
-base_carbon <- fc_agc(
+base_carbon_result <- fc_agc(
   name = base_tree$name,
   dbh = base_tree$dbh,
   height = base_tree$height,
@@ -197,6 +197,13 @@ base_carbon <- fc_agc(
   biome = base_tree$biome,
   output.all = FALSE
 )
+
+# Extract carbon value from result (handles both data frame and numeric return)
+if (is.data.frame(base_carbon_result)) {
+  base_carbon <- base_carbon_result$AGC_WCC_t[1]
+} else {
+  base_carbon <- base_carbon_result[1]
+}
 
 # Base case tree
 base_case_info <- data.frame(
@@ -214,9 +221,10 @@ sensitivity_results <- data.frame()
 # DBH sensitivity
 for (pct in variations) {
   test_dbh <- base_tree$dbh * (1 + pct/100)
-  result <- fc_agc(name = base_tree$name, dbh = test_dbh, height = base_tree$height,
-                   nsg = base_tree$nsg, type = base_tree$type,
-                   method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result_df <- fc_agc(name = base_tree$name, dbh = test_dbh, height = base_tree$height,
+                      nsg = base_tree$nsg, type = base_tree$type,
+                      method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
   pct_change <- 100 * (result - base_carbon) / base_carbon
   sensitivity_results <- rbind(sensitivity_results,
                                 data.frame(input = "DBH", pct_input = pct,
@@ -226,9 +234,10 @@ for (pct in variations) {
 # Height sensitivity
 for (pct in variations) {
   test_height <- base_tree$height * (1 + pct/100)
-  result <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_height,
-                   nsg = base_tree$nsg, type = base_tree$type,
-                   method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_height,
+                      nsg = base_tree$nsg, type = base_tree$type,
+                      method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
   pct_change <- 100 * (result - base_carbon) / base_carbon
   sensitivity_results <- rbind(sensitivity_results,
                                 data.frame(input = "Height", pct_input = pct,
@@ -238,9 +247,10 @@ for (pct in variations) {
 # Wood density sensitivity
 for (pct in variations) {
   test_nsg <- base_tree$nsg * (1 + pct/100)
-  result <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = base_tree$height,
-                   nsg = test_nsg, type = base_tree$type,
-                   method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = base_tree$height,
+                      nsg = test_nsg, type = base_tree$type,
+                      method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
   pct_change <- 100 * (result - base_carbon) / base_carbon
   sensitivity_results <- rbind(sensitivity_results,
                                 data.frame(input = "Wood Density", pct_input = pct,
@@ -288,13 +298,14 @@ cf_methods <- c("Matthews1", "IPCC1", "IPCC2", "Thomas")
 cf_results <- data.frame()
 
 for (m in cf_methods) {
-  result <- tryCatch({
+  result_df <- tryCatch({
     fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = base_tree$height,
            nsg = base_tree$nsg, type = base_tree$type, method = m,
            biome = base_tree$biome, output.all = FALSE)
   }, error = function(e) NA)
 
-  if (!is.na(result)) {
+  if (!identical(result_df, NA) && !is.null(result_df)) {
+    result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
     cf_results <- rbind(cf_results, data.frame(method = m, carbon = result))
   }
 }
@@ -317,9 +328,10 @@ height_sensitivity <- data.frame()
 # WCC (uses height)
 for (pct in c(-20, 0, 20)) {
   test_h <- base_tree$height * (1 + pct/100)
-  result <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_h,
-                   nsg = base_tree$nsg, type = base_tree$type,
-                   method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_h,
+                      nsg = base_tree$nsg, type = base_tree$type,
+                      method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
+  result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
   height_sensitivity <- rbind(height_sensitivity,
                                data.frame(method = "WCC", height_change = pct, carbon = result))
 }
@@ -330,7 +342,7 @@ for (pct in c(-20, 0, 20)) {
   result <- tryCatch({
     bunce(dbh = base_tree$dbh, name = "Oak", CVF = 0.471)$Carbon_t
   }, error = function(e) NA)
-  if (!is.na(result)) {
+  if (!is.null(result) && length(result) > 0 && !is.na(result)) {
     height_sensitivity <- rbind(height_sensitivity,
                                  data.frame(method = "Bunce", height_change = pct, carbon = result))
   }
@@ -343,7 +355,7 @@ for (pct in c(-20, 0, 20)) {
     BIOMASS(genus = "Quercus", species = "robur", dbh = base_tree$dbh,
             height = test_h, coords = wakehurst_coords)$Carbon_t
   }, error = function(e) NA)
-  if (!is.na(result)) {
+  if (!is.null(result) && length(result) > 0 && !is.na(result)) {
     height_sensitivity <- rbind(height_sensitivity,
                                  data.frame(method = "BIOMASS", height_change = pct, carbon = result))
   }

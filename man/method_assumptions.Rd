@@ -23,9 +23,13 @@ A dataset containing the key assumptions for each allometric method.
 This table has a one-to-many relationship with \code{method_metadata},
 with multiple assumptions per method.
 }
+\details{
+This dataset is user-accessible and can be used to understand the key
+assumptions underlying each allometric method. The data is lazy-loaded
+and can be accessed directly by name.
+}
 \examples{
-# View all assumptions
-data(method_assumptions)
+# Access the data directly (lazy-loaded automatically)
 method_assumptions
 
 # Get assumptions for WCC method
@@ -34,8 +38,12 @@ method_assumptions[method_assumptions$method == "WCC", ]
 # Get first assumption for each method
 method_assumptions[method_assumptions$assumption_order == 1, ]
 
+# Get all assumptions for Bunce method
+method_assumptions[method_assumptions$method == "Bunce", "assumption"]
+
 }
 \seealso{
-\code{\link{method_metadata}} for general method information
+\code{\link{method_metadata}} for general method information,
+\code{\link{get_method_metadata}} for a function-based API to access this data
 }
 \keyword{datasets}

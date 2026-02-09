@@ -34,7 +34,9 @@ An mc_uncertainty object
 }
 \description{
 A convenience wrapper that sets up Monte Carlo uncertainty analysis
-with sensible defaults for common allometric equations.
+with built in defaults for common allometric equations. The equations are pre
+-defined between the allometric methods below. Distribution is Normal and
+uses absolute measurement errors.
 }
 \examples{
 # Quick uncertainty for Bunce equation

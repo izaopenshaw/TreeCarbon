@@ -9,6 +9,7 @@ tariffs(
   height,
   dbh = NULL,
   type = NULL,
+  height_timber = NULL,
   re_h = NULL,
   re_dbh = 0.05,
   re = 0.025
@@ -17,11 +18,13 @@ tariffs(
 \arguments{
 \item{spcode}{species code (short)}
 
-\item{height}{tree height in metres}
+\item{height}{tree height in metres (total height for conifers, used as fallback for broadleaves)}
 
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{type}{conifer or broadleaf}
+
+\item{height_timber}{timber height in metres (height to first branch, for broadleaves only)}
 
 \item{re_h}{relative error of height measurement (optional)}
 
@@ -36,6 +39,8 @@ of the tariff number and uncertainty
 \description{
 Depending on inputs, calcualte the tariff number using either
 stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
+For broadleaf species, uses timber height (height_timber) if provided,
+otherwise uses total height. WCC protocol requires timber height for broadleaves.
 }
 \examples{
 tariffs(spcode = "OK", height= 10, dbh = 20)

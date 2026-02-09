@@ -63,14 +63,15 @@ An S3 object of class "mc_uncertainty" containing:
 }
 }
 \description{
-Propagates multiple sources of uncertainty through allometric fn
-using Monte Carlo simulation. Reports comprehensive uncertainty statistics
-including median, quantile intervals, and distribution shape metrics.
+Propagates uncertainty of the inputted allometric function with
+defined distribution of parameters using Monte Carlo simulation. Reports
+uncertainty statistics including median, quantile intervals, and distribution
+shape metrics.
 
 \itemize{
-\item Captures non-linear effects that first-order approximations miss
+\item Custom function and parameter distribution inputs
 \item Handles correlated inputs
-\item Reports asymmetric uncertainty (common in log-transformed allometries)
+\item Reports asymmetric uncertainty
 \item Allows decomposition of uncertainty by source
 }
 }
@@ -97,15 +98,11 @@ coefficients (from regression standard errors)
 }
 \examples{
 # Simple example: Bunce equation with measurement + parameter uncertainty
-bunce_fn <- function(dbh, a, b) {
-  exp(a + b * log(pi * dbh))
-}
+bunce_fn <- function(dbh, a, b) {exp(a + b * log(pi * dbh))}
 
-inputs <- list(
-  dbh = list(mean = 30, sd = 0.75, source = "measurement"),
-  a = list(mean = 1.868, sd = 0.047, source = "parameter"),
-  b = list(mean = 2.268, sd = 0.057, source = "parameter")
-)
+inputs <- list(dbh = list(mean = 30, sd = 0.75, source = "measurement"),
+               a = list(mean = 1.868, sd = 0.047, source = "parameter"),
+               b = list(mean = 2.268, sd = 0.057, source = "parameter"))
 
 result <- mc_uncertainty(bunce_fn, inputs, N = 1000, decompose = TRUE)
 print(result)

@@ -223,17 +223,51 @@
 #'
 #' This dataset contains coefficients for the Bunce allometric equation.
 #'
-#' @format A data frame with 4 columns:
+#' @format A data frame with 5 columns:
 #' \describe{
 #'   \item{X}{Common name of the species}
 #'   \item{spcode}{Abbreviation for the species}
 #'   \item{a}{Bunce coefficient a}
 #'   \item{b}{Bunce coefficient b}
+#'   \item{N}{Sample size (number of trees), total N across all localities from Table 6}
 #' }
 #' @source Bunce, R. G. H. "Biomass and Production of Trees in a Mixed
 #' Deciduous Woodland: I. Girth and Height as Parameters for the Estimation of
 #' Tree Dry Weight" (1968)
 "buncedf"
+
+#' Bunce CO (Confidence Limits) Lookup Table
+#'
+#' Species-specific lookup table for 95% confidence limits from Table 6 in Bunce (1968).
+#' Values are extracted from Table 6 "Combined" rows for each species and organized
+#' by DBH ranges for efficient lookup.
+#'
+#' @format A data frame with multiple rows (varies by species) and 6 columns:
+#' \describe{
+#'   \item{spcode}{Species code (LI=Lime, AH=Ash, BI=Birch, OK=Oak, SY=Sycamore, XB=Combined)}
+#'   \item{lower_dbh}{Lower bound of DBH range (cm)}
+#'   \item{upper_dbh}{Upper bound of DBH range (cm)}
+#'   \item{girth_cm}{Girth in cm (from Table 6)}
+#'   \item{co_lower_pct}{Lower 95% confidence limit as percentage}
+#'   \item{co_upper_pct}{Upper 95% confidence limit as percentage}
+#' }
+#'
+#' @source Bunce, R. G. H. (1968). Table 6. Tree dry weights (branches + trunk)
+#' calculated from regression equations, with 95% confidence limits.
+#'
+#' @details
+#' Values extracted from Table 6 "Combined" rows for each species:
+#'
+#' **Combined (XB)**: G=10,30,60,90,120,150 cm; CO=(5-5%),(2-2%),(4-4%),(6-6%),(7-7%),(8-7%)
+#' **Ash (AH)**: G=10,30,60,90 cm; CO=(11-10%),(6-6%),(10-9%),(14-12%)
+#' **Birch (BI)**: G=10,30,60,90 cm; CO=(8-7%),(5-4%),(9-8%),(12-11%)
+#' **Oak (OK)**: G=10,30,60,90,120,150 cm; CO=(9-8%),(4-4%),(6-5%),(8-7%),(10-9%),(11-10%)
+#' **Sycamore (SY)**: G=10,30,60,90 cm; CO=(12-11%),(7-6%),(12-11%),(17-14%)
+#' **Lime (LI)**: G=10,30 cm; CO=(25-20%),(14-13%)
+#'
+#' DBH ranges are created as midpoints between adjacent girth values for simplified lookup.
+#' For species with missing girth values, the fallback (XB - Combined) is used.
+"bunce_co_lookup"
 
 #' Wood Density Dataset from Zanne et al.
 #'
@@ -269,6 +303,10 @@
 #' supported by the TreeCarbon package. Includes references, valid ranges,
 #' regional applicability, and source information.
 #'
+#' This dataset is user-accessible and can be used to programmatically inspect
+#' method properties, filter methods by characteristics, or understand method
+#' applicability. The data is lazy-loaded and can be accessed directly by name.
+#'
 #' @format A data frame with 4 rows (one per method) and 16 variables:
 #' \describe{
 #'   \item{method}{Character. Short method identifier: "WCC", "BIOMASS", "allodb", "Bunce"}
@@ -290,8 +328,7 @@
 #' }
 #'
 #' @examples
-#' # View all method metadata
-#' data(method_metadata)
+#' # Access the data directly (lazy-loaded automatically)
 #' method_metadata
 #'
 #' # Get metadata for a specific method
@@ -300,7 +337,11 @@
 #' # Check which methods require height
 #' method_metadata[method_metadata$height_required, c("method", "full_name")]
 #'
-#' @seealso \code{\link{method_assumptions}} for detailed assumptions per method
+#' # Find methods applicable to temperate biome
+#' method_metadata[grepl("temperate", method_metadata$biome), ]
+#'
+#' @seealso \code{\link{method_assumptions}} for detailed assumptions per method,
+#'   \code{\link{get_method_metadata}} for a function-based API to access this data
 #' @source Package authors' compilation from original method publications
 "method_metadata"
 
@@ -310,6 +351,10 @@
 #' This table has a one-to-many relationship with \code{method_metadata},
 #' with multiple assumptions per method.
 #'
+#' This dataset is user-accessible and can be used to understand the key
+#' assumptions underlying each allometric method. The data is lazy-loaded
+#' and can be accessed directly by name.
+#'
 #' @format A data frame with 20 rows (5 assumptions per method) and 3 variables:
 #' \describe{
 #'   \item{method}{Character. Method identifier matching \code{method_metadata$method}}
@@ -318,8 +363,7 @@
 #' }
 #'
 #' @examples
-#' # View all assumptions
-#' data(method_assumptions)
+#' # Access the data directly (lazy-loaded automatically)
 #' method_assumptions
 #'
 #' # Get assumptions for WCC method
@@ -328,6 +372,10 @@
 #' # Get first assumption for each method
 #' method_assumptions[method_assumptions$assumption_order == 1, ]
 #'
-#' @seealso \code{\link{method_metadata}} for general method information
+#' # Get all assumptions for Bunce method
+#' method_assumptions[method_assumptions$method == "Bunce", "assumption"]
+#'
+#' @seealso \code{\link{method_metadata}} for general method information,
+#'   \code{\link{get_method_metadata}} for a function-based API to access this data
 #' @source Package authors' compilation from original method publications
 "method_assumptions"

@@ -4,7 +4,7 @@
 \alias{Bunce}
 \title{Bunce biomass equation}
 \usage{
-Bunce(name, dbh, type = NULL, re_dbh = NULL, re = 0.025, rich_output = FALSE)
+Bunce(name, dbh, type = NULL, re_dbh = NULL, re = NULL, rich_output = FALSE)
 }
 \arguments{
 \item{name}{species name (common or binomial)}
@@ -13,9 +13,9 @@ Bunce(name, dbh, type = NULL, re_dbh = NULL, re = 0.025, rich_output = FALSE)
 
 \item{type}{'broadleaf' or 'conifer' (optional)}
 
-\item{re_dbh}{relative measurement error for diameter at breast height (optional)}
+\item{re_dbh}{relative error for DBH measurement (optional). Expressed as proportion (e.g., 0.025 = 2.5\%). If provided, uncertainty will be calculated.}
 
-\item{re}{relative error of coefficients (default = 0.025)}
+\item{re}{relative error for model residual. Default = NULL (uses species-specific values from Table 6 in Bunce 1968, ranging 0.12-0.15). If provided, overrides species-specific defaults. Accounts for model prediction error. Based on Bunce (1968) R² values ~0.85-0.95 and Table 6 confidence limits.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,

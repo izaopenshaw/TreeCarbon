@@ -4,12 +4,19 @@
 \alias{broadleaf_tariff}
 \title{Carbon tariff number for broadleaf tree}
 \usage{
-broadleaf_tariff(spcode, height, dbh, re_dbh = NULL, re_h = 0.1, re = 0.025)
+broadleaf_tariff(
+  spcode,
+  height_timber,
+  dbh,
+  re_dbh = NULL,
+  re_h = 0.1,
+  re = 0.025
+)
 }
 \arguments{
 \item{spcode}{species code (single)}
 
-\item{height}{tree height in metres}
+\item{height_timber}{timber height in metres (height to first branch or merchantable top)}
 
 \item{dbh}{diameter at breast height in centimetres}
 
@@ -24,18 +31,19 @@ tariff number or if relative errors are provided returns a list of
 tariff number and an estimate for sigma
 }
 \description{
-Use dbh and tree height to derive the tariff number of each
-sample tree. species-specific estimates of a1-a4 are found in the
-R data file, 'tariff_broaddf'.
+Use dbh and timber height (height to first branch or merchantable top)
+to derive the tariff number of each sample tree. Species-specific estimates of
+a1-a4 are found in the R data file, 'tariff_broaddf'. According to WCC protocol,
+broadleaf species require timber height, not total height, for tariff calculations.
 }
 \examples{
-broadleaf_tariff(spcode = 'OK', height = 25, dbh = 75)
-broadleaf_tariff(spcode = "OK", height = 25, dbh = 15, re_dbh = 0.05, re_h = 0.1)
-broadleaf_tariff(spcode = "OK", height = 24, dbh = 15, re_dbh = 0.05, re_h = 0.1)
+broadleaf_tariff(spcode = 'OK', height_timber = 20, dbh = 75)
+broadleaf_tariff(spcode = "OK", height_timber = 20, dbh = 15, re_dbh = 0.05, re_h = 0.1)
+broadleaf_tariff(spcode = "OK", height_timber = 19, dbh = 15, re_dbh = 0.05, re_h = 0.1)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 2.
+Carbon Assessment Protocol (v2. 0)." (2018). Method B, Equation 4.
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

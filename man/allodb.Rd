@@ -42,6 +42,10 @@ If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 Use the allodb R package to calculate above-ground biomass
 using a weighted combination of multiple published allometric equations.
 
+\strong{Required package}: This function requires the \code{allodb} package,
+which is a dependency of TreeCarbon. If missing, install from GitHub with:
+\code{remotes::install_github("ropensci/allodb")}
+
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including method metadata, assumptions, validity warnings, and uncertainty
 \itemize{
@@ -49,7 +53,8 @@ including method metadata, assumptions, validity warnings, and uncertainty
 }
 }
 \examples{
-remotes::install_github('ropensci/allodb')
+\dontrun{
+# allodb package is a required dependency of TreeCarbon
 coords <- c(-0.088837,51.071610)
 allodb(81.887, "Pinus", "nigra", coords, output.all = FALSE)
 allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
@@ -57,6 +62,7 @@ allodb(c(76, 76), c("Pinus","Pinus"), c("nigra", "abies"), coords)
 # Rich output with metadata
 result <- allodb(50, "Quercus", "robur", coords, rich_output = TRUE)
 print(result)
+}
 }
 \references{
 Gonzalez-Akre, E., Piponiot, C., Lepore, M., & Anderson-Teixeira,

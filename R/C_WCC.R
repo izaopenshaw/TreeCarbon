@@ -27,7 +27,7 @@
 #'
 #' @title Lookup species code
 #' @description  Function that looks up species codes for Woodland Carbon Code
-#' @author Isabel Openshaw I.Openshaw@kew.org
+#' @author Isabel Openshaw I.Openshaw@kew.org, Justin Moat J.Moat@kew.org
 #' @param name name of species (common or botanical). See lookup_df.Rda
 #' @param type either 'broadleaf' or 'conifer'
 #' @param code either 'short', 'single', 'stand', 'Root' or 'Crown' Or other
@@ -38,7 +38,6 @@
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @importFrom stringr word str_trim
-#' @importFrom utils data
 #' @import remotes
 #' @examples
 #' lookupcode(name="Pine")
@@ -51,20 +50,20 @@
 lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
   if (!is.character(name)) stop("'name' must be a character vector.")
 
-  # Identify the column index for the selected 'code'
+  # Identify the column index for the selected code
   col_index <- which(names(lookup_df) == code)
   if (length(col_index) == 0) stop("Invalid 'code' column selected.")
 
-  # Clean Inputs
+  # Make sure name is lower case
   clean_name <- tolower(stringr::str_trim(name))
 
-  # Vectorized Matching
+  # Vectorised matching
   match_binomial <- match(clean_name, tolower(lookup_df$latin_name))
   match_common <- match(clean_name, tolower(lookup_df$common_name))
   match_genus  <- match(stringr::word(clean_name, 1), tolower(lookup_df$General.genus))
   match_genus2 <- match(stringr::word(clean_name, 1), tolower(lookup_df$genus))
 
-  # Create Result DataFrame
+  # Create result dataframe
   result_df <- data.frame(spname = name, code = NA,
                           matchtype = NA, stringsAsFactors = FALSE)
   unmatched <- c()
@@ -145,7 +144,10 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @param name species name, either binomial or common
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
-#' @param height tree height in metres
+#' @param height tree height in metres (total height). For broadleaves, provide \code{height_timber}
+#'   for WCC protocol compliance.
+#' @param height_timber timber height in metres (height to first branch). Required for WCC protocol
+#'   for broadleaf species. If not provided, total height will be used with a warning.
 #' @param method method of converting biomass to carbon. Both 'Thomas' or 'IPCC2' require type.
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param output.all if TRUE (default) outputs all data from processing, else outputs carbon estimate
@@ -161,7 +163,6 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #'   trees) or a list of such objects (for multiple trees).
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
-#' @importFrom utils data
 #' @import remotes
 #' @examples
 #' fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
@@ -177,7 +178,7 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #'
 fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
                      "temperate", output.all = TRUE, nsg = NULL,
-                   rich_output = FALSE){
+                   height_timber = NULL, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
@@ -207,6 +208,21 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
   spcodes <- lookupcode(name, type, code = 'short')
   rec <- lookup_df[match(spcodes$code, lookup_df$short), ]
   type <- ifelse(is.na(rec$type) | rec$type == "MX", type, rec$type)
+
+  # Handle height_timber for broadleaves
+  # WCC protocol requires timber height for broadleaves
+  if (any(type == "broadleaf", na.rm = TRUE)) {
+    if (is.null(height_timber)) {
+      flags <- c(flags, "Broadleaf_timber_height_estimated")
+      warnings_list <- c(warnings_list, 
+        "For broadleaf species, WCC protocol requires timber height (height to first branch). Total height was used instead. For accurate WCC protocol compliance, measure and provide timber height.")
+    } else {
+      if (length(height_timber) != length(height)) {
+        stop("height_timber must have the same length as height")
+      }
+      flags <- c(flags, "Broadleaf_timber_height_provided")
+    }
+  }
 
   # ==== Create results table ====
   if(output.all){
@@ -241,8 +257,10 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 
   if (any(tall_id, na.rm = TRUE)) {
     # Tariff number (without error params, returns vector)
+    # For broadleaves, use height_timber if provided
+    height_timber_tall <- if (!is.null(height_timber)) height_timber[tall_id] else NULL
     tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
-                      dbh[tall_id], type[tall_id])
+                      dbh[tall_id], type[tall_id], height_timber = height_timber_tall)
 
     # Volume & Biomass (without error params, returns vectors)
     mercvol <- merchtreevol(dbh[tall_id], tariff)
@@ -286,54 +304,93 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
   if (rich_output) {
     # For single tree
     if (length(dbh) == 1) {
-      return(create_allometry_result(
-        value = r$AGC_WCC_t[1],
-        method = "WCC",
-        measure = "AGC",
-        unit = "t",
-        uncertainty = NULL,
-        validity_warnings = warnings_list,
-        flags = flags,
-        inputs = list(
-          name = name,
-          dbh = dbh,
-          height = height,
-          type = type,
-          biome = biome
-        )
+      return(single_tree_rich_output(value = r$AGC_WCC_t[1], method = "WCC",
+        measure = "AGC",             unit = "t",             uncertainty = NULL,
+        validity_warnings = warnings_list,                   flags = flags,
+        inputs = list(name = name,   dbh = dbh,              height = height,
+                      type = type,   biome = biome)
       ))
     }
 
     # For multiple trees
+    # Get shared method metadata
+    wcc_meta <- method_metadata[method_metadata$method == "WCC", ]
+    wcc_assumptions <- method_assumptions$assumption[method_assumptions$method == "WCC"]
+
+    # Calculate totals first
+    total_AGC_t <- sum(r$AGC_WCC_t, na.rm = TRUE)
+    total_uncertainty_t <- NULL  # fc_agc doesn't calculate uncertainty
+
+    # Collect all unique flags from all trees
+    all_flags <- if (length(flags) > 0 && flags[1] != "None") unique(flags) else character()
+
+    # Create summary table directly from r
+    combined_df <- data.frame(
+      tree_id = seq_len(nrow(r)),
+      name = r$name,
+      dbh = r$dbh,
+      height = r$height,
+      carbon_t = r$AGC_WCC_t,
+      stringsAsFactors = FALSE
+    )
+
+    # Create result objects (vectorized structure, but list of lists for compatibility)
     results_list <- lapply(seq_len(nrow(r)), function(i) {
-      create_allometry_result(
-        value = r$AGC_WCC_t[i],
-        method = "WCC",
+      # Create lightweight result object with shared metadata
+      result <- list(
+        # === Core estimate (tree-specific) ===
+        value = if (!is.na(r$AGC_WCC_t[i])) r$AGC_WCC_t[i] else NA_real_,
         measure = "AGC",
         unit = "t",
+
+        # === Method information (shared - from metadata) ===
+        method = "WCC",
+        method_full_name = wcc_meta$full_name,
+        reference = wcc_meta$reference,
+        reference_short = wcc_meta$reference_short,
+        doi = wcc_meta$doi,
+        source_type = wcc_meta$source_type,
+        region = wcc_meta$region,
+        biome = strsplit(wcc_meta$biome, "; ")[[1]],
+
+        # === Assumptions (shared - from metadata) ===
+        assumptions = wcc_assumptions,
+
+        # === Uncertainty (tree-specific - NULL for fc_agc) ===
         uncertainty = NULL,
-        validity_warnings = warnings_list,
-        flags = flags,
+        uncertainty_method = wcc_meta$uncertainty_method,
+        ci_low = NULL,
+        ci_high = NULL,
+        ci_level = NA,
+
+        # === Validity and flags (tree-specific) ===
+        validity_warnings = if (length(warnings_list) > 0) warnings_list else "None",
+        flags = if (length(flags) > 0) flags else "None",
+
+        # === Valid ranges (shared - from metadata) ===
+        valid_dbh_range = c(wcc_meta$dbh_min_cm, wcc_meta$dbh_max_cm),
+        valid_height_range = c(wcc_meta$height_min_m, wcc_meta$height_max_m),
+        height_required = wcc_meta$height_required,
+        species_specific = wcc_meta$species_specific,
+        wood_density_required = wcc_meta$wood_density_required,
+
+        # === Inputs (minimal - only type and biome, since name/dbh/height are in r) ===
         inputs = list(
-          name = name[i],
-          dbh = dbh[i],
-          height = height[i],
           type = if (!is.null(type)) type[min(i, length(type))] else NULL,
           biome = biome
         )
       )
+      class(result) <- "allometry_result"
+      return(result)
     })
-
-    combined_df <- do.call(rbind, lapply(results_list, as.data.frame.allometry_result))
-    combined_df$tree_id <- seq_len(nrow(combined_df))
-    combined_df$name <- name
 
     result <- list(
       trees = results_list,
       summary_table = combined_df,
       n_trees = length(dbh),
-      total_AGC_t = sum(r$AGC_WCC_t, na.rm = TRUE),
+      total_AGC_t = total_AGC_t,
       mean_AGC_t = mean(r$AGC_WCC_t, na.rm = TRUE),
+      total_uncertainty_t = total_uncertainty_t,
       validation = validation,
       detailed_output = if (output.all) r else NULL
     )
@@ -358,7 +415,10 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 #' @param name species name, either binomial or common
 #' @param type either 'broadleaf' or 'conifer'
 #' @param dbh diameter at breast height in centimetres
-#' @param height tree height in metres
+#' @param height tree height in metres (total height). For broadleaves, provide \code{height_timber}
+#'   for WCC protocol compliance.
+#' @param height_timber timber height in metres (height to first branch). Required for WCC protocol
+#'   for broadleaf species. If not provided, total height will be used with a warning.
 #' @param method method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
 #' @param output.all if TRUE outputs all data from processing, else just outputs carbon estimates
@@ -377,7 +437,6 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 #'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
-#' @importFrom utils data
 #' @examples
 #' fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
@@ -395,7 +454,7 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
 fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome =
                            "temperate", output.all = TRUE, re_dbh = 0.05, re_h =
                            0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
-                         rich_output = FALSE){
+                         height_timber = NULL, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
@@ -431,6 +490,21 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
   rec <- lookup_df[match(spcodes$code, lookup_df$short), ]
   type <- ifelse(is.na(rec$type) | rec$type == "MX", type, rec$type)
 
+  # Handle height_timber for broadleaves
+  # WCC protocol requires timber height for broadleaves
+  if (any(type == "broadleaf", na.rm = TRUE)) {
+    if (is.null(height_timber)) {
+      flags <- c(flags, "Broadleaf_timber_height_estimated")
+      warnings_list <- c(warnings_list, 
+        "For broadleaf species, WCC protocol requires timber height (height to first branch). Total height was used instead. For accurate WCC protocol compliance, measure and provide timber height.")
+    } else {
+      if (length(height_timber) != length(height)) {
+        stop("height_timber must have the same length as height")
+      }
+      flags <- c(flags, "Broadleaf_timber_height_provided")
+    }
+  }
+
   # Create results table
   if(output.all){
     r <- data.frame(name=name, type=type, spcode=spcodes$code,
@@ -459,8 +533,11 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
   tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
 
   if (any(tall_id, na.rm = TRUE)) {
+    # For broadleaves, use height_timber if provided
+    height_timber_tall <- if (!is.null(height_timber)) height_timber[tall_id] else NULL
     tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
-                      dbh[tall_id], type[tall_id], re_h, re_dbh, re = re)
+                      dbh[tall_id], type[tall_id], height_timber = height_timber_tall,
+                      re_h, re_dbh, re = re)
 
     # Volume & Biomass
     mercvol <- merchtreevol(dbh[tall_id], tariff$tariff,
@@ -506,7 +583,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
   # ==== Return rich output if requested ====
   if (rich_output) {
     if (length(dbh) == 1) {
-      return(create_allometry_result(
+      return(single_tree_rich_output(
         value = r$AGC_WCC_t[1],
         method = "WCC",
         measure = "AGC",
@@ -527,36 +604,110 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
     }
 
     # Multiple trees
+    # Get shared method metadata once (same for all trees) - direct access
+    wcc_meta <- method_metadata[method_metadata$method == "WCC", ]
+    wcc_assumptions <- method_assumptions$assumption[method_assumptions$method == "WCC"]
+
+    # Calculate totals first (vectorized)
+    total_AGC_t <- sum(r$AGC_WCC_t, na.rm = TRUE)
+    total_uncertainty_t <- if (!all(is.na(r$sig_AGC))) {
+      sqrt(sum(r$sig_AGC^2, na.rm = TRUE))
+    } else {
+      NULL
+    }
+
+    # Collect all unique flags from all trees (vectorized)
+    all_flags <- if (length(flags) > 0 && flags[1] != "None") unique(flags) else character()
+
+    # Pre-calculate tree-specific values (vectorized)
+    uncertainty_vals <- ifelse(!is.na(r$sig_AGC), r$sig_AGC, NA_real_)
+    ci_low_vals <- if (!all(is.na(r$sig_AGC))) {
+      r$AGC_WCC_t - 1.96 * r$sig_AGC
+    } else {
+      rep(NA_real_, nrow(r))
+    }
+    ci_high_vals <- if (!all(is.na(r$sig_AGC))) {
+      r$AGC_WCC_t + 1.96 * r$sig_AGC
+    } else {
+      rep(NA_real_, nrow(r))
+    }
+
+    # Create summary table directly from r (vectorized)
+    combined_df <- data.frame(
+      tree_id = seq_len(nrow(r)),
+      name = r$name,
+      dbh = r$dbh,
+      height = r$height,
+      carbon_t = r$AGC_WCC_t,
+      uncertainty_t = uncertainty_vals,
+      stringsAsFactors = FALSE
+    )
+
+    # Add CI columns if uncertainty was calculated
+    if (!all(is.na(r$sig_AGC))) {
+      combined_df$ci_low_t <- ci_low_vals
+      combined_df$ci_high_t <- ci_high_vals
+    }
+
+    # Create result objects (vectorized structure, but list of lists for compatibility)
     results_list <- lapply(seq_len(nrow(r)), function(i) {
-      create_allometry_result(
-        value = r$AGC_WCC_t[i],
-        method = "WCC",
+      # Create lightweight result object with shared metadata
+      result <- list(
+        # === Core estimate (tree-specific) ===
+        value = if (!is.na(r$AGC_WCC_t[i])) r$AGC_WCC_t[i] else NA_real_,
         measure = "AGC",
         unit = "t",
-        uncertainty = r$sig_AGC[i],
-        validity_warnings = warnings_list,
-        flags = flags,
+
+        # === Method information (shared - from metadata) ===
+        method = "WCC",
+        method_full_name = wcc_meta$full_name,
+        reference = wcc_meta$reference,
+        reference_short = wcc_meta$reference_short,
+        doi = wcc_meta$doi,
+        source_type = wcc_meta$source_type,
+        region = wcc_meta$region,
+        biome = strsplit(wcc_meta$biome, "; ")[[1]],
+
+        # === Assumptions (shared - from metadata) ===
+        assumptions = wcc_assumptions,
+
+        # === Uncertainty (tree-specific) ===
+        uncertainty = if (!is.na(uncertainty_vals[i])) uncertainty_vals[i] else NULL,
+        uncertainty_method = wcc_meta$uncertainty_method,
+        ci_low = if (!is.na(ci_low_vals[i])) ci_low_vals[i] else NULL,
+        ci_high = if (!is.na(ci_high_vals[i])) ci_high_vals[i] else NULL,
+        ci_level = if (!is.na(ci_low_vals[i])) 0.95 else NA,
+
+        # === Validity and flags (tree-specific) ===
+        validity_warnings = if (length(warnings_list) > 0) warnings_list else "None",
+        flags = if (length(flags) > 0) flags else "None",
+
+        # === Valid ranges (shared - from metadata) ===
+        valid_dbh_range = c(wcc_meta$dbh_min_cm, wcc_meta$dbh_max_cm),
+        valid_height_range = c(wcc_meta$height_min_m, wcc_meta$height_max_m),
+        height_required = wcc_meta$height_required,
+        species_specific = wcc_meta$species_specific,
+        wood_density_required = wcc_meta$wood_density_required,
+
+        # === Inputs (minimal - only type, biome, and error params, since name/dbh/height are in r) ===
         inputs = list(
-          name = name[i],
-          dbh = dbh[i],
-          height = height[i],
           type = if (!is.null(type)) type[min(i, length(type))] else NULL,
-          biome = biome
+          biome = biome,
+          re_dbh = re_dbh,
+          re_h = re_h
         )
       )
+      class(result) <- "allometry_result"
+      return(result)
     })
-
-    combined_df <- do.call(rbind, lapply(results_list, as.data.frame.allometry_result))
-    combined_df$tree_id <- seq_len(nrow(combined_df))
-    combined_df$name <- name
 
     result <- list(
       trees = results_list,
       summary_table = combined_df,
       n_trees = length(dbh),
-      total_AGC_t = sum(r$AGC_WCC_t, na.rm = TRUE),
+      total_AGC_t = total_AGC_t,
       mean_AGC_t = mean(r$AGC_WCC_t, na.rm = TRUE),
-      total_uncertainty = sqrt(sum(r$sig_AGC^2, na.rm = TRUE)),
+      total_uncertainty_t = total_uncertainty_t,
       validation = validation,
       detailed_output = if (output.all) r else NULL
     )
@@ -565,6 +716,90 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
   }
 
   return(r)
+}
+
+#' @title Print method for wcc_multi_result
+#' @description Formatted display for WCC multi-tree results
+#' @param x A wcc_multi_result object
+#' @param ... Additional arguments (unused)
+#' @export
+print.wcc_multi_result <- function(x, ...) {
+
+  cat("------------------- ALLOMETRY RESULT -------------------\n")
+  cat(sprintf("Number of trees: %d\n", x$n_trees))
+  cat(sprintf("Total AGC estimate: %.2f t\n", x$total_AGC_t))
+
+  # Add uncertainty and CI if available
+  if (!is.null(x$total_uncertainty_t)) {
+    cat(sprintf("Uncertainty: +/- %.2f t (SD)\n", x$total_uncertainty_t))
+    ci_low <- x$total_AGC_t - 1.96 * x$total_uncertainty_t
+    ci_high <- x$total_AGC_t + 1.96 * x$total_uncertainty_t
+    cat(sprintf("95%% CI: [%.2f, %.2f] t\n", ci_low, ci_high))
+  }
+  cat(" \n")
+
+  # Get method metadata (from first tree)
+  meta <- x$trees[[1]]
+
+  cat("--- METHOD INFORMATION ---\n")
+  cat(sprintf("Method: %s\n", meta$method_full_name))
+  cat(sprintf("Source: %s\n", meta$source_type))
+  cat(sprintf("Region: %s | Biome: %s\n", meta$region, paste(meta$biome, collapse = "; ")))
+  cat(" \n")
+
+  cat("--- ASSUMPTIONS ---\n")
+  for (i in seq_along(meta$assumptions)) {
+    cat(sprintf("  %d. %s\n", i, meta$assumptions[i]))
+  }
+  cat(" \n")
+
+  cat("--- VALIDITY & FLAGS ---\n")
+  cat(sprintf("Valid DBH range: %.0f - %.0f cm\n", meta$valid_dbh_range[1], meta$valid_dbh_range[2]))
+
+  # Collect all unique flags from all trees
+  all_flags <- unique(unlist(lapply(x$trees, function(tree) {
+    if (is.character(tree$flags) && length(tree$flags) > 0 && tree$flags[1] != "None") {
+      tree$flags
+    } else {
+      character()
+    }
+  })))
+
+  if (length(all_flags) > 0) {
+    cat("FLAGS:\n")
+    for (f in all_flags) {
+      cat(sprintf("  - %s\n", f))
+    }
+  }
+  cat(" \n")
+
+  # Collect all unique warnings
+  all_warnings <- unique(c(
+    if (any(x$validation$validity_warnings != "None")) x$validation$validity_warnings[x$validation$validity_warnings != "None"] else character(),
+    unlist(lapply(x$trees, function(tree) {
+      if (is.character(tree$validity_warnings) && length(tree$validity_warnings) > 0 && tree$validity_warnings[1] != "None") {
+        tree$validity_warnings[tree$validity_warnings != "None"]
+      } else {
+        character()
+      }
+    }))
+  ))
+
+  if (length(all_warnings) > 0) {
+    cat("--- WARNINGS ---\n")
+    for (w in all_warnings) {
+      cat(sprintf("  %s\n", w))
+    }
+    cat(" \n")
+  }
+
+  cat("--- REFERENCE ---\n")
+  cat(sprintf("  %s\n", meta$reference))
+  if (!is.na(meta$doi) && !is.null(meta$doi)) {
+    cat(sprintf("  DOI: https://doi.org/%s\n", meta$doi))
+  }
+
+  invisible(x)
 }
 
 ############# Seedlings and saplings to Carbon ################
@@ -581,7 +816,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "IPCC2", biome
 #' @note just uses simple linear relationship to get between measures
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018)
-#' @importFrom utils data head tail
+#' @importFrom utils head tail
 #' @import remotes
 #' @examples
 #' sap_seedling2C(0.5, 'conifer')
@@ -633,7 +868,7 @@ sap_seedling2C <- function(height, type, re_h = NULL, re = 0.025) {
   df <- do.call(rbind, lapply(results, as.data.frame))
   colnames(df) <- c("carbon")
 
-  if (!is.na(re_h)) {
+  if (!is.null(re_h)) {
     if (!is.numeric(re_h) | re_h < 0 | !is.numeric(re) | re < 0) {
       stop("'re' and 're_h' must be numeric and positive")
     }

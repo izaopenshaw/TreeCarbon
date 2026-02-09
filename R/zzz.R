@@ -16,11 +16,14 @@ NULL
 utils::globalVariables(c(
 
   # Package data objects
-"buncedf",
+  "buncedf",
+  "bunce_co_lookup",
   "CVF_df",
   "WD_Zanne",
   "crown_biomasdf",
   "lookup_df",
+  "method_metadata",
+  "method_assumptions",
   "root_biomassdf",
   "seedlings_broad",
   "seedlings_conifer",
@@ -42,11 +45,6 @@ utils::globalVariables(c(
   .TreeCarbon_options$default_re_height <- 0.05
   .TreeCarbon_options$verbose <- FALSE
 
-
-  # Check for optional dependencies
-  .TreeCarbon_options$has_BIOMASS <- requireNamespace("BIOMASS", quietly = TRUE)
-  .TreeCarbon_options$has_allodb <- requireNamespace("allodb", quietly = TRUE)
-
   invisible()
 }
 
@@ -56,22 +54,13 @@ utils::globalVariables(c(
 
   packageStartupMessage(
     "TreeCarbon v", version, " - Tree Carbon Estimation with Error Propagation\n",
-    "Primary method is the UK Woodland Carbon Code (WCC)\n"
+    "Primary method is the UK Woodland Carbon Code (WCC)\n",
+    "\n",
+    "Required dependencies: BIOMASS and allodb packages\n",
+    "If missing, install with:\n",
+    "  install.packages('BIOMASS')\n",
+    "  remotes::install_github('ropensci/allodb')\n"
   )
-
-  # Warn if optional dependencies missing
-  if (!.TreeCarbon_options$has_BIOMASS) {
-    packageStartupMessage(
-      "Note: BIOMASS package not installed. ",
-      "Install with: utils::install.packages('BIOMASS', dependencies = TRUE)"
-    )
-  }
-  if (!.TreeCarbon_options$has_allodb) {
-    packageStartupMessage(
-      "Note: allodb package not installed. ",
-      "Install with: remotes::install_github('ropensci/allodb')"
-    )
-  }
 
   invisible()
 }

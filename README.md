@@ -29,10 +29,25 @@ Further improvements to the tool will be included in future releases, if you wis
 
 You can install the development version from GitHub with (you will need the devtools package):
 
-```
+```r
 install.packages('devtools') #if needed
 devtools::install_github("gistin/TreeCarbon")
 ```
+
+**Required Dependencies:**
+
+TreeCarbon requires the `BIOMASS` and `allodb` packages to be installed. These should be installed automatically when you install TreeCarbon, but if they are missing, install them manually:
+
+```r
+# Install BIOMASS package (from CRAN)
+install.packages("BIOMASS")
+
+# Install allodb package (from GitHub)
+install.packages("remotes")  # if not already installed
+remotes::install_github("ropensci/allodb")
+```
+
+**Note:** The `allodb` package is hosted on GitHub, so you'll need the `remotes` package (or `devtools`) to install it. The `remotes` package is already listed as a dependency of TreeCarbon.
 
 ### 1.0.4 Quick example
 
@@ -108,6 +123,26 @@ sap_seedling2C(50, 'conifer')
 #Carbon of CO2 conversion ie 1 tonne carbon - 3.6
 ctoco2e(1)
 ```
+
+### 1.0.5 Shiny Applications
+
+The TreeCarbon package includes two interactive Shiny web applications:
+
+```r
+library(TreeCarbon)
+
+# Launch WCC carbon calculator app (app 1)
+shiny::runApp(system.file("shiny-app1", package = "TreeCarbon"))
+
+# Launch allometry comparison app (app 2) 
+shiny::runApp(system.file("shiny-app2", package = "TreeCarbon"))
+```
+
+**App 1 - WCC Carbon Calculator:** Simple interface for calculating above-ground carbon using the Woodland Carbon Code protocol. Features include CSV upload, interactive plots, and result downloads.
+
+**App 2 - Allometry Comparison:** Advanced interface comparing multiple methods (WCC, BIOMASS, allodb, Bunce) with interactive plots, sensitivity analysis, and export options.
+
+**Note:** Requires `shiny` package. App 2 also requires `shinydashboard`. Optional packages (`plotly`, `DT`, `shinyBS`) enhance functionality.
 
 ## Acknowledgements
 This work is part of the Nature Unlock program at [Royal Botanic Gardens Kew](https://www.kew.org/wakehurst/nature-unlocked), and the [Nature Returns programme](https://www.kew.org/science/nature-returns).  It was funded or sponsored by the following UK government departments: HM Treasury (Shared Outcomes Fund), Department for Environment, Food and Rural Affairs, Department for Energy Security and Net Zero.
