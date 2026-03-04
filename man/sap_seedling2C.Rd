@@ -50,7 +50,7 @@ Just uses simple linear interpolation between lookup values.
 # Seedling (height 0.5 m)
 sap_seedling2C(0.5, 'conifer')
 
-# Sapling (height 9 m) with uncertainty
+# fx (height 9 m) with uncertainty
 sap_seedling2C(height = 9, type = 'broadleaf', re_h = 0.05)
 
 # Transition examples: seedling vs sapling vs tree

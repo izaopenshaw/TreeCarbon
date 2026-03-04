@@ -220,6 +220,18 @@ app6_total_carbon <- sum(app6_results$total_carbon, na.rm = TRUE)
 app6_carbon_per_ha <- app6_total_carbon / app6_area_ha
 
 # ==============================================================================
-# WCC PROTOCOL METHODS - See inst/examples/WCC_method_reference.R for full
-# method-function mapping, averaging guidance, and signposting.
+# NOTES ON WCC PROTOCOL METHODS
+# ==============================================================================
+# Method A: Fell sample trees - uses tariff_vol_area() function
+# Method B: Measure timber height (broadleaves) - uses broadleaf_tariff()
+# Method C: Measure total height (conifers) - uses conifer_tariff()
+# Method D: Measure top height - uses stand_tariff()
+# Method E: Full tree count - uses fc_agc() or fc_agc_error() for each tree
+#
+# The TreeCarbon package functions can be used for all these methods.
+# For averaging trees (as required in some WCC methods), users should:
+# 1. Calculate carbon for each tree individually
+# 2. Sum the results for totals
+# 3. Calculate means by dividing by number of trees
+# 4. For uncertainty, propagate errors appropriately
 # ==============================================================================

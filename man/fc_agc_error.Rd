@@ -89,8 +89,8 @@ Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018).
 }
 \seealso{
-\code{\link{wcc_error_propagation}} for error propagation rules (e.g.
-\eqn{\sigma_{total} = \sqrt{\sum \sigma_i^2}} for sum of independent tree carbon).
+\code{\link{wcc_per_hectare}}, \code{\link{wcc_stratify}}, \code{\link{error_product}};
+vignette("uncertainty-and-comparison", package = "TreeCarbon") for error propagation rules.
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org

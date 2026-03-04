@@ -440,53 +440,83 @@ global_wd <- function(binomial, region = "World") {
   return(list(wd = wd, sd = sd))
 }
 
-############# Summarise Total per unit area with errors ############
+############# Total density with propagated error ##################
 
-#' @title Calculate Total per unit area with Error for Biomass or Carbon
+#' @title Total Density with Error for Biomass or Carbon
 #' @description This function calculates the total carbon or biomass per unit
 #' area with propagated error.
+#' @details
+#'   The formula is unit-agnostic: use \code{area} in m², ha, or any unit; output
+#'   density has units of \code{input} / \code{area}.
+#'
+#'   **Workflow for \code{sigma_area}:** (1) Identify how area was measured
+#'   (GPS boundary, tape/laser circle, tape rectangle). (2) Compute
+#'   \code{sigma_area} using \code{\link{sd_area}}, \code{\link{sd_area_measure}},
+#'   or \code{\link{sd_area_circle}}. (3) Pass the result here. Use
+#'   \code{sigma_area = 0} or \code{NULL} when area error is negligible.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param input Vector of tree-level above-ground biomass or carbon or a list of
 #'  multiple areas to be summarised separately.
 #' @param sigma_input Vector of standard deviations associated with input or a
 #' list of multiple areas to be summarised separately.
 #' @param area Total area sampled (whole habitat or sampled plots) or a vector
-#' of multiple areas.
+#'   of multiple areas. Units are arbitrary (e.g. m² or ha); output density has
+#'   the same units as \code{input} divided by \code{area}.
 #' @param sigma_area Standard deviation of plot area measurement or a vector.
+#'   Can be obtained from \code{\link{sd_area}} (GPS boundaries),
+#'   \code{\link{sd_area_measure}} (tape/laser: circle or rect), or
+#'   \code{\link{sd_area_circle}} (circular plots). Use \code{0} or \code{NULL}
+#'   when area error is negligible (e.g. tape-measured plots); area is then
+#'   treated as known exactly and only input error is propagated.
 #' @param returnv error returned as standard deviation, 'sigma' (default) or
 #' variance, 'sigmasquared' or 'standarderror' for plot = TRUE.
 #' @param plots if plots = TRUE then the list is treated as individual plots to
 #' be summed as individual plots then taken the mean to get the weighted per
 #' area mean. Default is plots = FALSE, then items in the list are treated as
-#' separate habitats and metrics outputted seperately.
+#' separate habitats and metrics outputted separately.
 #' @return A list containing the estimated total per unit area and its
 #' propagated standard deviation.
 #' @examples
-#' AGB <- c(2.3, 1.8, 3.2)  # Biomass estimates for trees
-#' SD_AGB <- c(0.2, 0.15, 0.3)  # Standard deviations of biomass estimates
-#' summary_per_area(AGB, SD_AGB, 0.5, 0.05)
+#' AGB <- c(2.3, 1.8, 3.2)
+#' SD_AGB <- c(0.2, 0.15, 0.3)
 #'
-#' AGB_2 <- c(5.9, 7.5, 2.1)  # Biomass estimates for treesz
-#' SD_AGB_2 <- c(0.7, 1.02, 0.3)  # Standard deviations of biomass estimates
+#' # Tape-measured circular plot (radius 12.62 m, sigma_r = 0.1 m)
+#' sigma_area_ha <- sd_area_measure("circle", 12.62, 0.1)
+#' total_density(AGB, SD_AGB, area = 0.5, sigma_area = sigma_area_ha)
 #'
-#' summary_per_area(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
-#' SD_AGB_2), area = c(0.5, 0.7), sigma_area = c(0.05, 0.09))
+#' # GPS-traced boundary (perimeter 200 m, RMSE 3 m)
+#' sigma_area_ha <- sd_area(200, 3)
+#' total_density(AGB, SD_AGB, area = 0.5, sigma_area = sigma_area_ha)
 #'
-#' summary_per_area(AGB, SD_AGB, 0.5, 0.09)
+#' # Multiple habitats
+#' AGB_2 <- c(5.9, 7.5, 2.1)
+#' SD_AGB_2 <- c(0.7, 1.02, 0.3)
+#' total_density(input = list(AGB, AGB_2), sigma_input = list(SD_AGB,
+#'   SD_AGB_2), area = c(0.5, 0.7), sigma_area = c(0.05, 0.09))
 #'
-#' Carbon <- AGB * 0.5  # Convert biomass to carbon
-#' SD_Carbon <- SD_AGB * 0.5  # Approximate error scaling
-#' summary_per_area(Carbon, SD_Carbon, 2.5, 0.09)
+#' Carbon <- AGB * 0.5
+#' SD_Carbon <- SD_AGB * 0.5
+#' total_density(Carbon, SD_Carbon, 2.5, 0.09)
+#'
+#' # Negligible area error (tape-measured plot): use sigma_area = 0 or NULL
+#' total_density(AGB, SD_AGB, 0.5, sigma_area = 0)
 #'
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
 #' @export
 #'
-summary_per_area <- function(input, sigma_input, area, sigma_area,
+total_density <- function(input, sigma_input, area, sigma_area,
                              returnv = "sigma", plots = FALSE) {
 
   if (returnv == "standarderror") returnv <- "sigma"
+
+  # Treat sigma_area = NULL or 0 as area known exactly (no area error)
+  if (is.null(sigma_area)) {
+    sigma_area <- rep(0, length(area))
+  } else if (length(sigma_area) == 1L && sigma_area == 0 && length(area) > 1L) {
+    sigma_area <- rep(0, length(area))
+  }
 
   # Handle list input (multiple habitats/areas)
   if (is.list(input)) {
@@ -545,22 +575,27 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
 #'   model for continuously GPS-traced boundaries. Formula:
 #'   \eqn{\sigma_A = 2 \times \mathrm{RMSE} \times P / 10000} (output in
 #'   hectares). This treats positional error as creating a strip of width RMSE
-#'   on both sides of the boundary. It yields a **conservative** (upper)
+#'   on both sides of the boundary. It yields a conservative (upper)
 #'   estimate of uncertainty, because errors along the boundary are assumed
-#'   to add rather than cancel. Use for boundaries walked with a GPS logger.
+#'   to add rather than cancel.
 #'
 #'   **Vertex method** (\code{n_vertices} provided): For plots where only the
 #'   corner vertices were GPS'd (e.g. irregular rectangle, quadrilateral).
 #'   Uses \eqn{\sigma_A = \mathrm{RMSE} \times P / (\sqrt{n} \times 10000)},
-#'   reflecting independent positional error at each of \eqn{n} vertices.
-#'   Typically gives a smaller, less conservative estimate than the band method.
+#'   reflecting independent positional error at each of \eqn{n} vertices. This
+#'   is an approximation; the exact formula depends on vertex coordinates (see
+#'   Shoelace-based propagation). Typically gives a smaller estimate than the
+#'   band method.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param perimeter A numeric vector of perimeters (in meters).
 #' @param RMSE A numeric value representing the Root Mean Square Error (RMSE)
-#' of the perimeter measurement (in meters).
+#'   of the boundary positional accuracy (in meters). Use RMSE when the error
+#'   is reported as positional accuracy (e.g. GPS specification, or RMSE from
+#'   repeat measurements of boundary points). Typical values: 0.5--5 m for
+#'   recreational GPS, 1--3 m for survey-grade under canopy.
 #' @param n_vertices Optional. Number of independently measured boundary
-#'   vertices. If provided, the vertex method is used; otherwise the band
-#'   method is used.
+#'   vertices. Can be a vector (recycled if length 1). If provided, the vertex
+#'   method is used; otherwise the band method is used.
 #' @param sum_plots If \code{TRUE}, return the combined standard deviation
 #'   across all plots (\code{sqrt(sum(sigma_i^2))}). If \code{FALSE}, return
 #'   the standard deviation for each plot.
@@ -572,7 +607,8 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
 #'
 #' # Vertex method: 4 GPS'd corners of irregular rectangle, P=130m
 #' sd_area(130, 3, n_vertices = 4)
-#' @seealso \code{\link{sd_area_circle}} for circular plots with measured radius.
+#' @seealso \code{\link{sd_area_measure}} for tape- or laser-measured plots
+#'   (circular or rectangular).
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
@@ -593,6 +629,12 @@ sd_area <- function(perimeter, RMSE, n_vertices = NULL, sum_plots = FALSE) {
     if (!is.numeric(n_vertices) || any(n_vertices < 3, na.rm = TRUE)) {
       stop("n_vertices must be numeric and at least 3.")
     }
+    if (length(n_vertices) == 1L && length(perimeter) > 1L) {
+      n_vertices <- rep(n_vertices, length(perimeter))
+    }
+    if (length(n_vertices) != length(perimeter)) {
+      stop("n_vertices must have length 1 (recycled) or match length(perimeter).")
+    }
   }
 
   # Band method (conservative) or vertex method
@@ -609,52 +651,100 @@ sd_area <- function(perimeter, RMSE, n_vertices = NULL, sum_plots = FALSE) {
   return(result)
 }
 
-############# Standard Deviation for Circular Plot Area ##############
+############# Standard Deviation for Tape/Laser-Measured Plot Area ##############
 
-#' @title Standard Deviation for Measurement of Circular Plot Area
-#' @description Calculates the standard deviation of the area of a circular
-#'   plot when the radius is measured with known uncertainty. Uses Taylor
-#'   propagation: \eqn{\sigma_A = 2\pi r \, \sigma_r} (with conversion to
-#'   hectares). Appropriate for fixed-radius circular plots measured by tape
-#'   or laser.
+#' @title Standard Deviation for Measurement of Plot Area (Tape or Laser)
+#' @description Calculates the standard deviation of plot area when dimensions
+#'   are measured directly with tape or laser. Supports circular and
+#'   rectangular plots. Uses Taylor (delta) error propagation.
+#' @details
+#'   **Circle** (\code{shape = "circle"}): \eqn{\sigma_A = 2\pi r \, \sigma_r}.
+#'   For fixed-radius circular plots measured by tape or laser rangefinder.
+#'
+#'   **Rectangle** (\code{shape = "rect"}): \eqn{\sigma_A = \sqrt{W^2 \sigma_L^2 +
+#'   L^2 \sigma_W^2}}. For rectangular plots where length and width are
+#'   measured with tape.
+#'
+#'   Both formulae assume measurement errors are independent. Use the sample
+#'   standard deviation from repeated measurements, or estimate from instrument
+#'   specification.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
-#' @param radius Numeric vector of plot radii (in meters).
-#' @param sigma_r Numeric vector of standard deviations of the radius
-#'   measurements (in meters). Recycled to match \code{radius} length.
+#' @param shape \code{"circle"} or \code{"rect"}.
+#' @param measurement For \code{shape = "circle"}: radius in metres (numeric
+#'   vector). For \code{shape = "rect"}: \code{c(length, width)} in metres.
+#' @param sigma For \code{shape = "circle"}: standard deviation of radius
+#'   (recycled if length 1). For \code{shape = "rect"}: \code{c(sigma_length,
+#'   sigma_width)} in metres.
 #' @param sum_plots If \code{TRUE}, return the combined standard deviation
-#'   across all plots. If \code{FALSE}, return the standard deviation for each
-#'   plot.
-#' @return A numeric vector representing the standard deviation of the area
-#'   (in hectares).
+#'   across all plots. Only applies when \code{shape = "circle"} with vector
+#'   \code{measurement}. Ignored for rectangles.
+#' @return Standard deviation of area in hectares (numeric vector for circle,
+#'   single value for rect).
 #' @examples
-#' sd_area_circle(12.62, 0.1)   # 0.05 ha plot, radius error 0.1 m
-#' sd_area_circle(c(10, 15), c(0.1, 0.15))
+#' # Circular plot: radius 12.62 m, sigma_r 0.1 m
+#' sd_area_measure("circle", 12.62, 0.1)
+#'
+#' # Rectangular plot: 40 m x 25 m, tape error 0.1 m per side
+#' sd_area_measure("rect", c(40, 25), c(0.1, 0.1))
+#'
+#' # Multiple circular plots
+#' sd_area_measure("circle", c(10, 15), c(0.1, 0.15))
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #'   Study of Uncertainties in Physical Measurements (2nd ed.). University
 #'   Science Books.
+#' @references Avery, T. E. & Burkhart, H. E. (2015). Forest Measurements.
+#'   5th ed. Waveland Press.
+#' @references Van Laar, A. & Akça, A. (2007). Forest Mensuration. Springer.
 #' @seealso \code{\link{sd_area}} for GPS-mapped polygon boundaries.
 #' @export
 #'
+sd_area_measure <- function(shape, measurement, sigma, sum_plots = FALSE) {
+  shape <- match.arg(shape, c("circle", "rect"))
+
+  if (shape == "circle") {
+    radius <- measurement
+    sigma_r <- sigma
+    if (!is.numeric(radius) || any(radius <= 0)) {
+      stop("For shape = 'circle', measurement (radius) must be positive numeric.")
+    }
+    if (!is.numeric(sigma_r) || any(sigma_r < 0)) {
+      stop("sigma must be non-negative numeric.")
+    }
+    if (length(sigma_r) == 1L && length(radius) > 1L) {
+      sigma_r <- rep(sigma_r, length(radius))
+    }
+    if (length(radius) != length(sigma_r)) {
+      stop("measurement and sigma must have the same length (or sigma length 1).")
+    }
+    result <- (2 * pi * radius * sigma_r) / 10000
+    if (sum_plots) {
+      result <- sqrt(sum(result^2))
+    }
+    return(result)
+  }
+
+  if (shape == "rect") {
+    if (length(measurement) != 2L || !is.numeric(measurement) ||
+        any(measurement <= 0)) {
+      stop("For shape = 'rect', measurement must be c(length, width) (positive).")
+    }
+    if (length(sigma) != 2L || !is.numeric(sigma) || any(sigma < 0)) {
+      stop("For shape = 'rect', sigma must be c(sigma_length, sigma_width).")
+    }
+    L <- measurement[1]
+    W <- measurement[2]
+    sig_L <- sigma[1]
+    sig_W <- sigma[2]
+    sigma_m2 <- sqrt(W^2 * sig_L^2 + L^2 * sig_W^2)
+    return(sigma_m2 / 10000)
+  }
+}
+
+#' @rdname sd_area_measure
+#' @param radius (For \code{sd_area_circle} only) Radius in metres.
+#' @param sigma_r (For \code{sd_area_circle} only) Standard deviation of radius.
+#' @export
 sd_area_circle <- function(radius, sigma_r, sum_plots = FALSE) {
-  if (!is.numeric(radius) || any(radius <= 0)) {
-    stop("radius must be a numeric vector of positive values.")
-  }
-  if (!is.numeric(sigma_r) || any(sigma_r < 0)) {
-    stop("sigma_r must be non-negative numeric.")
-  }
-  if (length(sigma_r) == 1L && length(radius) > 1L) {
-    sigma_r <- rep(sigma_r, length(radius))
-  }
-  if (length(radius) != length(sigma_r)) {
-    stop("radius and sigma_r must have the same length (or sigma_r length 1).")
-  }
-
-  # sigma_A = 2 * pi * r * sigma_r (m^2), then convert to ha
-  result <- (2 * pi * radius * sigma_r) / 10000
-
-  if (sum_plots) {
-    result <- sqrt(sum(result^2))
-  }
-
-  return(result)
+  sd_area_measure(shape = "circle", measurement = radius, sigma = sigma_r,
+                  sum_plots = sum_plots)
 }

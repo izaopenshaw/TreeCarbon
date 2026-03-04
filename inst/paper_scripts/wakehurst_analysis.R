@@ -232,9 +232,9 @@ for (hab in habitats) {
       # Propagated error (sum in quadrature)
       total_error <- sqrt(sum(error_vals^2, na.rm = TRUE))
 
-      # Calculate carbon per hectare using summary_per_area
+      # Calculate carbon per hectare using total_density
       if (!is.na(hab_area) && hab_area > 0) {
-        per_ha_result <- summary_per_area(
+        per_ha_result <- total_density(
           input = carbon_vals,
           sigma_input = error_vals,
           area = hab_area,

@@ -43,5 +43,6 @@ Uncertainty propagation: linear scaling. For \code{Y = k * X},
 and \code{sig_total_carbon = sig_carbon_per_ha * area_ha}.
 }
 \seealso{
-\code{\link{wcc_error_propagation}} for error propagation rules.
+\code{\link{wcc_stratify}}, \code{\link{fc_agc_error}}; vignette("uncertainty-and-comparison",
+package = "TreeCarbon") for error propagation rules.
 }

@@ -10,11 +10,14 @@ sd_area(perimeter, RMSE, n_vertices = NULL, sum_plots = FALSE)
 \item{perimeter}{A numeric vector of perimeters (in meters).}
 
 \item{RMSE}{A numeric value representing the Root Mean Square Error (RMSE)
-of the perimeter measurement (in meters).}
+of the boundary positional accuracy (in meters). Use RMSE when the error
+is reported as positional accuracy (e.g. GPS specification, or RMSE from
+repeat measurements of boundary points). Typical values: 0.5--5 m for
+recreational GPS, 1--3 m for survey-grade under canopy.}
 
 \item{n_vertices}{Optional. Number of independently measured boundary
-vertices. If provided, the vertex method is used; otherwise the band
-method is used.}
+vertices. Can be a vector (recycled if length 1). If provided, the vertex
+method is used; otherwise the band method is used.}
 
 \item{sum_plots}{If \code{TRUE}, return the combined standard deviation
 across all plots (\code{sqrt(sum(sigma_i^2))}). If \code{FALSE}, return
@@ -34,15 +37,17 @@ how the boundary was measured.
 model for continuously GPS-traced boundaries. Formula:
 \eqn{\sigma_A = 2 \times \mathrm{RMSE} \times P / 10000} (output in
 hectares). This treats positional error as creating a strip of width RMSE
-on both sides of the boundary. It yields a \strong{conservative} (upper)
+on both sides of the boundary. It yields a conservative (upper)
 estimate of uncertainty, because errors along the boundary are assumed
-to add rather than cancel. Use for boundaries walked with a GPS logger.
+to add rather than cancel.
 
 \strong{Vertex method} (\code{n_vertices} provided): For plots where only the
 corner vertices were GPS'd (e.g. irregular rectangle, quadrilateral).
 Uses \eqn{\sigma_A = \mathrm{RMSE} \times P / (\sqrt{n} \times 10000)},
-reflecting independent positional error at each of \eqn{n} vertices.
-Typically gives a smaller, less conservative estimate than the band method.
+reflecting independent positional error at each of \eqn{n} vertices. This
+is an approximation; the exact formula depends on vertex coordinates (see
+Shoelace-based propagation). Typically gives a smaller estimate than the
+band method.
 }
 \examples{
 # Band method: GPS-traced boundary, perimeter 200m, RMSE 0.5m
@@ -61,7 +66,8 @@ accuracy measure for linear features." International Journal of Geographical
 Information Science, 11(3), 299-306.
 }
 \seealso{
-\code{\link{sd_area_circle}} for circular plots with measured radius.
+\code{\link{sd_area_measure}} for tape- or laser-measured plots
+(circular or rectangular).
 }
 \author{
 Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org

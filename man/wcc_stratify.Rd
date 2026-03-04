@@ -43,5 +43,6 @@ Uncertainty propagation (assuming independent strata):
 }
 }
 \seealso{
-\code{\link{wcc_error_propagation}} for error propagation rules.
+\code{\link{wcc_per_hectare}}, \code{\link{fc_agc_error}}; vignette("uncertainty-and-comparison",
+package = "TreeCarbon") for error propagation rules.
 }

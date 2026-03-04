@@ -105,7 +105,7 @@ plot_area_ha <- 0.5
 area_uncertainty_ha <- 0.05  # 10% uncertainty in area measurement
 
 # Calculate carbon density per hectare
-carbon_density <- summary_per_area(
+carbon_density <- total_density(
   input = carbon_values,
   sigma_input = carbon_uncertainty,
   area = plot_area_ha,

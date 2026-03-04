@@ -46,7 +46,7 @@
 #   1. Calculate carbon for each tree individually (fc_agc, fc_agc_error)
 #   2. Sum results for totals: total_sigma = sqrt(sum(sig_AGC^2))
 #   3. Calculate means by dividing by number of trees
-#   4. For uncertainty, propagate errors (see ?wcc_error_propagation)
+#   4. For uncertainty, propagate errors (see vignette("uncertainty-and-comparison", package = "TreeCarbon"))
 #   Helper functions: wcc_mean_tariff(), wcc_per_hectare(), wcc_stratify()
 #
 # Carbon conversion: Matthews2 recommended for WCC

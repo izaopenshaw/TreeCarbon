@@ -504,8 +504,8 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
 #'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
-#' @seealso \code{\link{wcc_error_propagation}} for error propagation rules (e.g.
-#'   \eqn{\sigma_{total} = \sqrt{\sum \sigma_i^2}} for sum of independent tree carbon).
+#' @seealso \code{\link{wcc_per_hectare}}, \code{\link{wcc_stratify}}, \code{\link{error_product}};
+#'   vignette("uncertainty-and-comparison", package = "TreeCarbon") for error propagation rules.
 #' @examples
 #' fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
@@ -976,7 +976,7 @@ print.wcc_multi_result <- function(x, ...) {
 #' # Seedling (height 0.5 m)
 #' sap_seedling2C(0.5, 'conifer')
 #'
-#' # Sapling (height 9 m) with uncertainty
+#' # fx (height 9 m) with uncertainty
 #' sap_seedling2C(height = 9, type = 'broadleaf', re_h = 0.05)
 #'
 #' # Transition examples: seedling vs sapling vs tree
@@ -1442,7 +1442,8 @@ wcc_mean_tariff <- function(spcode, height, dbh, type = NULL,
 #' @details Uncertainty propagation: linear scaling. For \code{Y = k * X},
 #'   \eqn{\sigma_Y = |k| \sigma_X}. So \code{sig_carbon_per_ha = sig_carbon_per_tree * trees_per_ha}
 #'   and \code{sig_total_carbon = sig_carbon_per_ha * area_ha}.
-#' @seealso \code{\link{wcc_error_propagation}} for error propagation rules.
+#' @seealso \code{\link{wcc_stratify}}, \code{\link{fc_agc_error}}; vignette("uncertainty-and-comparison",
+#'   package = "TreeCarbon") for error propagation rules.
 #' @export
 wcc_per_hectare <- function(carbon_per_tree, trees_per_ha, area_ha = NULL,
                             sig_carbon_per_tree = NULL, sig_carbon_per_ha = NULL) {
@@ -1493,7 +1494,8 @@ wcc_per_hectare <- function(carbon_per_tree, trees_per_ha, area_ha = NULL,
 #'     \item When using carbon_per_ha_t: Var(total) = sum(area_i^2 * sigma_per_ha_i^2)
 #'     \item sigma_weighted_mean = total_sig_carbon_t / total_area_ha
 #'   }
-#' @seealso \code{\link{wcc_error_propagation}} for error propagation rules.
+#' @seealso \code{\link{wcc_per_hectare}}, \code{\link{fc_agc_error}}; vignette("uncertainty-and-comparison",
+#'   package = "TreeCarbon") for error propagation rules.
 #' @export
 wcc_stratify <- function(strata_data, area_col = "area_ha",
                          carbon_col = NULL, sigma_col = NULL) {
