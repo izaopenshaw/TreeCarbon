@@ -2,9 +2,7 @@
 % Please edit documentation in R/WCC_functions.R
 \name{conifer_tariff}
 \alias{conifer_tariff}
-\title{Conifer tree tariff number
-sample tree. species-specific estimates of a1-a3 are found in the
-R data file, 'tariff_coniferdf'.}
+\title{Conifer tree tariff number (WCC Method C)}
 \usage{
 conifer_tariff(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re = 0.025)
 }
@@ -26,8 +24,9 @@ tariff number or if relative errors are provided returns a list of
 tariff number and an estimate for sigma
 }
 \description{
-Conifer tree tariff number
-sample tree. species-specific estimates of a1-a3 are found in the
+Conifer sample tree tariff. Implements WCC Protocol Method C
+(Conifers only: measure total height of sample trees). Species-specific
+estimates of a1-a3 are found in the
 R data file, 'tariff_coniferdf'.
 }
 \examples{

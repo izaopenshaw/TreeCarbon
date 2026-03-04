@@ -9,11 +9,12 @@ fc_agc(
   dbh,
   height,
   type = NULL,
-  method = "IPCC2",
+  method = "Matthews2",
   biome = "temperate",
   output.all = TRUE,
   nsg = NULL,
   height_timber = NULL,
+  timber_ratio = 0.85,
   rich_output = FALSE
 )
 }
@@ -27,7 +28,8 @@ for WCC protocol compliance.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
-\item{method}{method of converting biomass to carbon. Both 'Thomas' or 'IPCC2' require type.}
+\item{method}{method of converting biomass to carbon. Default \code{"Matthews2"}
+(recommended for WCC; Matthews 1993). Also: \code{"Thomas"}, \code{"IPCC2"}.}
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
@@ -37,7 +39,11 @@ for WCC protocol compliance.}
 given by the WCC}
 
 \item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
-for broadleaf species. If not provided, total height will be used with a warning.}
+for broadleaf species. If not provided, will be estimated using \code{timber_ratio}.}
+
+\item{timber_ratio}{ratio for estimating timber height from total height when \code{height_timber}
+is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,

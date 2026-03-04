@@ -9,7 +9,7 @@ fc_agc_error(
   dbh,
   height,
   type = NULL,
-  method = "IPCC2",
+  method = "Matthews2",
   biome = "temperate",
   output.all = TRUE,
   re_dbh = 0.05,
@@ -17,6 +17,8 @@ fc_agc_error(
   re = 0.025,
   nsg = NULL,
   sig_nsg = 0.09413391,
+  height_timber = NULL,
+  timber_ratio = NULL,
   rich_output = FALSE
 )
 }
@@ -25,11 +27,14 @@ fc_agc_error(
 
 \item{dbh}{diameter at breast height in centimetres}
 
-\item{height}{tree height in metres}
+\item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
+for WCC protocol compliance.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
-\item{method}{method of converting biomass to carbon. Either 'Thomas' or 'IPCC2' as these specify the error associated with the carbon volatile fraction}
+\item{method}{method of converting biomass to carbon. Default \code{"Matthews2"}
+(recommended for WCC; Matthews 1993). Use \code{"IPCC2"} or \code{"Thomas"}
+for full uncertainty propagation through carbon conversion.}
 
 \item{biome}{temperate, boreal, mediterranean, tropical, subtropical or all}
 
@@ -45,6 +50,9 @@ fc_agc_error(
 given by the WCC}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
+
+\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
+for broadleaf species. If not provided, total height will be used with a warning.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,
@@ -79,6 +87,10 @@ print(result)
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018).
+}
+\seealso{
+\code{\link{wcc_error_propagation}} for error propagation rules (e.g.
+\eqn{\sigma_{total} = \sqrt{\sum \sigma_i^2}} for sum of independent tree carbon).
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org

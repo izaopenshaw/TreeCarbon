@@ -5,9 +5,9 @@
 # using individual WCC functions. This is useful for understanding the
 # methodology or when you need intermediate values.
 #
-# This example shows:
+# This example shows (Methods B/C):
 # - Species lookup
-# - Tariff calculation
+# - Tariff calculation (tariffs(), broadleaf_tariff, conifer_tariff)
 # - Volume estimation
 # - Biomass calculation
 # - Carbon conversion
@@ -38,14 +38,9 @@ dbh <- 45  # cm
 height <- 18  # m
 
 # Calculate tariff number
-tariff_result <- tariffs(
-  spcode = spcode,
-  height = height,
-  dbh = dbh,
-  type = "broadleaf",
-  re_h = 0.05,    # 5% height error
-  re_dbh = 0.025  # 2.5% DBH error
-)
+tariff_result <- tariffs(spcode = spcode, height = height, dbh = dbh,
+                         type = "broadleaf",
+                         re_h = 0.05, re_dbh = 0.025)
 
 cat(sprintf("Tariff number: %.2f ± %.2f\n",
             tariff_result$tariff, tariff_result$sigma))
@@ -64,11 +59,8 @@ cat(sprintf("Volume: %.3f ± %.3f m³\n",
             merch_vol$volume, merch_vol$sigma))
 
 # Step 3b: Stem volume
-stem_vol <- treevol(
-  mtreevol = merch_vol$volume,
-  dbh = dbh,
-  sig_mtreevol = merch_vol$sigma
-)
+stem_vol <- treevol(mtreevol = merch_vol$volume, dbh = dbh,
+                    sig_mtreevol = merch_vol$sigma)
 
 cat(sprintf("Stem volume: %.3f ± %.3f m³\n",
             stem_vol$stemvolume, stem_vol$sigma))
@@ -79,23 +71,15 @@ cat(sprintf("Stem volume: %.3f ± %.3f m³\n",
 # Get NSG (wood density) from lookup
 nsg_lookup <- lookupcode(species_name, code = "NSG")
 nsg <- nsg_lookup$code
-wood_bio <- woodbiomass(
-  treevol = stem_vol$stemvolume,
-  nsg = nsg,
-  sig_treevol = stem_vol$sigma,
-  sig_nsg = 0.094  # Default NSG uncertainty
-)
+wood_bio <- woodbiomass(treevol = stem_vol$stemvolume, nsg = nsg,
+                        sig_treevol = stem_vol$sigma, sig_nsg = 0.094)
 
 cat(sprintf("Wood biomass: %.3f ± %.3f t\n",
             wood_bio$woodbiomass, wood_bio$sigma))
 
 # Step 4b: Crown biomass
-crown_bio <- crownbiomass(
-  spcode = spcode,
-  dbh = dbh,
-  re_d = 0.025,
-  re = 0.025
-)
+crown_bio <- crownbiomass(spcode = spcode, dbh = dbh,
+                          re_d = 0.025, re = 0.025)
 
 cat(sprintf("Crown biomass: %.3f ± %.3f t\n",
             crown_bio$biomass, crown_bio$sigma))
@@ -107,25 +91,17 @@ agb_sigma <- sqrt(wood_bio$sigma^2 + crown_bio$sigma^2)
 cat(sprintf("AGB: %.3f ± %.3f t\n", agb, agb_sigma))
 
 # Step 4d: Root biomass (optional, for below-ground carbon)
-root_bio <- rootbiomass(
-  spcode = spcode,
-  dbh = dbh,
-  re_dbh = 0.025,
-  re = 0.025
-)
+root_bio <- rootbiomass(spcode = spcode, dbh = dbh,
+                        re_dbh = 0.025, re = 0.025)
 
 cat(sprintf("Root biomass: %.3f ± %.3f t\n",
             root_bio$rootbiomass, root_bio$sigma))
 
 # ==== Carbon Conversion ========================================================
 
-# Convert biomass to carbon using Thomas method
-carbon <- biomass2c(
-  biomass = agb,
-  method = "Thomas",
-  type = "broadleaf",
-  sig_biomass = agb_sigma
-)
+# Convert biomass to carbon (Thomas for uncertainty demo; Matthews2 is WCC default)
+carbon <- biomass2c(biomass = agb, method = "Thomas",
+                    type = "broadleaf", sig_biomass = agb_sigma)
 
 cat(sprintf("Above-ground carbon: %.3f ± %.3f t C\n",
             carbon$AGC, carbon$sig_AGC))
@@ -147,15 +123,11 @@ cat(sprintf("Above-ground carbon: %.3f ± %.3f t C\n",
 
 # ==== Comparison with High-Level Function ======================================
 
-# Compare step-by-step result with high-level function
-result_highlevel <- fc_agc_error(
-  name = species_name,
-  dbh = dbh,
-  height = height,
-  type = "broadleaf",
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+# Compare step-by-step result with high-level function (uses Matthews2 by default for WCC)
+result_highlevel <- fc_agc_error(name = species_name, dbh = dbh,
+                                 height = height, type = "broadleaf",
+                                 method = "Matthews2",
+                                 re_dbh = 0.025, re_h = 0.05)
 
 cat(sprintf("Step-by-step result: Carbon: %.3f ± %.3f t C\n", carbon$AGC, carbon$sig_AGC))
 cat(sprintf("High-level function result: Carbon: %.3f ± %.3f t C\n",

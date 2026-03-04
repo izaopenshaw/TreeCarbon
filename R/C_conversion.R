@@ -72,7 +72,7 @@ ctoco2e <- function(carbon) {
 #' Supported methods:
 #' \itemize{
 #'   \item `"Matthews1"`: Simplest, CF = 50 percent (Matthews, 1993).
-#'   \item `"Matthews2"`: CF based on type (broadleaf or conifer).
+#'   \item `"Matthews2"`: CF based on type (broadleaf or conifer). Recommended for WCC.
 #'   \item `"IPCC1"`: CF = 47.7 percent (IPCC, 2006).
 #'   \item `"IPCC2"`: Lookup CF by type and biome.
 #'   \item `"Thomas"`: Lookup by type and biome (Thomas & Martin, 2012).
@@ -101,6 +101,10 @@ ctoco2e <- function(carbon) {
 #'
 #' Matthews, G.A.R. (1993). The Carbon Content of Trees. Forestry Commission Technical
 #' Paper 4, Forestry Commission, Edinburgh, 21 pp. ISBN: 0-85538-317-8.
+#'
+#' @details For WCC (Woodland Carbon Code) applications, \code{method = "Matthews2"}
+#' is recommended; it is the default in \code{fc_agc()}, \code{fc_agc_error()},
+#' \code{fc_stand_carbon()}, and \code{wcc_dbh_class_carbon()}.
 #'
 #' @examples
 #' # Basic conversion using IPCC2 method
@@ -534,19 +538,41 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
 
 #' @title Standard Deviation for Measurement of the total Area
 #' @description This function calculates the standard deviation of the area
-#' based on the perimeter and Root Mean Square Error (RMSE).
+#'   for GPS-mapped plot boundaries. Two methods are available depending on
+#'   how the boundary was measured.
+#' @details
+#'   **Band method** (default, \code{n_vertices = NULL}): Uses the epsilon-band
+#'   model for continuously GPS-traced boundaries. Formula:
+#'   \eqn{\sigma_A = 2 \times \mathrm{RMSE} \times P / 10000} (output in
+#'   hectares). This treats positional error as creating a strip of width RMSE
+#'   on both sides of the boundary. It yields a **conservative** (upper)
+#'   estimate of uncertainty, because errors along the boundary are assumed
+#'   to add rather than cancel. Use for boundaries walked with a GPS logger.
+#'
+#'   **Vertex method** (\code{n_vertices} provided): For plots where only the
+#'   corner vertices were GPS'd (e.g. irregular rectangle, quadrilateral).
+#'   Uses \eqn{\sigma_A = \mathrm{RMSE} \times P / (\sqrt{n} \times 10000)},
+#'   reflecting independent positional error at each of \eqn{n} vertices.
+#'   Typically gives a smaller, less conservative estimate than the band method.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param perimeter A numeric vector of perimeters (in meters).
 #' @param RMSE A numeric value representing the Root Mean Square Error (RMSE)
 #' of the perimeter measurement (in meters).
-#' @param sum_plots if equal to TRUE then sum all of the standard deviations of
-#' the plots. If false then outputs the standard deviation of each input.
+#' @param n_vertices Optional. Number of independently measured boundary
+#'   vertices. If provided, the vertex method is used; otherwise the band
+#'   method is used.
+#' @param sum_plots If \code{TRUE}, return the combined standard deviation
+#'   across all plots (\code{sqrt(sum(sigma_i^2))}). If \code{FALSE}, return
+#'   the standard deviation for each plot.
 #' @return A numeric vector representing the standard deviation of the area for
 #' each corresponding perimeter (in hectares).
 #' @examples
-#' # Example with multiple perimeters of 200m, 300m, and 400m.
-#' # If measured to the nearest 50cm within 100m plot, the RMSE = 0.5m
+#' # Band method: GPS-traced boundary, perimeter 200m, RMSE 0.5m
 #' sd_area(c(200, 300, 400), 0.5)
+#'
+#' # Vertex method: 4 GPS'd corners of irregular rectangle, P=130m
+#' sd_area(130, 3, n_vertices = 4)
+#' @seealso \code{\link{sd_area_circle}} for circular plots with measured radius.
 #' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
 #' Study of Uncertainties in Physical Measurements (2nd ed.). University
 #' Science Books.
@@ -555,7 +581,7 @@ summary_per_area <- function(input, sigma_input, area, sigma_area,
 #' Information Science, 11(3), 299-306.
 #' @export
 #'
-sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
+sd_area <- function(perimeter, RMSE, n_vertices = NULL, sum_plots = FALSE) {
   # Input validation
   if (!is.numeric(perimeter) || any(perimeter <= 0)) {
     stop("perimeter must be a numeric vector of positive values.")
@@ -563,11 +589,70 @@ sd_area <- function(perimeter, RMSE, sum_plots = FALSE) {
   if (!is.numeric(RMSE) || RMSE <= 0) {
     stop("RMSE must be a positive numeric value.")
   }
+  if (!is.null(n_vertices)) {
+    if (!is.numeric(n_vertices) || any(n_vertices < 3, na.rm = TRUE)) {
+      stop("n_vertices must be numeric and at least 3.")
+    }
+  }
 
-  # Calculate standard deviation of the area for each perimeter value
-  result <- (2 * RMSE * perimeter) / 10000
+  # Band method (conservative) or vertex method
+  if (is.null(n_vertices)) {
+    result <- (2 * RMSE * perimeter) / 10000
+  } else {
+    result <- (RMSE * perimeter / sqrt(n_vertices)) / 10000
+  }
 
-  if(sum_plots){
+  if (sum_plots) {
+    result <- sqrt(sum(result^2))
+  }
+
+  return(result)
+}
+
+############# Standard Deviation for Circular Plot Area ##############
+
+#' @title Standard Deviation for Measurement of Circular Plot Area
+#' @description Calculates the standard deviation of the area of a circular
+#'   plot when the radius is measured with known uncertainty. Uses Taylor
+#'   propagation: \eqn{\sigma_A = 2\pi r \, \sigma_r} (with conversion to
+#'   hectares). Appropriate for fixed-radius circular plots measured by tape
+#'   or laser.
+#' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
+#' @param radius Numeric vector of plot radii (in meters).
+#' @param sigma_r Numeric vector of standard deviations of the radius
+#'   measurements (in meters). Recycled to match \code{radius} length.
+#' @param sum_plots If \code{TRUE}, return the combined standard deviation
+#'   across all plots. If \code{FALSE}, return the standard deviation for each
+#'   plot.
+#' @return A numeric vector representing the standard deviation of the area
+#'   (in hectares).
+#' @examples
+#' sd_area_circle(12.62, 0.1)   # 0.05 ha plot, radius error 0.1 m
+#' sd_area_circle(c(10, 15), c(0.1, 0.15))
+#' @references Taylor, J. R. (1997). An Introduction to Error Analysis: The
+#'   Study of Uncertainties in Physical Measurements (2nd ed.). University
+#'   Science Books.
+#' @seealso \code{\link{sd_area}} for GPS-mapped polygon boundaries.
+#' @export
+#'
+sd_area_circle <- function(radius, sigma_r, sum_plots = FALSE) {
+  if (!is.numeric(radius) || any(radius <= 0)) {
+    stop("radius must be a numeric vector of positive values.")
+  }
+  if (!is.numeric(sigma_r) || any(sigma_r < 0)) {
+    stop("sigma_r must be non-negative numeric.")
+  }
+  if (length(sigma_r) == 1L && length(radius) > 1L) {
+    sigma_r <- rep(sigma_r, length(radius))
+  }
+  if (length(radius) != length(sigma_r)) {
+    stop("radius and sigma_r must have the same length (or sigma_r length 1).")
+  }
+
+  # sigma_A = 2 * pi * r * sigma_r (m^2), then convert to ha
+  result <- (2 * pi * radius * sigma_r) / 10000
+
+  if (sum_plots) {
     result <- sqrt(sum(result^2))
   }
 

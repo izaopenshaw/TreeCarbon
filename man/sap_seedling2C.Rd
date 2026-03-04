@@ -16,18 +16,47 @@ sap_seedling2C(height, type, re_h = NULL, re = 0.025)
 \item{re}{relative error of estimates (default = 0.025)}
 }
 \value{
-carbon in tonnes or if re_h provided then additionally the error
+Carbon in tonnes \strong{per individual} seedling/sapling. If \code{re_h}
+provided, returns a list with \code{carbon} and \code{sd}.
 }
 \description{
-Calculate the total carbon content of tree seedlings
-(below and above ground)
+Calculate the carbon content of tree seedlings and saplings
+(below and above ground) from height. Uses WCC lookup tables for heights
+from 0.01 to 10 m. Both seedlings and saplings use the same lookup tables;
+classification is for field sampling (see Details).
+}
+\details{
+\strong{Per-individual result:} The return value is carbon \strong{per seedling/sapling}.
+For stratum or project totals, multiply by the total number of individuals
+in the stratum (WCC protocol: plot-based counts scaled to per-hectare, then
+multiplied by stratum area).
+
+\strong{WCC category definitions (for field sampling):}
+\itemize{
+\item \strong{Seedlings}: Height < 1 m (100 cm) OR DBH < 7 cm
+\item \strong{Saplings}: Height 1–10 m (100–1000 cm) OR DBH 7–10 cm
+\item \strong{Trees}: DBH >= 7 cm AND height >= 10 m (use tariff-based methods instead)
+}
+
+This function handles both seedlings and saplings using the same lookup
+tables (height range 0.01–10 m). Use \code{fc_agc} or \code{fc_agc_error}
+for trees; they route small stems (height < 10 m or DBH < 7 cm) to
+\code{sap_seedling2C} internally.
 }
 \note{
-just uses simple linear relationship to get between measures
+Just uses simple linear interpolation between lookup values.
 }
 \examples{
+# Seedling (height 0.5 m)
 sap_seedling2C(0.5, 'conifer')
+
+# Sapling (height 9 m) with uncertainty
 sap_seedling2C(height = 9, type = 'broadleaf', re_h = 0.05)
+
+# Transition examples: seedling vs sapling vs tree
+sap_seedling2C(0.3, 'broadleaf')   # seedling (< 1 m)
+sap_seedling2C(5, 'conifer')       # sapling (1–10 m)
+# For trees (DBH >= 7 cm, height >= 10 m): use fc_agc() or tariffs()
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

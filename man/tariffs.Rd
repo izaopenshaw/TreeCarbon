@@ -2,12 +2,12 @@
 % Please edit documentation in R/WCC_functions.R
 \name{tariffs}
 \alias{tariffs}
-\title{Calculate tariff numbers for list of trees}
+\title{Calculate tariff numbers for individual trees}
 \usage{
 tariffs(
   spcode,
   height,
-  dbh = NULL,
+  dbh,
   type = NULL,
   height_timber = NULL,
   re_h = NULL,
@@ -20,7 +20,7 @@ tariffs(
 
 \item{height}{tree height in metres (total height for conifers, used as fallback for broadleaves)}
 
-\item{dbh}{diameter at breast height in centimetres}
+\item{dbh}{diameter at breast height in centimetres (required)}
 
 \item{type}{conifer or broadleaf}
 
@@ -37,16 +37,31 @@ either tariff number or if re_h is provided, then returns a list
 of the tariff number and uncertainty
 }
 \description{
-Depending on inputs, calcualte the tariff number using either
-stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
-For broadleaf species, uses timber height (height_timber) if provided,
-otherwise uses total height. WCC protocol requires timber height for broadleaves.
+Calculate the tariff number using either broadleaf_tariff (Method B) or
+conifer_tariff (Method C) for individual trees. Requires both DBH and height measurements.
+For stand-level calculations (Method D), use \code{stand_tariff()} directly
+with top height from \code{calculate_top_height()}.
+}
+\details{
+This function calculates tariff numbers for individual trees using Methods B
+(broadleaves) or C (conifers) from WCC Protocol. Both DBH and height are required.
+
+For stand-level calculations (Method D) when DBH is not available, use:
+\itemize{
+\item \code{calculate_top_height()} to calculate top height from tree data
+\item \code{stand_tariff()} to calculate stand tariff from top height
+}
 }
 \examples{
-tariffs(spcode = "OK", height= 10, dbh = 20)
-tariffs("OK", 10, 20, re_h = 0.1, re_dbh = 0.05)
-tariffs(spcode = c("OK","NS", "NS", "SP", "SP"), height = c(10,10,5,10,10),
-dbh = c(20,20,10,20,NA), re_h = 0.01, re_dbh = 0.05)
+# Individual trees (Method B/C)
+tariffs(spcode = "OK", height = 18, dbh = 45)
+tariffs("OK", 18, 45, re_h = 0.1, re_dbh = 0.05)
+
+# Multiple trees
+tariffs(spcode = c("OK","NS", "SP"), 
+        height = c(18, 20, 22), 
+        dbh = c(45, 38, 42), 
+        re_h = 0.05, re_dbh = 0.05)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:

@@ -84,9 +84,8 @@ cat(sprintf("95%% CI: [%.3f, %.3f] t CO2e\n",
 # Get comprehensive metadata including assumptions and citations
 
 # WCC
-result_rich <- fc_agc(name = "Oak",                 dbh = 45,
-                      height = 18,                  type = "broadleaf",
-                      rich_output = TRUE)
+result_rich <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                      type = "broadleaf", rich_output = TRUE)
 print(result_rich)
 
 # Bunce

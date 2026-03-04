@@ -2,14 +2,17 @@
 % Please edit documentation in R/WCC_functions.R
 \name{stand_tariff}
 \alias{stand_tariff}
-\title{Tariff number by stand height}
+\title{Tariff number by stand height (WCC Method D)}
 \usage{
-stand_tariff(spcode, height, re_h = NULL, re = 0.025)
+stand_tariff(spcode, stand_height, re_h = NULL, re = 0.025)
 }
 \arguments{
 \item{spcode}{species code}
 
-\item{height}{tree height in metres}
+\item{stand_height}{Top height in metres. This is the mean height of
+the 100 largest trees per hectare (by DBH), as defined in WCC Protocol
+Method D. You can calculate top height from tree data using
+\code{calculate_top_height()}.}
 
 \item{re_h}{relative error of height measurement (optional)}
 
@@ -21,16 +24,48 @@ of the tariff number and an estimate of sigma for tariff number
 }
 \description{
 Use the estimated stand top height to calculate the stand
-tariff number based on species-specific coefficients.
+tariff number based on species-specific coefficients. This function
+implements WCC Protocol Method D (Section 4.1.4).
+}
+\details{
+This function implements WCC Protocol Method D (Section 4.1.4). Top height
+is a specific forestry measurement defined as the mean height of the 100
+largest trees per hectare (by DBH). This method is intended for stand-level
+assessments when individual tree DBH measurements are not available.
+
+Use this function when:
+\itemize{
+\item You have measured top height following WCC protocol
+\item You do NOT have individual tree DBH measurements
+\item You're doing a stand-level carbon assessment
+}
+
+If:
+\itemize{
+\item You have individual tree DBH → Use \code{broadleaf_tariff()} or
+\code{conifer_tariff()}
+\item You need to calculate top height from tree data → Use \code{calculate_top_height()} first
+}
 }
 \examples{
-stand_tariff("OK", height = 10)
-stand_tariff("OK", height = 10, re_h = 0.01)
-stand_tariff(spcode = "AH", height = 10, re_h = 0.05)
+# Example 1: Using measured top height
+stand_tariff("OK", stand_height = 18)
+
+# Example 2: With uncertainty
+stand_tariff("OK", stand_height = 18, re_h = 0.05)
+
+# Example 3: Calculate top height from tree data, then use stand_tariff
+dbh <- c(45, 52, 38, 60, 42, 55, 48, 35, 58, 40)
+height <- c(18, 22, 15, 24, 17, 21, 19, 14, 23, 16)
+area_ha <- 0.1
+top_h_result <- calculate_top_height(dbh, height, area_ha, re_h = 0.05)
+# Use top height and propagate uncertainty
+tariff <- stand_tariff("OK", stand_height = top_h_result$top_height,
+                       re_h = top_h_result$re_h)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-Carbon Assessment Protocol (v2. 0)." (2018).
+Carbon Assessment Protocol (v2. 0)." (2018). Section 4.1.4, Method D.
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org

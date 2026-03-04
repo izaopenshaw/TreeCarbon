@@ -21,7 +21,7 @@ or metric tonnes).}
 Supported methods:
 \itemize{
 \item \code{"Matthews1"}: Simplest, CF = 50 percent (Matthews, 1993).
-\item \code{"Matthews2"}: CF based on type (broadleaf or conifer).
+\item \code{"Matthews2"}: CF based on type (broadleaf or conifer). Recommended for WCC.
 \item \code{"IPCC1"}: CF = 47.7 percent (IPCC, 2006).
 \item \code{"IPCC2"}: Lookup CF by type and biome.
 \item \code{"Thomas"}: Lookup by type and biome (Thomas & Martin, 2012).
@@ -53,6 +53,11 @@ fraction (CF) from the chosen method or reference.
 
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including conversion method metadata, assumptions, and uncertainty
+}
+\details{
+For WCC (Woodland Carbon Code) applications, \code{method = "Matthews2"}
+is recommended; it is the default in \code{fc_agc()}, \code{fc_agc_error()},
+\code{fc_stand_carbon()}, and \code{wcc_dbh_class_carbon()}.
 }
 \examples{
 # Basic conversion using IPCC2 method

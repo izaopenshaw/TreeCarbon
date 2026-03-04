@@ -100,15 +100,9 @@ The WCC method propagates error through each step of the calculation:
 
 ```{r wcc-error-prop}
 # Calculate carbon with error propagation
-result <- fc_agc_error(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  re_dbh = 0.025,  # 2.5% DBH measurement error
-  re_h = 0.05,     # 5% height measurement error
-  re = 0.025       # 2.5% coefficient error
-)
+result <- fc_agc_error(name = "Oak", dbh = 45, height = 18,
+                       type = "broadleaf",
+                       re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 cat("=== WCC Error Propagation ===\n")
 cat(sprintf("Carbon: %.3f ± %.3f t C\n",
@@ -130,17 +124,15 @@ The WCC pipeline propagates uncertainty through:
 
 Each step uses error propagation formulas appropriate for the mathematical operations (multiplication, addition, etc.).
 
+See `?wcc_error_propagation` for rules: sum of independent values uses \eqn{\sigma_{total} = \sqrt{\sum \sigma_i^2}}; linear scaling uses \eqn{\sigma_{new} = |k| \sigma_{old}}.
+
 ## 2.2 Bunce Error Propagation
 
 The Bunce method uses a simplified approach with CO lookup from Table 6:
 
 ```{r bunce-error-prop}
 # Bunce with error propagation
-result_bunce <- Bunce(
-  name = "Oak",
-  dbh = 45,
-  re_dbh = 0.025  # Only DBH error needed
-)
+result_bunce <- Bunce(name = "Oak", dbh = 45, re_dbh = 0.025)
 
 cat("=== Bunce Error Propagation ===\n")
 cat(sprintf("Biomass: %.1f ± %.1f kg\n",
@@ -160,12 +152,8 @@ The Bunce function uses:
 
 ```{r bunce-method-detail}
 # With rich output to see methodology
-result_bunce_rich <- Bunce(
-  name = "Oak",
-  dbh = 45,
-  re_dbh = 0.025,
-  rich_output = TRUE
-)
+result_bunce_rich <- Bunce(name = "Oak", dbh = 45, re_dbh = 0.025,
+                           rich_output = TRUE)
 
 print(result_bunce_rich)
 ```
@@ -209,14 +197,11 @@ Compare how uncertainty varies with tree size:
 dbh_range <- seq(20, 80, by = 5)
 
 # WCC uncertainty
-wcc_results <- fc_agc_error(
-  name = rep("Oak", length(dbh_range)),
-  dbh = dbh_range,
-  height = rep(18, length(dbh_range)),
-  type = rep("broadleaf", length(dbh_range)),
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+wcc_results <- fc_agc_error(name = rep("Oak", length(dbh_range)),
+                            dbh = dbh_range,
+                            height = rep(18, length(dbh_range)),
+                            type = rep("broadleaf", length(dbh_range)),
+                            re_dbh = 0.025, re_h = 0.05)
 
 # Bunce uncertainty
 bunce_results <- Bunce(
@@ -238,13 +223,9 @@ plot_data$cv <- 100 * plot_data$uncertainty / plot_data$carbon
 ggplot(plot_data, aes(x = dbh, y = cv, color = method)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2) +
-  labs(
-    title = "Coefficient of Variation (CV) vs DBH",
-    subtitle = "Comparing WCC and Bunce uncertainty methods",
-    x = "DBH (cm)",
-    y = "CV (%)",
-    color = "Method"
-  ) +
+  labs(title = "Coefficient of Variation (CV) vs DBH",
+       subtitle = "Comparing WCC and Bunce uncertainty methods",
+       x = "DBH (cm)", y = "CV (%)", color = "Method") +
   theme_minimal() +
   scale_color_brewer(palette = "Set2")
 ```
@@ -435,11 +416,8 @@ library(tidyr)
 
 plot_data <- batch_comparison %>%
   select(genus, species, dbh, WCC_C_t, biomass_C_t, allodb_C_t, Bunce_C_t) %>%
-  pivot_longer(
-    cols = c(WCC_C_t, biomass_C_t, allodb_C_t, Bunce_C_t),
-    names_to = "method",
-    values_to = "carbon"
-  )
+  pivot_longer(cols = c(WCC_C_t, biomass_C_t, allodb_C_t, Bunce_C_t),
+               names_to = "method", values_to = "carbon")
 
 plot_data$method <- gsub("_C_t", "", plot_data$method)
 plot_data$method <- gsub("biomass", "BIOMASS", plot_data$method)
@@ -447,13 +425,9 @@ plot_data$method <- gsub("biomass", "BIOMASS", plot_data$method)
 ggplot(plot_data, aes(x = dbh, y = carbon, color = method, shape = method)) +
   geom_point(size = 3, alpha = 0.7) +
   geom_smooth(method = "loess", se = FALSE, linewidth = 0.8) +
-  labs(
-    title = "Carbon Estimates by Method vs DBH",
-    x = "DBH (cm)",
-    y = "Above-Ground Carbon (tonnes)",
-    color = "Method",
-    shape = "Method"
-  ) +
+  labs(title = "Carbon Estimates by Method vs DBH",
+       x = "DBH (cm)", y = "Above-Ground Carbon (tonnes)",
+       color = "Method", shape = "Method") +
   theme_minimal() +
   scale_color_brewer(palette = "Set2")
 ```
@@ -590,14 +564,9 @@ tree_dbh <- 45
 tree_height <- 18
 
 # WCC with measurement uncertainty
-wcc_result <- fc_agc_error(
-  name = "Oak",
-  dbh = tree_dbh,
-  height = tree_height,
-  type = "broadleaf",
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+wcc_result <- fc_agc_error(name = "Oak", dbh = tree_dbh,
+                           height = tree_height, type = "broadleaf",
+                           re_dbh = 0.025, re_h = 0.05)
 
 # Bunce with measurement uncertainty
 bunce_result <- Bunce(

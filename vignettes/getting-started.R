@@ -16,12 +16,8 @@ library(TreeCarbon)
 
 ########## Calculate above-ground carbon for an oak tree ##########
 # WCC #
-result <- fc_agc(
-  name = "Oak",
-  dbh = 45,        # cm
-  height = 18,     # metres
-  type = "broadleaf"
-)
+result <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                 type = "broadleaf")
 
 cat(sprintf("Above-ground Carbon: %.3f tonnes\n", result$AGC_WCC_t))
 
@@ -55,8 +51,8 @@ result <- fc_agc_error(name = "Oak",  dbh = 45,  height = 18, type = "broadleaf"
 cat(sprintf("Carbon: %.3f ± %.3f tonnes\n", result$AGC_WCC_t, result$sig_AGC))
 
 ############ Carbon with rich output for WCC ############
-result <- fc_agc(name = "Oak",  dbh = 45,  height = 18,  type = "broadleaf",
-  rich_output = TRUE)
+result <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                 type = "broadleaf", rich_output = TRUE)
 
 print(result)
 

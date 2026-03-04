@@ -20,15 +20,31 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-The **Woodland Carbon Code (WCC)** is the UK standard for woodland carbon accounting. This vignette provides a comprehensive guide to all WCC functions in the TreeCarbon package, walking through the complete carbon estimation pipeline step-by-step.
+The **Woodland Carbon Code (WCC)** is the UK standard for woodland carbon accounting. This vignette provides a comprehensive guide to all WCC functions in the TreeCarbon package.
+
+## Method Reference: Which Function to Use
+
+| Method | Functions | Input requirements | Section |
+|--------|-----------|-------------------|---------|
+| **A** | `tariff_vol_area()`, `merchtreevol()`, `treevol()`, `woodbiomass()`, `crownbiomass()`, `biomass2c()` | Felled sample: vol (m³), dbh (cm). Then: NSG, species for full pipeline | 2.1, 6 |
+| **B** | `broadleaf_tariff()`, `tariffs()`, `fc_agc()`, `fc_agc_error()` | type = "broadleaf", species names, dbh (cm), height_timber (m) | 2.3, 7, 12.3 |
+| **C** | `conifer_tariff()`, `tariffs()`, `fc_agc()`, `fc_agc_error()` | type = "conifer", species names, dbh (cm), height (total, m) | 2.2, 7, 12.3 |
+| **D** | `stand_tariff()`, `calculate_top_height()`, `fc_stand_carbon()` | stand_height OR dbh + height vectors, area_ha, species/name, type | 2.4, 12.1 |
+| **E** | `wcc_process_tally()`, `wcc_dbh_class_carbon()` | dbh_class, count; optional: height, area_ha, species/name, type | 12.2 |
+
+**Notes:** Methods B/C use `fc_agc()` or `fc_agc_error()` for end-to-end carbon. Method A requires the step-by-step pipeline. Matthews2 is the default carbon conversion method (recommended for WCC).
+
+**Runnable examples:** `6_WCC_complete_workflow.R` (full pipeline for all methods); `8_WCC_method_selection.R` (which method for your data?); `WCC_method_reference.R` (method-function-section table).
+
+---
 
 The WCC methodology follows this pipeline:
 
-1. **Species lookup** - Match species names to WCC codes
-2. **Tariff calculation** - Determine tariff number from species, height, and DBH
-3. **Volume estimation** - Calculate merchantable and stem volumes
-4. **Biomass calculation** - Convert volumes to biomass using wood density (NSG)
-5. **Carbon conversion** - Convert biomass to carbon using conversion factors
+1. **Species lookup** - Match species names to WCC codes (Section 1)
+2. **Tariff calculation** - Determine tariff number from species, height, and DBH (Section 2)
+3. **Volume estimation** - Calculate merchantable and stem volumes (Section 3)
+4. **Biomass calculation** - Convert volumes to biomass using wood density (NSG) (Section 4)
+5. **Carbon conversion** - Convert biomass to carbon (Section 5)
 
 ```{r load-package, message=FALSE, warning=FALSE}
 library(TreeCarbon)
@@ -89,9 +105,9 @@ lookupcode("Oak", code = "Root")
 
 The tariff number is a key parameter in WCC that relates tree form to volume. There are several ways to calculate it.
 
-## 2.1 From Volume and Basal Area (Equation 1)
+## 2.1 Method A: From Volume and Basal Area (Equation 1)
 
-If you have measured volume from a felled tree:
+If you have measured volume from a felled sample tree (WCC Method A):
 
 ```{r tariff-vol-area}
 # Example: Tree with measured volume
@@ -105,9 +121,9 @@ tariff <- tariff_vol_area(
 print(tariff)
 ```
 
-## 2.2 Conifer Tariff (Equation 3)
+## 2.2 Method C: Conifer Tariff (Equation 3)
 
-For conifer species, use species-specific equations:
+For conifer species (WCC Method C), use species-specific equations:
 
 ```{r tariff-conifer}
 # Scots Pine
@@ -122,9 +138,9 @@ tariff_pine <- conifer_tariff(
 print(tariff_pine)
 ```
 
-## 2.3 Broadleaf Tariff (Equation 4)
+## 2.3 Method B: Broadleaf Tariff (Equation 4)
 
-For broadleaf species:
+For broadleaf species (WCC Method B - timber height required):
 
 ```{r tariff-broadleaf}
 # Oak
@@ -139,24 +155,27 @@ tariff_oak <- broadleaf_tariff(
 print(tariff_oak)
 ```
 
-## 2.4 Stand Tariff (Equation 2)
+## 2.4 Method D: Stand Tariff (Equation 4)
 
-For stand-level calculations when you only have height:
+For stand-level calculations (WCC Method D) when you have top height
+(mean of 100 largest trees/ha by DBH). Use `calculate_top_height()` to
+derive top height from plot data:
 
 ```{r tariff-stand}
-# Stand-level tariff (no DBH needed)
-stand_tariff <- stand_tariff(
+# Stand-level tariff (Method D) - top height required
+tariff_stand <- stand_tariff(
   spcode = "OK",
-  height = 18,
+  stand_height = 18,  # Top height in m
   re_h = 0.05
 )
 
-print(stand_tariff)
+print(tariff_stand)
 ```
 
-## 2.5 Automatic Tariff Selection
+## 2.5 Automatic Tariff Selection (Methods B/C)
 
-The `tariffs()` function automatically selects the appropriate method:
+The `tariffs()` function automatically selects broadleaf_tariff (Method B) or
+conifer_tariff (Method C) based on species type:
 
 ```{r tariff-auto}
 # Automatically uses conifer or broadleaf based on species
@@ -278,29 +297,33 @@ cat(sprintf("Above-ground biomass: %.3f ± %.3f t\n", agb, agb_sigma))
 
 # 5: Carbon Conversion
 
-## 5.1 Biomass to Carbon (Thomas or IPCC2)
+## 5.1 Biomass to Carbon
 
-Convert biomass to carbon using conversion factors:
+**Matthews2** is recommended for WCC (Matthews 1993, UK Forestry Commission).
+It is the default in `fc_agc()` and `fc_agc_error()`. For uncertainty propagation
+through carbon conversion, use IPCC2 or Thomas.
 
 ```{r biomass2c}
-# Using Thomas method (species-specific)
+# Matthews2 (recommended for WCC) - type-specific carbon fraction
+carbon_matthews2 <- biomass2c(biomass = agb, method = "Matthews2", type = "broadleaf")
+print(carbon_matthews2)
+
+# Thomas or IPCC2 - for uncertainty propagation (includes sig_AGC)
 carbon_thomas <- biomass2c(
   biomass = agb,
   method = "Thomas",
   type = "broadleaf",
   sig_biomass = agb_sigma
 )
-
 print(carbon_thomas)
 
-# Using IPCC2 method (IPCC default 0.47)
+# IPCC2 (alternative with uncertainty)
 carbon_ipcc <- biomass2c(
   biomass = agb,
   method = "IPCC2",
   type = "broadleaf",
   sig_biomass = agb_sigma
 )
-
 print(carbon_ipcc)
 ```
 
@@ -391,6 +414,7 @@ cat(sprintf("Total AGB: %.3f ± %.3f t\n", agb, agb_sigma))
 cat("\n")
 
 # === Step 5: Carbon conversion ===
+# Using Thomas for uncertainty propagation in this demo; Matthews2 is WCC default
 carbon <- biomass2c(
   biomass = agb,
   method = "Thomas",
@@ -423,13 +447,8 @@ For most users, the high-level functions `fc_agc()` and `fc_agc_error()` are mor
 
 ```{r fc-agc-simple}
 # Simple calculation - returns carbon only
-carbon_simple <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  output.all = FALSE
-)
+carbon_simple <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                        type = "broadleaf", output.all = FALSE)
 
 cat(sprintf("Carbon: %.3f tonnes\n", carbon_simple))
 ```
@@ -438,13 +457,8 @@ cat(sprintf("Carbon: %.3f tonnes\n", carbon_simple))
 
 ```{r fc-agc-detailed}
 # Get all intermediate values
-carbon_detailed <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  output.all = TRUE
-)
+carbon_detailed <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                          type = "broadleaf", output.all = TRUE)
 
 print(carbon_detailed)
 ```
@@ -453,15 +467,9 @@ print(carbon_detailed)
 
 ```{r fc-agc-error}
 # Include uncertainty estimates
-carbon_error <- fc_agc_error(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  re_dbh = 0.025,  # 2.5% DBH error
-  re_h = 0.05,     # 5% height error
-  re = 0.025       # 2.5% coefficient error
-)
+carbon_error <- fc_agc_error(name = "Oak", dbh = 45, height = 18,
+                             type = "broadleaf",
+                             re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 # View key results
 cat("=== Carbon with Uncertainty ===\n")
@@ -476,13 +484,8 @@ cat(sprintf("95%% CI: [%.3f, %.3f] t C\n",
 
 ```{r fc-agc-rich}
 # Get comprehensive metadata
-carbon_rich <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  rich_output = TRUE
-)
+carbon_rich <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                      type = "broadleaf", rich_output = TRUE)
 
 print(carbon_rich)
 ```
@@ -503,13 +506,9 @@ trees <- data.frame(
 )
 
 # Calculate carbon for all trees
-results <- fc_agc(
-  name = trees$name,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type,
-  output.all = TRUE
-)
+results <- fc_agc(name = trees$name, dbh = trees$dbh,
+                  height = trees$height, type = trees$type,
+                  output.all = TRUE)
 
 # Summary
 cat("=== Batch Results ===\n")
@@ -522,15 +521,9 @@ print(results[, c("name", "dbh", "height", "AGC_WCC_t")])
 
 ```{r batch-fc-agc-error}
 # With uncertainty
-results_error <- fc_agc_error(
-  name = trees$name,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type,
-  re_dbh = 0.025,
-  re_h = 0.05,
-  re = 0.025
-)
+results_error <- fc_agc_error(name = trees$name, dbh = trees$dbh,
+                              height = trees$height, type = trees$type,
+                              re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 # Calculate total uncertainty (error propagation for sum)
 total_carbon <- sum(results_error$AGC_WCC_t, na.rm = TRUE)
@@ -547,13 +540,9 @@ cat(sprintf("95%% CI: [%.2f, %.2f] tonnes\n",
 
 ```{r batch-rich}
 # Rich output for multiple trees
-results_rich <- fc_agc(
-  name = trees$name,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type,
-  rich_output = TRUE
-)
+results_rich <- fc_agc(name = trees$name, dbh = trees$dbh,
+                       height = trees$height, type = trees$type,
+                       rich_output = TRUE)
 
 print(results_rich)
 ```
@@ -562,12 +551,14 @@ print(results_rich)
 
 # 9: Seedlings and Saplings
 
-For trees with DBH < 7 cm or height < 10 m, use the seedling/sapling model:
+For trees with DBH < 7 cm or height < 10 m, use the seedling/sapling model.
+**WCC definitions:** Seedlings = height < 1 m OR DBH < 7 cm; Saplings = height 1–10 m
+OR DBH 7–10 cm; Trees = DBH >= 7 cm AND height >= 10 m. Height is in **metres**:
 
 ```{r seedlings}
-# Seedling/sapling carbon (height in cm for this function)
+# Seedling (height 0.5 m = 50 cm)
 seedling_carbon <- sap_seedling2C(
-  height = 50,      # cm
+  height = 0.5,     # metres (50 cm)
   type = "broadleaf",
   re_h = 0.05,
   re = 0.025
@@ -575,6 +566,10 @@ seedling_carbon <- sap_seedling2C(
 
 cat(sprintf("Seedling carbon: %.4f ± %.4f t C\n",
             seedling_carbon$carbon, seedling_carbon$sd))
+
+# Sapling (height 5 m)
+sapling_carbon <- sap_seedling2C(5, "conifer")
+cat(sprintf("Sapling carbon: %.4f t C\n", sapling_carbon))
 ```
 
 ---
@@ -589,13 +584,8 @@ if (requireNamespace("BIOMASS", quietly = TRUE)) {
   wd <- BIOMASS::getWoodDensity("Quercus", "robur", region = "Europe")
   
   # Use custom NSG
-  carbon_custom <- fc_agc(
-    name = "Oak",
-    dbh = 45,
-    height = 18,
-    type = "broadleaf",
-    nsg = wd$meanWD
-  )
+  carbon_custom <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                          type = "broadleaf", nsg = wd$meanWD)
   
   cat("=== Using Custom Wood Density ===\n")
   cat(sprintf("NSG from BIOMASS: %.3f\n", wd$meanWD))
@@ -612,13 +602,18 @@ if (requireNamespace("BIOMASS", quietly = TRUE)) {
 ```{r plot-dbh, fig.height=5}
 # Create data for plotting
 dbh_range <- seq(10, 100, by = 5)
-carbon_range <- fc_agc(
-  name = rep("Oak", length(dbh_range)),
-  dbh = dbh_range,
-  height = rep(18, length(dbh_range)),
-  type = rep("broadleaf", length(dbh_range)),
-  output.all = FALSE
-)
+carbon_result <- fc_agc(name = rep("Oak", length(dbh_range)),
+                        dbh = dbh_range,
+                        height = rep(18, length(dbh_range)),
+                        type = rep("broadleaf", length(dbh_range)),
+                        output.all = FALSE)
+
+# Extract carbon values from result (handles both data frame and vector return)
+if (is.data.frame(carbon_result)) {
+  carbon_range <- carbon_result$AGC_WCC_t
+} else {
+  carbon_range <- carbon_result
+}
 
 plot_data <- data.frame(
   dbh = dbh_range,
@@ -628,11 +623,8 @@ plot_data <- data.frame(
 ggplot(plot_data, aes(x = dbh, y = carbon)) +
   geom_line(linewidth = 1.2, color = "darkgreen") +
   geom_point(size = 2, color = "darkgreen") +
-  labs(
-    title = "Above-Ground Carbon vs DBH (Oak, Height = 18m)",
-    x = "DBH (cm)",
-    y = "Above-Ground Carbon (tonnes)"
-  ) +
+  labs(title = "Above-Ground Carbon vs DBH (Oak, Height = 18m)",
+       x = "DBH (cm)", y = "Above-Ground Carbon (tonnes)") +
   theme_minimal()
 ```
 
@@ -641,14 +633,11 @@ ggplot(plot_data, aes(x = dbh, y = carbon)) +
 ```{r plot-uncertainty, fig.height=5}
 # Calculate with uncertainty
 dbh_range <- seq(20, 80, by = 5)
-results_unc <- fc_agc_error(
-  name = rep("Oak", length(dbh_range)),
-  dbh = dbh_range,
-  height = rep(18, length(dbh_range)),
-  type = rep("broadleaf", length(dbh_range)),
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+results_unc <- fc_agc_error(name = rep("Oak", length(dbh_range)),
+                            dbh = dbh_range,
+                            height = rep(18, length(dbh_range)),
+                            type = rep("broadleaf", length(dbh_range)),
+                            re_dbh = 0.025, re_h = 0.05)
 
 plot_data <- data.frame(
   dbh = dbh_range,
@@ -662,11 +651,8 @@ ggplot(plot_data, aes(x = dbh, y = carbon)) +
               alpha = 0.2, fill = "darkgreen") +
   geom_line(linewidth = 1.2, color = "darkgreen") +
   geom_point(size = 2, color = "darkgreen") +
-  labs(
-    title = "Above-Ground Carbon vs DBH with 95% Confidence Intervals",
-    x = "DBH (cm)",
-    y = "Above-Ground Carbon (tonnes)"
-  ) +
+  labs(title = "Above-Ground Carbon vs DBH with 95% Confidence Intervals",
+       x = "DBH (cm)", y = "Above-Ground Carbon (tonnes)") +
   theme_minimal()
 ```
 
@@ -674,7 +660,52 @@ ggplot(plot_data, aes(x = dbh, y = carbon)) +
 
 # 12: Common Workflows
 
-## 12.1 Forest Stand Carbon Inventory
+## 12.1 Method D: Stand-Level Carbon (fc_stand_carbon)
+
+For stand-level assessment when you have DBH and height from sample trees,
+use `fc_stand_carbon()` (WCC Method D). It calculates top height and mean
+DBH internally:
+
+```{r method-d-stand-carbon}
+# Method D: Stand-level carbon from sample trees
+dbh_stand <- c(45, 52, 38, 60, 42, 55, 48, 35, 58, 40)
+height_stand <- c(18, 22, 15, 24, 17, 21, 19, 14, 23, 16)
+area_ha <- 0.1
+
+stand_carbon <- fc_stand_carbon(name = "Oak", dbh = dbh_stand,
+                                height = height_stand, area_ha = area_ha,
+                                type = "broadleaf",
+                                re_dbh = 0.05, re_h = 0.05,
+                                output.all = TRUE)
+
+cat("=== Method D: Stand-Level Carbon ===\n")
+print(stand_carbon)
+```
+
+## 12.2 Method E: DBH Class Tallies (wcc_process_tally, wcc_dbh_class_carbon)
+
+When trees are tallied by DBH class rather than measured individually
+(WCC Method E), use `wcc_process_tally()` then `wcc_dbh_class_carbon()`:
+
+```{r method-e-dbh-class}
+# Method E: DBH class tallies
+dbh_classes <- c(5, 15, 25, 35, 45)   # cm midpoints
+counts <- c(150, 200, 180, 120, 50)   # trees per class
+heights <- c(3, 8, 15, 20, 22)        # representative heights (m)
+
+tally_data <- wcc_process_tally(dbh_class = dbh_classes, count = counts,
+                                height = heights, use_midpoints = TRUE)
+
+# Carbon from tally
+carbon_tally <- wcc_dbh_class_carbon(name = "Oak", tally_data = tally_data,
+                                     type = "broadleaf", area_ha = 1.0,
+                                     re_dbh = 0.05, re_h = 0.05)
+
+cat("=== Method E: DBH Class Carbon ===\n")
+print(carbon_tally)
+```
+
+## 12.3 Forest Stand Carbon Inventory (Methods B/C)
 
 ```{r stand-inventory}
 # Example: Forest stand with multiple species
@@ -687,14 +718,10 @@ stand_data <- data.frame(
 )
 
 # Calculate carbon
-stand_results <- fc_agc_error(
-  name = stand_data$species,
-  dbh = stand_data$dbh,
-  height = stand_data$height,
-  type = stand_data$type,
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+stand_results <- fc_agc_error(name = stand_data$species, dbh = stand_data$dbh,
+                              height = stand_data$height,
+                              type = stand_data$type,
+                              re_dbh = 0.025, re_h = 0.05)
 
 # Summary by species
 stand_summary <- aggregate(
@@ -716,7 +743,7 @@ cat(sprintf("\nTotal Stand Carbon: %.2f ± %.2f tonnes C\n",
             total_stand_carbon, total_stand_uncertainty))
 ```
 
-## 12.2 Carbon per Unit Area
+## 12.4 Carbon per Unit Area
 
 ```{r per-area}
 # Calculate carbon density (tonnes C per hectare)
@@ -731,6 +758,72 @@ cat(sprintf("Carbon density: %.2f ± %.2f t C/ha\n",
             carbon_density, carbon_density_uncertainty))
 ```
 
+## 12.5 WCC Averaging and Scaling Helpers
+
+The WCC protocol often requires averaging trees (e.g., mean tariff number) and scaling
+to per-hectare values. Helper functions support these operations:
+
+```{r wcc-mean-tariff}
+# Mean tariff from sample trees (WCC protocol requirement)
+spcode <- lookupcode("Oak", type = "broadleaf")$code
+sample_heights <- c(18, 20, 19, 22, 17)  # m
+sample_dbh <- c(45, 48, 42, 52, 38)      # cm
+
+mean_tariff <- wcc_mean_tariff(
+  spcode = spcode,
+  height = sample_heights,
+  dbh = sample_dbh,
+  type = "broadleaf",
+  re_h = 0.05,
+  re_dbh = 0.025
+)
+
+cat("=== Mean Tariff from Sample Trees ===\n")
+if (is.list(mean_tariff)) {
+  cat(sprintf("Mean tariff: %.2f ± %.2f\n", mean_tariff$mean_tariff, mean_tariff$sigma))
+} else {
+  cat(sprintf("Mean tariff: %.2f\n", mean_tariff))
+}
+```
+
+```{r wcc-per-hectare}
+# Scale per-tree carbon to per-hectare
+carbon_per_tree <- c(0.5, 0.6, 0.45, 0.55, 0.5)  # t C per tree
+trees_per_ha <- 200
+plot_area_ha <- 0.5
+
+per_ha_result <- wcc_per_hectare(
+  carbon_per_tree = carbon_per_tree,
+  trees_per_ha = trees_per_ha,
+  area_ha = plot_area_ha,
+  sig_carbon_per_tree = 0.05  # optional: propagates uncertainty
+)
+
+cat("=== Per-Hectare Scaling ===\n")
+cat(sprintf("Carbon per ha: %.2f ± %.2f t C/ha\n", 
+            per_ha_result$carbon_per_ha, per_ha_result$sig_carbon_per_ha))
+cat(sprintf("Total carbon (%.1f ha): %.2f ± %.2f t C\n", 
+            plot_area_ha, per_ha_result$total_carbon, per_ha_result$sig_total_carbon))
+```
+
+```{r wcc-stratify}
+# Aggregate carbon across stratified stands (with optional uncertainty)
+strata <- data.frame(
+  area_ha = c(0.5, 0.3, 0.2),
+  carbon_per_ha_t = c(120, 95, 80),
+  carbon_per_ha_sig_t = c(15, 12, 10)  # optional: per-stratum uncertainty
+)
+
+strata_result <- wcc_stratify(strata, carbon_col = "carbon_per_ha_t")
+
+cat("=== Stratified Carbon Aggregation ===\n")
+cat(sprintf("Total area: %.2f ha\n", strata_result$total_area_ha))
+cat(sprintf("Total carbon: %.1f ± %.1f t C\n", 
+            strata_result$total_carbon_t, strata_result$total_sig_carbon_t))
+cat(sprintf("Weighted mean: %.1f ± %.1f t C/ha\n", 
+            strata_result$weighted_mean_carbon_per_ha_t, strata_result$weighted_mean_sig))
+```
+
 ---
 
 # 13: Troubleshooting
@@ -741,12 +834,8 @@ If a species isn't in the WCC database:
 
 ```{r troubleshooting-species}
 # Unknown species - will use type-based defaults
-result_unknown <- fc_agc(
-  name = "Unknown Species",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf"  # Important: specify type
-)
+result_unknown <- fc_agc(name = "Unknown Species", dbh = 45, height = 18,
+                         type = "broadleaf")  # Important: specify type
 
 cat("Using type-based defaults for unknown species\n")
 print(result_unknown)
@@ -756,12 +845,8 @@ print(result_unknown)
 
 ```{r troubleshooting-range}
 # Very small tree - may trigger warnings
-result_small <- fc_agc(
-  name = "Oak",
-  dbh = 5,      # Very small - below WCC minimum
-  height = 3,   # Very small
-  type = "broadleaf"
-)
+result_small <- fc_agc(name = "Oak", dbh = 5, height = 3,
+                       type = "broadleaf")
 
 # Check for warnings/flags
 cat("Small tree calculation (may have validity warnings)\n")
@@ -786,7 +871,7 @@ bunce_result <- Bunce(name = "Oak", dbh = 45)
 1. **Always specify type** for ambiguous species names
 2. **Use measured height** - WCC requires actual height measurements
 3. **Include uncertainty** - Use `fc_agc_error()` for proper error propagation
-4. **Check validity warnings** - Use `rich_output = TRUE` to see assumptions
+4. **Use Matthews2 for carbon** - Default in WCC functions; recommended by WCC protocol (Matthews 1993)
 5. **Use appropriate methods** - WCC is for UK temperate woodland
 6. **Validate inputs** - Ensure DBH and height are in correct units (cm and m)
 

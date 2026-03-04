@@ -2,7 +2,7 @@
 % Please edit documentation in R/WCC_functions.R
 \name{broadleaf_tariff}
 \alias{broadleaf_tariff}
-\title{Carbon tariff number for broadleaf tree}
+\title{Carbon tariff number for broadleaf tree (WCC Method B)}
 \usage{
 broadleaf_tariff(
   spcode,
@@ -31,7 +31,8 @@ tariff number or if relative errors are provided returns a list of
 tariff number and an estimate for sigma
 }
 \description{
-Use dbh and timber height (height to first branch or merchantable top)
+Use dbh and timber height (height to first branch or merchantable top).
+Implements WCC Protocol Method B (Broadleaves only: measure timber height of sample trees).
 to derive the tariff number of each sample tree. Species-specific estimates of
 a1-a4 are found in the R data file, 'tariff_broaddf'. According to WCC protocol,
 broadleaf species require timber height, not total height, for tariff calculations.

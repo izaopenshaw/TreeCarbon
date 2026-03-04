@@ -70,14 +70,9 @@ trees <- data.frame(
 )
 
 # Compare all methods for all trees
-batch_comparison <- allometries(
-  genus = trees$genus,
-  species = trees$species,
-  dbh = trees$dbh,
-  height = trees$height,
-  coords = c(-0.29, 51.48),
-  returnv = "AGC"
-)
+batch_comparison <- allometries(genus = trees$genus, species = trees$species,
+                                dbh = trees$dbh, height = trees$height,
+                                coords = c(-0.29, 51.48), returnv = "AGC")
 
 print(batch_comparison[, c("genus", "species", "dbh",
                            "WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t")])
@@ -107,10 +102,7 @@ cat(sprintf("Range of CV: %.1f%% - %.1f%%\n",
 
 if (exists("comparison")) {
   # Detailed comparison statistics
-  comp_stats <- compare_allometries(
-    comparison,
-    reference = "WCC"  # Use WCC as reference method
-  )
+  comp_stats <- compare_allometries(comparison, reference = "WCC")
 
   print(comp_stats)
 }
@@ -141,13 +133,9 @@ if (exists("batch_comparison") && requireNamespace("ggplot2", quietly = TRUE)) {
   p <- ggplot(plot_data, aes(x = dbh, y = carbon, color = method, shape = method)) +
     geom_point(size = 3, alpha = 0.7) +
     geom_smooth(method = "loess", se = FALSE, linewidth = 0.8) +
-    labs(
-      title = "Carbon Estimates by Method vs DBH",
-      x = "DBH (cm)",
-      y = "Above-Ground Carbon (tonnes)",
-      color = "Method",
-      shape = "Method"
-    ) +
+    labs(title = "Carbon Estimates by Method vs DBH",
+         x = "DBH (cm)", y = "Above-Ground Carbon (tonnes)",
+         color = "Method", shape = "Method") +
     theme_minimal() +
     scale_color_brewer(palette = "Set2")
 
@@ -160,21 +148,12 @@ if (exists("batch_comparison") && requireNamespace("ggplot2", quietly = TRUE)) {
 # get rich output from individual methods and compare
 
 # Get rich output from WCC
-wcc_rich <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  rich_output = TRUE
-)
+wcc_rich <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                   type = "broadleaf", rich_output = TRUE)
 
 print(wcc_rich)
 
 # Get rich output from Bunce
-bunce_rich <- Bunce(
-  name = "Oak",
-  dbh = 45,
-  rich_output = TRUE
-)
+bunce_rich <- Bunce(name = "Oak", dbh = 45, rich_output = TRUE)
 
 print(bunce_rich)

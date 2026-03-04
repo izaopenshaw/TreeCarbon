@@ -113,7 +113,8 @@ get_method_metadata <- function(method = "all") {
         "Species-specific tariff numbers apply",
         "Nominal specific gravity from UK timber data",
         "Crown and root biomass estimated from DBH relationships",
-        "Carbon fraction varies by tree type and biome"
+        "Carbon fraction varies by tree type and biome",
+        "Timber height estimation is crude; measured values are required for WCC certification"
       ),
       region = "United Kingdom",
       biome = c("temperate"),

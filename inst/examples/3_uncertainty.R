@@ -13,15 +13,9 @@ library(TreeCarbon)
 # ==== WCC with Uncertainty (Single Tree) =======================================
 
 # Calculate carbon with measurement error propagation
-result <- fc_agc_error(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  re_dbh = 0.025,  # 2.5% DBH measurement error
-  re_h = 0.05,     # 5% height measurement error
-  re = 0.025       # 2.5% coefficient error
-)
+result <- fc_agc_error(name = "Oak", dbh = 45, height = 18,
+                       type = "broadleaf",
+                       re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 cat(sprintf("Carbon: %.3f ± %.3f t C\n",
             result$AGC_WCC_t, result$sig_AGC))
@@ -50,12 +44,8 @@ cat(sprintf("95%% CI: [%.1f, %.1f] kg\n",
 # ==== Rich Output with Uncertainty ============================================
 
 # Rich output includes uncertainty information
-result_rich <- Bunce(
-  name = "Oak",
-  dbh = 45,
-  re_dbh = 0.025,
-  rich_output = TRUE
-)
+result_rich <- Bunce(name = "Oak", dbh = 45, re_dbh = 0.025,
+                     rich_output = TRUE)
 
 print(result_rich)
 
@@ -70,14 +60,9 @@ trees <- data.frame(
 )
 
 # WCC with uncertainty for all trees
-results_wcc <- fc_agc_error(
-  name = trees$species,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type,
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+results_wcc <- fc_agc_error(name = trees$species, dbh = trees$dbh,
+                            height = trees$height, type = trees$type,
+                            re_dbh = 0.025, re_h = 0.05)
 
 print(results_wcc[, c("name", "dbh", "AGC_WCC_t", "sig_AGC")])
 
@@ -98,12 +83,8 @@ cat(sprintf("CV: %.1f%%\n", 100 * total_uncertainty / total_carbon))
 # ==== Rich Output for Multiple Trees with Uncertainty =========================
 
 # Rich output for multiple trees includes total uncertainty
-results_rich_multi <- Bunce(
-  name = trees$species,
-  dbh = trees$dbh,
-  re_dbh = 0.025,
-  rich_output = TRUE
-)
+results_rich_multi <- Bunce(name = trees$species, dbh = trees$dbh,
+                            re_dbh = 0.025, rich_output = TRUE)
 
 print(results_rich_multi)
 
@@ -125,12 +106,9 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
   p <- ggplot(plot_data, aes(x = dbh, y = carbon, color = species)) +
     geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 2, alpha = 0.6) +
     geom_point(size = 3) +
-    labs(
-      title = "Carbon Estimates with 95% Confidence Intervals",
-      x = "DBH (cm)",
-      y = "Above-Ground Carbon (tonnes)",
-      color = "Species"
-    ) +
+    labs(title = "Carbon Estimates with 95% Confidence Intervals",
+         x = "DBH (cm)", y = "Above-Ground Carbon (tonnes)",
+         color = "Species") +
     theme_minimal()
 
   print(p)

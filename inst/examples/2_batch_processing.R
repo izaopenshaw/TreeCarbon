@@ -45,8 +45,7 @@ results_bunce$biomass_t <- results_bunce$biomass / 1000
 
 # Convert biomass to carbon using biomass2c function
 carbon_bunce <- biomass2c(biomass = results_bunce$biomass_t,
-                          method = "Matthews1",
-                          type = trees$type)
+                          method = "Matthews1", type = trees$type)
 
 # biomass2c returns a vector when sig_biomass is NULL
 results_bunce$carbon_t <- carbon_bunce
@@ -57,22 +56,14 @@ cat(sprintf("Mean per tree: %.3f tonnes\n", mean(results_bunce$carbon_t, na.rm =
 # ==== WCC with Error and Rich Output =======================================
 
 # Calculate carbon with error propagation
-results_wcc_error <- fc_agc_error(name = trees$species,
-                                  dbh = trees$dbh,
-                                  height = trees$height,
-                                  type = trees$type,
-                                  re_dbh = 0.025,  # 2.5% DBH measurement error
-                                  re_h = 0.05,     # 5% height measurement error
-                                  re = 0.025)      # 2.5% coefficient error
+results_wcc_error <- fc_agc_error(name = trees$species, dbh = trees$dbh,
+                                  height = trees$height, type = trees$type,
+                                  re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 # Rich output for multiple trees provides summary and metadata
-results_wcc_rich <- fc_agc_error(name = trees$species,
-                                 dbh = trees$dbh,
-                                 height = trees$height,
-                                 type = trees$type,
-                                 re_dbh = 0.025,
-                                 re_h = 0.05,
-                                 re = 0.025,
+results_wcc_rich <- fc_agc_error(name = trees$species, dbh = trees$dbh,
+                                 height = trees$height, type = trees$type,
+                                 re_dbh = 0.025, re_h = 0.05, re = 0.025,
                                  rich_output = TRUE)
 print(results_wcc_rich)
 

@@ -32,6 +32,7 @@ utils::globalVariables(c(
   "tariff_broaddf",
   "tariff_coniferdf",
   "nominal_specific_gravity"
+  #"timber_height_ratios"
 ))
 
 # Package-level options with defaults

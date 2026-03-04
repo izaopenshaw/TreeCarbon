@@ -2,7 +2,7 @@
 % Please edit documentation in R/WCC_functions.R
 \name{tariff_vol_area}
 \alias{tariff_vol_area}
-\title{Tariff number from volume and basal area}
+\title{Tariff number from volume and basal area (WCC Method A)}
 \usage{
 tariff_vol_area(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025)
 }
@@ -23,7 +23,8 @@ a list of tariff number and sigma for tariff
 }
 \description{
 Using the sample tree’s basal area and volume to calculate the
-tariff number. Basal area is calculated by ba = (pi * dbh^2)/40000.
+tariff number. Implements WCC Protocol Method A (Fell sample trees).
+Basal area is calculated by ba = (pi * dbh^2)/40000.
 }
 \examples{
 tariff_vol_area(vol=0.5, dbh=24, sig_vol = 0.001, re_dbh = 0.05)

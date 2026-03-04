@@ -1,46 +1,20 @@
 # ============================================================================
 # Wakehurst Tree Carbon Analysis
 # ============================================================================
-# This script demonstrates the TreeCarbon package workflow using Wakehurst data
-#
-# Features demonstrated:
-#   - Loading and preparing tree inventory data
-#   - Calculating carbon with multiple allometric methods
-#   - Error propagation for uncertainty quantification
-#   - Sensitivity analysis: How does method choice affect results?
-#   - Habitat-level summaries with carbon per hectare
-#   - Visualization comparing methods
-#
-# ============================================================================
 
-# Load required packages
-# Use local development version (includes latest fixes)
-devtools::load_all("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/TreeCarbon")
-
-# Or install from GitHub (may not have latest local fixes):
-# devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
-
-library(ggplot2)
+setwd("C:/git/TreeCarbon")
+devtools::load_all()
 
 # ============================================================================
 # 1. LOAD AND PREPARE DATA
 # ============================================================================
-source("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/Import.R")
+# Import2.R: loads wakehurst_agb 2.csv with TLS tree data
+source("inst/paper_scripts/Import2.R")
 
 # Select relevant columns from imported data
-# Expected columns: Name, Genus, Species, DBH_Manual, DBH, ID, Height, Habitat, Plot, Classification
+# Expected columns: Name, Genus, Species, DBH_Manual, DBH, ID, Height, Habitat, Plot,
+# Classification, trunk_height (timber height for broadleaf WCC), agc (TLS carbon)
 trees <- df
-
-# Rename Classification to type for consistency with package functions
-if ("Classification" %in% colnames(trees)) {
-  trees$type <- trees$Classification
-}
-
-# Select Habitat
-trees <- trees[trees$Habitat == "broadleaf",]
-
-# Show data structure
-print(names(trees))
 
 # Show available habitats
 print(table(trees$Habitat))
@@ -55,11 +29,14 @@ print(sprintf("Total trees: %d", nrow(trees)))
 # Wakehurst Place, Sussex, UK coordinates
 wakehurst_coords <- c(-0.0867, 51.0660)  # Longitude, Latitude
 
-# Define habitat areas (hectares) - UPDATE THESE WITH ACTUAL VALUES
-# These are example values - replace with actual measured areas
+sd_area()
+
+
+# Define habitat areas (hectares)
+
 habitat_areas <- data.frame(
   Habitat = c("broadleaf", "conifer", "coppice"),
-  area_ha = c(15.5, 8.2, 3.8),          # Habitat areas in hectares
+  area_ha = c(0.59593, 0.684347, 0.36536),          # Habitat areas in hectares
   sigma_area_ha = c(0.5, 0.3, 0.15)     # Uncertainty in area measurement
 )
 
@@ -85,6 +62,7 @@ results <- tryCatch({
     dbh = trees$DBH,
     height = trees$Height,
     type = trees$type,
+    height_timber = trees$trunk_height,  # Timber height for broadleaf WCC tariff (from trunk_height column)
     coords = wakehurst_coords,
     region = "Europe",
     biome = "temperate",
@@ -101,73 +79,40 @@ results <- tryCatch({
 })
 
 # ============================================================================
-# 3B. CALCULATE TLS-BASED CARBON
+# 3B. TLS-BASED CARBON (from wakehurst_agb 2.csv)
 # ============================================================================
-# TLS (Terrestrial Laser Scanning) provides direct volume measurements
-# Convert: Volume → Biomass (via wood density) → Carbon
+# TLS (Terrestrial Laser Scanning) carbon: use pre-calculated agc from CSV when
+# available (Volume × wood density × carbon fraction). Otherwise fall back to
+# volume-based calculation for compatibility.
 
-# Check if TLS data exists
-
-if ("TotalVolume_opt" %in% colnames(trees)) {
-
-  # TLS data check: count non-NA values
-
-  # Check if there's actual data
-  if (sum(!is.na(trees$TotalVolume_opt)) == 0) {
-    warning("TotalVolume_opt column exists but contains only NA values")
-    results$TLS_C_t <- NA
-    results$TLS_C_sig <- NA
+if ("agc" %in% colnames(trees) && sum(!is.na(trees$agc)) > 0) {
+  # Use pre-calculated TLS carbon from wakehurst_agb 2.csv (paper values)
+  results$TLS_C_t <- trees$agc
+  results$TLS_C_sig <- if ("agc_var" %in% colnames(trees) && sum(!is.na(trees$agc_var)) > 0) {
+    sqrt(trees$agc_var)
   } else {
-
-    # TLS volume - check units (might be in litres/dm³ or already m³)
-    # If values are large (>100), assume dm³ and convert to m³
-    median_vol <- median(trees$TotalVolume_opt, na.rm = TRUE)
-
-    if (median_vol > 100) {
-      # Likely in dm³ (litres), convert to m³
-      tls_volume_m3 <- trees$TotalVolume_opt / 1000
-    } else {
-      # Already in m³
-      tls_volume_m3 <- trees$TotalVolume_opt
-    }
-
-    # Get wood density for each tree (use species-specific or default)
-    # Using NSG (Nominal Specific Gravity) from lookup if available
-    spcodes <- lookupcode(trees$Name, trees$type, code = "short")
-
-    # Get wood density from lookup table
-    nsg_idx <- match(spcodes$code, lookup_df$short)
-    wood_density <- lookup_df$NSG[nsg_idx]
-    wood_density[is.na(wood_density)] <- 0.55  # Default for missing
-
-    # Calculate TLS biomass: Volume (m³) × Wood Density (t/m³)
-    # Note: NSG is in g/cm³ which equals t/m³
-    tls_biomass_t <- tls_volume_m3 * wood_density
-
-    # Estimate TLS uncertainty (if TotalVolume_std exists, use it; otherwise assume 10% CV)
-    if ("TotalVolume_std" %in% colnames(trees)) {
-      tls_biomass_sigma <- (trees$TotalVolume_std / 1000) * wood_density
-    } else {
-      # Assume 10% CV for TLS volume measurement
-      tls_biomass_sigma <- tls_biomass_t * 0.10
-    }
-
-    # Convert biomass to carbon using biomass2c
-    tls_carbon <- biomass2c(
-      tls_biomass_t,
-      method = "IPCC2",
-      type = trees$type,
-      biome = "temperate",
-      sig_biomass = tls_biomass_sigma
-    )
-
-    # Add TLS results to the results dataframe
-    results$TLS_C_t <- tls_carbon$AGC
-    results$TLS_C_sig <- tls_carbon$sig_AGC
+    trees$agc * 0.15  # Default 15% CV if variance not available
   }
-
+} else if ("TotalVolume_opt" %in% colnames(trees) && sum(!is.na(trees$TotalVolume_opt)) > 0) {
+  # Fallback: calculate TLS carbon from volume
+  median_vol <- median(trees$TotalVolume_opt, na.rm = TRUE)
+  tls_volume_m3 <- if (median_vol > 100) trees$TotalVolume_opt / 1000 else trees$TotalVolume_opt
+  spcodes <- lookupcode(trees$Name, trees$type, code = "short")
+  nsg_idx <- match(spcodes$code, lookup_df$short)
+  wood_density <- lookup_df$NSG[nsg_idx]
+  wood_density[is.na(wood_density)] <- 0.55
+  tls_biomass_t <- tls_volume_m3 * wood_density
+  tls_biomass_sigma <- if ("TotalVolume_std" %in% colnames(trees)) {
+    (trees$TotalVolume_std / 1000) * wood_density
+  } else {
+    tls_biomass_t * 0.10
+  }
+  tls_carbon <- biomass2c(tls_biomass_t, method = "IPCC2", type = trees$type,
+                          biome = "temperate", sig_biomass = tls_biomass_sigma)
+  results$TLS_C_t <- tls_carbon$AGC
+  results$TLS_C_sig <- tls_carbon$sig_AGC
 } else {
-  warning("TotalVolume_opt column not found - TLS comparison will be skipped")
+  warning("TLS carbon (agc) or TotalVolume_opt not found - TLS comparison skipped")
   results$TLS_C_t <- NA
   results$TLS_C_sig <- NA
 }
@@ -1195,9 +1140,366 @@ if (nrow(habitat_summary) > 0) {
   }
 }
 
-# ============================================================================
-# 7. EXPORT RESULTS
-# ============================================================================
+# =============================================================================
+# 7.5 MONTE CARLO VS ANALYTICAL ERROR PROPAGATION (Bunce)
+# =============================================================================
+
+# Compare Monte Carlo vs Analytical error propagation for Bunce method
+test_dbh <- 45
+test_name <- "Oak"
+re_dbh <- 0.025
+n_mc <- 5000
+
+# Analytical error propagation
+bunce_analytical <- Bunce(name = test_name, dbh = test_dbh, re_dbh = re_dbh)
+analytical_cv <- 100 * bunce_analytical$sigma / bunce_analytical$biomass
+
+# Monte Carlo error propagation
+lookup_oak <- lookupcode(test_name, code = "short")
+spcode_oak <- lookup_oak$code
+if (spcode_oak == "MX") spcode_oak <- "XB"
+matched_idx <- match(spcode_oak, buncedf$spcode)
+if (is.na(matched_idx)) matched_idx <- 6
+
+a_mean <- buncedf$a[matched_idx]
+b_mean <- buncedf$b[matched_idx]
+a_se <- 0.05
+b_se <- 0.06
+re_residual <- buncedf$re[matched_idx]
+if (is.na(re_residual)) re_residual <- 0.15
+
+set.seed(12345)
+mc_biomass <- numeric(n_mc)
+for (i in seq_len(n_mc)) {
+  dbh_sampled <- max(rnorm(1, mean = test_dbh, sd = test_dbh * re_dbh), 0.1)
+  a_sampled <- rnorm(1, mean = a_mean, sd = a_se)
+  b_sampled <- rnorm(1, mean = b_mean, sd = b_se)
+  biomass_pred <- exp(a_sampled + b_sampled * log(pi * dbh_sampled))
+  residual_error <- rnorm(1, mean = 0, sd = biomass_pred * re_residual)
+  mc_biomass[i] <- max(biomass_pred + residual_error, 0)
+}
+
+mc_mean <- mean(mc_biomass)
+mc_sd <- sd(mc_biomass)
+mc_cv <- 100 * mc_sd / mc_mean
+mc_ci_low <- quantile(mc_biomass, 0.025)
+mc_ci_high <- quantile(mc_biomass, 0.975)
+
+mc_vs_analytical <- data.frame(
+  Method = c("Analytical", "Monte Carlo"),
+  Mean_kg = c(bunce_analytical$biomass, mc_mean),
+  SD_kg = c(bunce_analytical$sigma, mc_sd),
+  CV_pct = c(analytical_cv, mc_cv),
+  CI_low_kg = c(bunce_analytical$ci_low_val, mc_ci_low),
+  CI_high_kg = c(bunce_analytical$ci_high_val, mc_ci_high)
+)
+
+cat("=== Monte Carlo vs Analytical Error Propagation (Bunce) ===\n")
+print(mc_vs_analytical)
+
+analytical_samples <- rnorm(n_mc, mean = bunce_analytical$biomass, sd = bunce_analytical$sigma)
+mc_comparison_data <- data.frame(
+  method = rep(c("Analytical", "Monte Carlo"), each = n_mc),
+  biomass = c(analytical_samples, mc_biomass)
+)
+
+fig_mc_vs_analytical <- ggplot(mc_comparison_data, aes(x = biomass, fill = method)) +
+  geom_density(alpha = 0.6, adjust = 1.5) +
+  geom_vline(data = mc_vs_analytical, aes(xintercept = Mean_kg, color = Method),
+             linetype = "dashed", linewidth = 1) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    title = "Monte Carlo vs Analytical Error Propagation (Bunce)",
+    subtitle = sprintf("DBH = %d cm, re_dbh = %.1f%%, n_mc = %d", test_dbh, re_dbh * 100, n_mc),
+    x = "Biomass (kg)", y = "Density", fill = "Method", color = "Mean"
+  ) +
+  theme_paper +
+  theme(legend.position = "bottom")
+
+print(fig_mc_vs_analytical)
+ggsave(file.path(output_dir, "fig_mc_vs_analytical_bunce.png"),
+       fig_mc_vs_analytical, width = 8, height = 5, dpi = 300)
+
+cat(sprintf("\nAnalytical CV: %.2f%%\n", analytical_cv))
+cat(sprintf("Monte Carlo CV: %.2f%%\n", mc_cv))
+cat(sprintf("Difference: %.2f%%\n", abs(analytical_cv - mc_cv)))
+
+# =============================================================================
+# 7.6 WCC ERROR PROPAGATION BY TREE SIZE
+# =============================================================================
+
+dbh_range_error <- seq(10, 100, by = 5)
+wcc_error_by_size <- data.frame()
+
+for (dbh_val in dbh_range_error) {
+  height_val <- dbh_val * 0.4
+  height_timber_val <- height_val * 0.85
+  result <- tryCatch({
+    fc_agc_error(name = "Oak", dbh = dbh_val, height = height_val,
+                 height_timber = height_timber_val, type = "broadleaf",
+                 method = "IPCC2", biome = "temperate",
+                 re_dbh = 0.05, re_h = 0.10, re = 0.025, output.all = FALSE)
+  }, error = function(e) NULL)
+
+  if (!is.null(result)) {
+    carbon_val <- if (is.data.frame(result)) result$AGC_WCC_t[1] else result[1]
+    sigma_val <- if (is.data.frame(result)) result$sig_AGC[1] else NA
+    if (!is.na(carbon_val) && !is.na(sigma_val) && carbon_val > 0) {
+      cv_val <- 100 * sigma_val / carbon_val
+      wcc_error_by_size <- rbind(wcc_error_by_size,
+                                 data.frame(dbh = dbh_val, height = height_val,
+                                            carbon_t = carbon_val, sigma_t = sigma_val,
+                                            cv_pct = cv_val))
+    }
+  }
+}
+
+fig_wcc_error_by_size <- ggplot(wcc_error_by_size, aes(x = dbh)) +
+  geom_line(aes(y = cv_pct, color = "CV (%)"), linewidth = 1.2) +
+  geom_point(aes(y = cv_pct, color = "CV (%)"), size = 2) +
+  geom_line(aes(y = sigma_t * 10, color = "Absolute Error (×10)"),
+            linewidth = 1.2, linetype = "dashed") +
+  scale_y_continuous(
+    name = "Coefficient of Variation (%)",
+    sec.axis = sec_axis(~ . / 10, name = "Absolute Uncertainty (t C)",
+                        labels = function(x) sprintf("%.2f", x))
+  ) +
+  scale_color_manual(
+    name = "Error Metric",
+    values = c("CV (%)" = "steelblue", "Absolute Error (×10)" = "darkred"),
+    labels = c("CV (%)", "Absolute Error (t C)")
+  ) +
+  labs(
+    title = "WCC Error Propagation by Tree Size",
+    subtitle = "How uncertainty changes with DBH (re_dbh = 5%, re_h = 10%, re = 2.5%)",
+    x = "DBH (cm)"
+  ) +
+  theme_paper +
+  theme(legend.position = "bottom")
+
+print(fig_wcc_error_by_size)
+ggsave(file.path(output_dir, "fig_wcc_error_by_size.png"),
+       fig_wcc_error_by_size, width = 8, height = 5, dpi = 300)
+
+cat("\n=== WCC Error by Tree Size ===\n")
+cat(sprintf("Mean CV: %.2f%%\n", mean(wcc_error_by_size$cv_pct, na.rm = TRUE)))
+cat(sprintf("CV range: %.2f%% - %.2f%%\n",
+            min(wcc_error_by_size$cv_pct, na.rm = TRUE),
+            max(wcc_error_by_size$cv_pct, na.rm = TRUE)))
+cat(sprintf("Absolute error range: %.3f - %.3f t C\n",
+            min(wcc_error_by_size$sigma_t, na.rm = TRUE),
+            max(wcc_error_by_size$sigma_t, na.rm = TRUE)))
+
+# =============================================================================
+# 7.7 ERROR PROPAGATION BY TREE SIZE: ALL METHODS
+# =============================================================================
+
+# Test if BIOMASS and allodb are available
+has_biomass <- requireNamespace("BIOMASS", quietly = TRUE)
+has_allodb <- requireNamespace("allodb", quietly = TRUE)
+
+dbh_range_all <- seq(10, 100, by = 5)
+wakehurst_coords <- c(-0.0867, 51.0660)
+
+# Initialize results data frames
+bunce_error_by_size <- data.frame()
+biomass_error_by_size <- data.frame()
+allodb_error_by_size <- data.frame()
+
+cat("\n=== Calculating error propagation by tree size for all methods ===\n")
+
+for (dbh_val in dbh_range_all) {
+  height_val <- dbh_val * 0.4
+  height_timber_val <- height_val * 0.85
+
+  # Bunce error propagation
+  bunce_result <- tryCatch({
+    Bunce(name = "Oak", dbh = dbh_val, re_dbh = 0.05)
+  }, error = function(e) NULL)
+
+  if (!is.null(bunce_result)) {
+    # Check if result is a data frame or list
+    if (is.data.frame(bunce_result)) {
+      bunce_biomass <- bunce_result$biomass[1]
+      bunce_sigma <- bunce_result$sigma[1]
+    } else if (is.list(bunce_result)) {
+      bunce_biomass <- bunce_result$biomass
+      bunce_sigma <- bunce_result$sigma
+    } else {
+      bunce_biomass <- NA
+      bunce_sigma <- NA
+    }
+
+    if (!is.na(bunce_biomass) && !is.na(bunce_sigma) &&
+        bunce_biomass > 0 && bunce_sigma > 0) {
+      # Convert biomass to carbon (using 0.47 conversion factor)
+      bunce_carbon <- bunce_biomass * 0.47 / 1000  # Convert kg to tonnes
+      bunce_sigma_carbon <- bunce_sigma * 0.47 / 1000
+      bunce_cv <- 100 * bunce_sigma_carbon / bunce_carbon
+
+      if (!is.na(bunce_cv) && bunce_cv > 0 && bunce_sigma_carbon > 0) {
+        bunce_error_by_size <- rbind(bunce_error_by_size,
+                                     data.frame(dbh = dbh_val, height = height_val,
+                                                carbon_t = bunce_carbon, sigma_t = bunce_sigma_carbon,
+                                                cv_pct = bunce_cv, method = "Bunce"))
+      }
+    }
+  }
+
+  # BIOMASS error propagation (if available)
+  if (has_biomass) {
+    biomass_result <- tryCatch({
+      BIOMASS(genus = "Quercus", species = "robur", dbh = dbh_val,
+              height = height_val, coords = wakehurst_coords, uncertainty = TRUE, n_mc = 1000)
+    }, error = function(e) NULL)
+
+    if (!is.null(biomass_result) && !is.na(biomass_result$Carbon_t) &&
+        !is.na(biomass_result$Carbon_sd_t) && biomass_result$Carbon_t > 0) {
+      biomass_cv <- 100 * biomass_result$Carbon_sd_t / biomass_result$Carbon_t
+      biomass_error_by_size <- rbind(biomass_error_by_size,
+                                     data.frame(dbh = dbh_val, height = height_val,
+                                                carbon_t = biomass_result$Carbon_t,
+                                                sigma_t = biomass_result$Carbon_sd_t,
+                                                cv_pct = biomass_cv, method = "BIOMASS"))
+    }
+  }
+
+  # allodb error propagation (if available)
+  if (has_allodb) {
+    allodb_result <- tryCatch({
+      allodb(genus = "Quercus", species = "robur", dbh = dbh_val, height = height_val)
+    }, error = function(e) NULL)
+
+    if (!is.null(allodb_result) && !is.na(allodb_result$agb) && allodb_result$agb > 0) {
+      # allodb returns AGB, convert to carbon (0.47) and tonnes
+      allodb_carbon <- allodb_result$agb * 0.47 / 1000
+      # allodb provides prediction intervals, estimate SD from 95% CI if available
+      if (!is.null(allodb_result$agb_CI_lower) && !is.null(allodb_result$agb_CI_upper)) {
+        # Approximate SD from 95% CI: SD ≈ (CI_upper - CI_lower) / (2 * 1.96)
+        allodb_sigma_agb <- (allodb_result$agb_CI_upper - allodb_result$agb_CI_lower) / (2 * 1.96)
+        allodb_sigma_carbon <- allodb_sigma_agb * 0.47 / 1000
+      } else {
+        # Use default 10% CV if CI not available
+        allodb_sigma_carbon <- allodb_carbon * 0.10
+      }
+      allodb_cv <- 100 * allodb_sigma_carbon / allodb_carbon
+      allodb_error_by_size <- rbind(allodb_error_by_size,
+                                    data.frame(dbh = dbh_val, height = height_val,
+                                               carbon_t = allodb_carbon, sigma_t = allodb_sigma_carbon,
+                                               cv_pct = allodb_cv, method = "allodb"))
+    }
+  }
+}
+
+# Debug: Check data collection
+cat("\n=== Data Collection Summary ===\n")
+cat(sprintf("WCC data points: %d\n", nrow(wcc_error_by_size)))
+cat(sprintf("Bunce data points: %d\n", nrow(bunce_error_by_size)))
+if (has_biomass) cat(sprintf("BIOMASS data points: %d\n", nrow(biomass_error_by_size)))
+if (has_allodb) cat(sprintf("allodb data points: %d\n", nrow(allodb_error_by_size)))
+
+# Combine all methods
+all_methods_error <- data.frame()
+
+if (nrow(wcc_error_by_size) > 0) {
+  all_methods_error <- rbind(all_methods_error,
+                             transform(wcc_error_by_size, method = "WCC"))
+}
+
+if (nrow(bunce_error_by_size) > 0) {
+  all_methods_error <- rbind(all_methods_error, bunce_error_by_size)
+}
+
+if (has_biomass && nrow(biomass_error_by_size) > 0) {
+  all_methods_error <- rbind(all_methods_error, biomass_error_by_size)
+}
+
+if (has_allodb && nrow(allodb_error_by_size) > 0) {
+  all_methods_error <- rbind(all_methods_error, allodb_error_by_size)
+}
+
+# Create comparison plot: CV by tree size for all methods
+if (nrow(all_methods_error) > 0) {
+  fig_all_methods_cv <- ggplot(all_methods_error, aes(x = dbh, y = cv_pct, color = method)) +
+    geom_line(linewidth = 1.2) +
+    geom_point(size = 2, alpha = 0.7) +
+    scale_color_brewer(palette = "Set1") +
+    labs(
+      title = "Error Propagation by Tree Size: All Methods",
+      subtitle = "Coefficient of Variation across DBH range",
+      x = "DBH (cm)",
+      y = "Coefficient of Variation (%)",
+      color = "Method"
+    ) +
+    theme_paper +
+    theme(legend.position = "bottom")
+
+  print(fig_all_methods_cv)
+  ggsave(file.path(output_dir, "fig_all_methods_error_by_size_cv.png"),
+         fig_all_methods_cv, width = 8, height = 5, dpi = 300)
+
+  # Filter out NA and zero values for plotting
+  plot_data_abs <- all_methods_error[!is.na(all_methods_error$sigma_t) &
+                                       all_methods_error$sigma_t > 0 &
+                                       !is.na(all_methods_error$dbh), ]
+
+  # Debug: Print data availability
+  cat("\n=== Data Availability for Absolute Error Plot ===\n")
+  for (m in unique(plot_data_abs$method)) {
+    method_count <- sum(plot_data_abs$method == m)
+    cat(sprintf("%s: %d data points\n", m, method_count))
+  }
+
+  # Create comparison plot: Absolute error by tree size
+  if (nrow(plot_data_abs) > 0) {
+    fig_all_methods_abs <- ggplot(plot_data_abs, aes(x = dbh, y = sigma_t, color = method)) +
+      geom_line(linewidth = 1.2) +
+      geom_point(size = 2, alpha = 0.7) +
+      scale_color_brewer(palette = "Set1") +
+      labs(
+        title = "Absolute Error Propagation by Tree Size: All Methods",
+        subtitle = "Absolute uncertainty (t C) across DBH range",
+        x = "DBH (cm)",
+        y = "Absolute Uncertainty (t C)",
+        color = "Method"
+      ) +
+      theme_paper +
+      theme(legend.position = "bottom")
+
+    print(fig_all_methods_abs)
+    ggsave(file.path(output_dir, "fig_all_methods_error_by_size_absolute.png"),
+           fig_all_methods_abs, width = 8, height = 5, dpi = 300)
+  } else {
+    cat("\nWarning: No valid data for absolute error plot. Check error propagation calculations.\n")
+  }
+
+  print(fig_all_methods_abs)
+  ggsave(file.path(output_dir, "fig_all_methods_error_by_size_absolute.png"),
+         fig_all_methods_abs, width = 8, height = 5, dpi = 300)
+
+  # Summary statistics by method
+  cat("\n=== Error Propagation Summary by Method ===\n")
+  for (m in unique(all_methods_error$method)) {
+    method_data <- all_methods_error[all_methods_error$method == m, ]
+    cat(sprintf("\n%s:\n", m))
+    cat(sprintf("  Mean CV: %.2f%%\n", mean(method_data$cv_pct, na.rm = TRUE)))
+    cat(sprintf("  CV range: %.2f%% - %.2f%%\n",
+                min(method_data$cv_pct, na.rm = TRUE),
+                max(method_data$cv_pct, na.rm = TRUE)))
+    cat(sprintf("  Mean absolute error: %.3f t C\n",
+                mean(method_data$sigma_t, na.rm = TRUE)))
+    cat(sprintf("  Absolute error range: %.3f - %.3f t C\n",
+                min(method_data$sigma_t, na.rm = TRUE),
+                max(method_data$sigma_t, na.rm = TRUE)))
+  }
+} else {
+  cat("\nWarning: No error propagation data collected for comparison methods.\n")
+  cat("Check if BIOMASS and allodb packages are installed and methods are working.\n")
+}
+
+
+
 
 # ============================================================================
 # 7. EXPORT RESULTS
@@ -1262,4 +1564,5 @@ if (nrow(habitat_summary) > 0) {
 }
 
 # Script completed
+
 

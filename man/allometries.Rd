@@ -21,6 +21,7 @@ allometries(
   nsg = NULL,
   sig_nsg = 0.09413391,
   height_timber = NULL,
+  timber_ratio = 0.85,
   checkTaxo = FALSE,
   rich_output = FALSE
 )
@@ -34,8 +35,8 @@ allometries(
 
 \item{height}{in metres (total height). For broadleaf species, WCC protocol
 requires timber height (height to first branch). If \code{height_timber} is
-not provided, it will be estimated from total height using a ratio of 0.85.
-Other methods (BIOMASS, allodb, Bunce) use total height.}
+not provided, it will be estimated using \code{timber_ratio}. Other methods
+(BIOMASS, allodb, Bunce) use total height.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
@@ -63,7 +64,11 @@ coordinates for each tree of longitude and latitude}
 
 \item{height_timber}{timber height in metres (height to first branch or merchantable top).
 Required for accurate WCC protocol compliance for broadleaf species. If not provided
-for broadleaves, will be estimated from total height with a warning.}
+for broadleaves, will be estimated using \code{timber_ratio}.}
+
+\item{timber_ratio}{ratio for estimating timber height from total height when \code{height_timber}
+is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
 
 \item{checkTaxo}{If TRUE then BIOMASS::correctTaxo will check spelling of
 species name. This is included in output if there were modifications made.}

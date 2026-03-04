@@ -21,13 +21,22 @@
 # Date: 2026
 # =============================================================================
 
+setwd("C:/git/TreeCarbon")
+devtools::load_all()
+
 # Load required packages
-devtools::load_all("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/TreeCarbon")
 library(ggplot2)
 
 # Set output directory for figures
-output_dir <- "C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/TreeCarbon/paper_figures"
+# NOTE: Make paths configurable for reproducibility
+if (!exists("output_dir")) {
+  output_dir <- file.path(getwd(), "paper_figures")
+  # Or use: output_dir <- "C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/TreeCarbon/paper_figures"
+}
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Set seed for reproducibility
+set.seed(12345)
 
 # Define consistent theme for publication
 theme_paper <- theme_minimal(base_size = 11) +
@@ -44,8 +53,35 @@ theme_paper <- theme_minimal(base_size = 11) +
 # =============================================================================
 
 # Import the Wakehurst data
-source("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/Import.R")
+# NOTE: Update path for reproducibility
+if (file.exists("../../data/Import.R")) {
+  source("../../data/Import.R")
+} else if (file.exists("../data/Import.R")) {
+  source("../data/Import.R")
+} else {
+  # Try absolute path (update as needed)
+  source("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/Import.R")
+}
 trees <- df
+
+# Check if height_timber is available for WCC broadleaf calculations
+# WCC protocol requires timber height (height to first branch) for broadleaf species
+if (!"height_timber" %in% colnames(trees)) {
+  warning("height_timber not found in data. For WCC broadleaf protocol compliance,
+          timber height should be measured. Using estimated timber height (0.85 × total height)
+          for broadleaf species in WCC calculations.")
+  # Estimate timber height for broadleaf species (average ratio ~0.85)
+  trees$height_timber <- ifelse(trees$type == "broadleaf",
+                                trees$Height * 0.85,
+                                trees$Height)
+} else {
+  # Use provided timber height, or fall back to total height if missing
+  trees$height_timber <- ifelse(is.na(trees$height_timber) & trees$type == "broadleaf",
+                                trees$Height * 0.85,
+                                ifelse(is.na(trees$height_timber),
+                                       trees$Height,
+                                       trees$height_timber))
+}
 
 # Rename Classification to type for consistency
 if ("Classification" %in% colnames(trees)) {
@@ -69,6 +105,9 @@ wakehurst_coords <- c(-0.0867, 51.0660)
 # 2. CALCULATE CARBON WITH ALL METHODS
 # =============================================================================
 
+# Calculate carbon with all methods
+# NOTE: allometries() function will automatically use height_timber for WCC broadleaf if provided
+# The function handles the WCC protocol requirement internally
 results <- allometries(
   genus = trees$Genus,
   species = trees$Species,
@@ -83,8 +122,17 @@ results <- allometries(
   re_dbh = 0.05,
   re_h = 0.10,
   re = 0.025,
-  checkTaxo = FALSE
+  checkTaxo = FALSE,
+  height_timber = trees$Height*0.85
 )
+
+# Validate results
+if (!all(c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t") %in% colnames(results))) {
+  warning("Some methods may have failed. Check method availability and input data.")
+  missing_methods <- setdiff(c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t"),
+                             colnames(results))
+  cat("Missing method columns:", paste(missing_methods, collapse = ", "), "\n")
+}
 
 # Add metadata
 results$Habitat <- trees$Habitat
@@ -138,7 +186,7 @@ fig1a <- ggplot(results[!is.na(results$method_cv), ], aes(x = method_cv)) +
            color = "red", fontface = "bold") +
   labs(
     title = "Distribution of Between-Method CV",
-    subtitle = "How much do allometric methods disagree for the same tree?",
+    #subtitle = "How much do allometric methods disagree for the same tree?",
     x = "Coefficient of Variation (%)",
     y = "Number of Trees"
   ) +
@@ -187,10 +235,13 @@ base_tree <- list(
 )
 
 # Calculate base case
+# For WCC broadleaf, use timber height (estimated as 0.85 × total height for this example)
+base_height_timber <- base_tree$height * 0.85  # Estimate timber height for broadleaf
 base_carbon_result <- fc_agc(
   name = base_tree$name,
   dbh = base_tree$dbh,
   height = base_tree$height,
+  height_timber = base_height_timber,  # WCC protocol requires timber height for broadleaf
   nsg = base_tree$nsg,
   type = base_tree$type,
   method = base_tree$method,
@@ -222,6 +273,7 @@ sensitivity_results <- data.frame()
 for (pct in variations) {
   test_dbh <- base_tree$dbh * (1 + pct/100)
   result_df <- fc_agc(name = base_tree$name, dbh = test_dbh, height = base_tree$height,
+                      height_timber = base_height_timber,  # Use timber height for WCC
                       nsg = base_tree$nsg, type = base_tree$type,
                       method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
   result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
@@ -232,9 +284,13 @@ for (pct in variations) {
 }
 
 # Height sensitivity
+# NOTE: For WCC broadleaf, this tests total height sensitivity, but WCC uses timber height
+# Consider separate analysis for timber height sensitivity
 for (pct in variations) {
   test_height <- base_tree$height * (1 + pct/100)
+  test_height_timber <- base_height_timber * (1 + pct/100)  # Scale timber height proportionally
   result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_height,
+                      height_timber = test_height_timber,  # Use scaled timber height
                       nsg = base_tree$nsg, type = base_tree$type,
                       method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
   result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
@@ -248,6 +304,7 @@ for (pct in variations) {
 for (pct in variations) {
   test_nsg <- base_tree$nsg * (1 + pct/100)
   result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = base_tree$height,
+                      height_timber = base_height_timber,  # Use timber height for WCC
                       nsg = test_nsg, type = base_tree$type,
                       method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
   result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
@@ -278,7 +335,7 @@ fig2 <- ggplot(sensitivity_results, aes(x = pct_input, y = pct_output,
   scale_color_brewer(palette = "Set1") +
   labs(
     title = "WCC Input Sensitivity: Spider Plot",
-    subtitle = "Steeper slope = higher sensitivity to input variation",
+    # subtitle = "Steeper slope = higher sensitivity to input variation",
     x = "% Change in Input",
     y = "% Change in Carbon Output",
     color = "Input"
@@ -300,6 +357,7 @@ cf_results <- data.frame()
 for (m in cf_methods) {
   result_df <- tryCatch({
     fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = base_tree$height,
+           height_timber = base_height_timber,  # Use timber height for WCC
            nsg = base_tree$nsg, type = base_tree$type, method = m,
            biome = base_tree$biome, output.all = FALSE)
   }, error = function(e) NA)
@@ -325,10 +383,12 @@ print(sprintf("Carbon fraction range: %.1f%%", max(cf_results$carbon) / min(cf_r
 # Compare height sensitivity across methods
 height_sensitivity <- data.frame()
 
-# WCC (uses height)
+# WCC (uses height_timber for broadleaf)
 for (pct in c(-20, 0, 20)) {
   test_h <- base_tree$height * (1 + pct/100)
+  test_h_timber <- base_height_timber * (1 + pct/100)  # Scale timber height proportionally
   result_df <- fc_agc(name = base_tree$name, dbh = base_tree$dbh, height = test_h,
+                      height_timber = test_h_timber,  # WCC uses timber height for broadleaf
                       nsg = base_tree$nsg, type = base_tree$type,
                       method = base_tree$method, biome = base_tree$biome, output.all = FALSE)
   result <- if (is.data.frame(result_df)) result_df$AGC_WCC_t[1] else result_df[1]
@@ -400,11 +460,11 @@ fig3 <- ggplot(results[!is.na(results$method_cv) & !is.na(results$dbh_class), ],
                aes(x = dbh_class, y = method_cv)) +
   geom_boxplot(fill = "steelblue", alpha = 0.6, outlier.alpha = 0.3) +
   geom_hline(yintercept = 30, linetype = "dashed", color = "red") +
-  annotate("text", x = 0.5, y = 32, label = "CV = 30% threshold",
-           hjust = 0, color = "red", size = 3) +
+  #annotate("text", x = 0.5, y = 32, label = "CV = 30% threshold",
+  #         hjust = 0, color = "red", size = 3) +
   labs(
     title = "Method Disagreement by Tree Size",
-    subtitle = "Do allometric methods diverge more for larger trees?",
+  #  subtitle = "Do allometric methods diverge more for larger trees?",
     x = "DBH Class (cm)",
     y = "Between-Method CV (%)"
   ) +
@@ -522,7 +582,7 @@ print(danger_summary)
 if (nrow(danger_trees) > 0) {
   # Characteristics of danger zone trees
   danger_chars <- data.frame(
-    Metric = c("Mean DBH (danger zone)", "Mean DBH (overall)", 
+    Metric = c("Mean DBH (danger zone)", "Mean DBH (overall)",
                "Mean Height (danger zone)", "Mean Height (overall)",
                "DBH range in danger zone"),
     Value = c(sprintf("%.1f cm", mean(danger_trees$dbh)),
@@ -545,8 +605,8 @@ fig5 <- ggplot(results[!is.na(results$method_cv), ],
   geom_vline(xintercept = c(20, 60), linetype = "dotted", alpha = 0.5) +
   geom_hline(yintercept = c(10, 25), linetype = "dotted", alpha = 0.5) +
   labs(
-    title = "Danger Zones: Where Methods Disagree Most",
-    subtitle = "Red = high method disagreement, Green = methods agree",
+    title = "Where do Methods Disagree Most in Relation to key inputs",
+#    subtitle = "Red = high method disagreement, Green = methods agree",
     x = "DBH (cm)",
     y = "Height (m)"
   ) +
@@ -634,4 +694,29 @@ print(summary_table, row.names = FALSE, right = FALSE)
 # Save summary table
 write.csv(summary_table, file.path(output_dir, "summary_table.csv"), row.names = FALSE)
 
+# Save additional summary statistics
+additional_stats <- list(
+  cv_by_habitat = cv_by_habitat,
+  cv_by_size = cv_by_size,
+  danger_summary = danger_summary,
+  danger_chars = if (exists("danger_chars")) danger_chars else NULL,
+  propagation_results = propagation_results,
+  key_insight = key_insight,
+  height_elasticity = height_elasticity,
+  elasticity_summary = elasticity_summary
+)
+saveRDS(additional_stats, file.path(output_dir, "additional_statistics.rds"))
+
+# Save session info for reproducibility
+cat("\n=== SESSION INFO ===\n")
+print(sessionInfo())
+writeLines(capture.output(sessionInfo()),
+           file.path(output_dir, "session_info.txt"))
+
 # Analysis complete - figures saved to output_dir
+cat(sprintf("\nAnalysis complete. Results saved to: %s\n", output_dir))
+cat(sprintf("Total trees analyzed: %d\n", nrow(results)))
+cat(sprintf("Median method CV: %.1f%%\n", median(results$method_cv, na.rm = TRUE)))
+cat(sprintf("Trees in danger zone (CV>40%%): %d (%.1f%%)\n",
+            nrow(danger_trees),
+            100 * nrow(danger_trees) / sum(!is.na(results$method_cv))))

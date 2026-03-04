@@ -116,10 +116,9 @@ fc_agc(names,dbhs,heights)
 allometries("Quercus", "robur", dbh = 20, height = 10)
 
 ###other routines
-#WWC seedling and saplings are calculated differently to trees, only height 
-#and type are needed (conifer or broadleaf)
-#note height is in cm
-sap_seedling2C(50, 'conifer')
+#WCC seedling and saplings are calculated differently to trees, only height
+#and type are needed (conifer or broadleaf). Height is in metres.
+sap_seedling2C(0.5, 'conifer')  # 0.5 m = 50 cm seedling
 #Carbon of CO2 conversion ie 1 tonne carbon - 3.6
 ctoco2e(1)
 ```

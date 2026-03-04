@@ -78,14 +78,9 @@ print(result_rich)
 ### With Uncertainty Propagation
 
 ```{r single-wcc-error}
-result_error <- fc_agc_error(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  re_dbh = 0.025,   # 2.5% relative measurement error
-  re_h = 0.05       # 5% height measurement error
-)
+result_error <- fc_agc_error(name = "Oak", dbh = 45, height = 18,
+                             type = "broadleaf",
+                             re_dbh = 0.025, re_h = 0.05)
 
 print(result_error[, c("name", "AGC_WCC_t", "sig_AGC")])
 
@@ -101,11 +96,7 @@ cat(sprintf("\nAGC: %.3f ± %.3f t (95%% CI: [%.3f, %.3f])\n",
 The Bunce (1968) method only requires DBH and species name - no height needed.
 
 ```{r single-bunce}
-result_bunce <- Bunce(
-  name = "Oak",
-  dbh = 45,
-  re_dbh = 0.025  # Include measurement error
-)
+result_bunce <- Bunce(name = "Oak", dbh = 45, re_dbh = 0.025)
 
 print(result_bunce)
 ```
@@ -201,12 +192,8 @@ print(trees)
 
 ```{r batch-wcc}
 # Apply WCC to all trees
-wcc_results <- fc_agc(
-  name = trees$species,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type
-)
+wcc_results <- fc_agc(name = trees$species, dbh = trees$dbh,
+                      height = trees$height, type = trees$type)
 
 # Add tree IDs
 wcc_results$tree_id <- trees$tree_id
@@ -223,11 +210,8 @@ cat(sprintf("Range: %.3f - %.3f tonnes\n",
 ## 2.3 Bunce Method for Multiple Trees
 
 ```{r batch-bunce}
-bunce_results <- Bunce(
-  name = trees$species,
-  dbh = trees$dbh,
-  re_dbh = 0.025
-)
+bunce_results <- Bunce(name = trees$species, dbh = trees$dbh,
+                       re_dbh = 0.025)
 
 bunce_results$tree_id <- trees$tree_id
 
@@ -276,14 +260,9 @@ direct comparison.
 
 ```{r compare-single, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Compare all methods for a single oak tree
-comparison <- allometries(
-  genus = "Quercus",
-  species = "robur",
-  dbh = 45,
-  height = 18,
-  coords = c(-0.2915, 51.4787),
-  returnv = "AGC"
-)
+comparison <- allometries(genus = "Quercus", species = "robur", dbh = 45,
+                          height = 18, coords = c(-0.2915, 51.4787), 
+                          returnv = "AGC")
 
 print(comparison)
 ```
@@ -295,14 +274,9 @@ methods.
 
 ```{r compare-detailed, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Get allometries results first
-results <- allometries(
-  genus = "Quercus",
-  species = "robur",
-  dbh = 45,
-  height = 18,
-  coords = c(-0.2915, 51.4787),
-  returnv = "AGC"
-)
+results <- allometries(genus = "Quercus", species = "robur", dbh = 45,
+                       height = 18, coords = c(-0.2915, 51.4787),
+                       returnv = "AGC")
 
 # Run comparison
 comp <- compare_allometries(results, reference = "WCC")
@@ -318,14 +292,12 @@ summary(comp)
 
 ```{r compare-batch, eval=requireNamespace("BIOMASS", quietly = TRUE) && requireNamespace("allodb", quietly = TRUE)}
 # Compare methods across all trees - allometries() handles vectors directly
-batch_results <- allometries(
-  genus = trees$genus,
-  species = trees$species_epithet,
-  dbh = trees$dbh,
-  height = trees$height,
-  coords = c(-0.2915, 51.4787),
-  returnv = "AGC"
-)
+batch_results <- allometries(genus = trees$genus, 
+                             species = trees$species_epithet,
+                             dbh = trees$dbh,
+                             height = trees$height,
+                             coords = c(-0.2915, 51.4787),
+                             returnv = "AGC")
 
 # Add tree IDs
 batch_results$tree_id <- seq_len(nrow(batch_results))
@@ -790,14 +762,9 @@ print(my_trees)
 # === Step 2: Calculate carbon using preferred method ===
 cat("\n=== WCC Carbon Estimates ===\n")
 
-wcc_out <- fc_agc_error(
-  name = my_trees$common_name,
-  dbh = my_trees$dbh_cm,
-  height = my_trees$height_m,
-  type = my_trees$type,
-  re_dbh = 0.025,
-  re_h = 0.05
-)
+wcc_out <- fc_agc_error(name = my_trees$common_name, dbh = my_trees$dbh_cm,
+                        height = my_trees$height_m, type = my_trees$type,
+                        re_dbh = 0.025, re_h = 0.05)
 
 results <- data.frame(
   Tree = my_trees$common_name,
@@ -844,12 +811,8 @@ example_data <- data.frame(
 # tree_data <- read.csv("your_trees.csv", stringsAsFactors = FALSE)
 
 # Process the data
-results <- fc_agc(
-  name = example_data$name,
-  dbh = example_data$dbh,
-  height = example_data$height,
-  type = example_data$type
-)
+results <- fc_agc(name = example_data$name, dbh = example_data$dbh,
+                  height = example_data$height, type = example_data$type)
 
 print(results)
 ```
@@ -866,12 +829,8 @@ trees_with_na <- data.frame(
 )
 
 # TreeCarbon handles NA values gracefully
-results_na <- fc_agc(
-  name = trees_with_na$name,
-  dbh = trees_with_na$dbh,
-  height = trees_with_na$height,
-  type = trees_with_na$type
-)
+results_na <- fc_agc(name = trees_with_na$name, dbh = trees_with_na$dbh,
+                     height = trees_with_na$height, type = trees_with_na$type)
 
 cat("=== Results with Missing Data ===\n")
 cat("Note: Trees with missing data will have NA results\n")
@@ -923,13 +882,8 @@ if (requireNamespace("BIOMASS", quietly = TRUE)) {
   wd <- BIOMASS::getWoodDensity("Quercus", "robur", region = "Europe")
   
   # Use custom NSG (Nominal Specific Gravity)
-  result_custom <- fc_agc(
-    name = "Oak",
-    dbh = 45,
-    height = 18,
-    type = "broadleaf",
-    nsg = wd$meanWD  # Custom wood density
-  )
+  result_custom <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                          type = "broadleaf", nsg = wd$meanWD)
   
   cat("=== Using Custom Wood Density ===\n")
   cat(sprintf("NSG from BIOMASS: %.3f\n", wd$meanWD))
@@ -942,9 +896,9 @@ if (requireNamespace("BIOMASS", quietly = TRUE)) {
 For trees with DBH < 7 cm or height < 10 m, use the seedling/sapling model:
 
 ```{r seedlings-saplings}
-# Seedling/sapling carbon (height in cm for this function)
+# Seedling/sapling carbon (height in metres)
 seedling_result <- sap_seedling2C(
-  height = 50,      # cm (not metres!)
+  height = 0.5,     # 0.5 m = 50 cm seedling
   type = "broadleaf",
   re_h = 0.05,
   re = 0.025
@@ -974,13 +928,8 @@ Rich output provides comprehensive metadata:
 
 ```{r rich-output-details}
 # Get rich output
-result_rich <- fc_agc(
-  name = "Oak",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf",
-  rich_output = TRUE
-)
+result_rich <- fc_agc(name = "Oak", dbh = 45, height = 18,
+                      type = "broadleaf", rich_output = TRUE)
 
 # Access individual components
 cat("=== Rich Output Components ===\n")
@@ -1007,12 +956,8 @@ If a species isn't in the database:
 
 ```{r troubleshooting-species}
 # Unknown species - will use type-based defaults
-result_unknown <- fc_agc(
-  name = "Unknown Species",
-  dbh = 45,
-  height = 18,
-  type = "broadleaf"  # Important: specify type
-)
+result_unknown <- fc_agc(name = "Unknown Species", dbh = 45, height = 18,
+                         type = "broadleaf")
 
 cat("=== Unknown Species Handling ===\n")
 cat("Using type-based defaults for unknown species\n")
@@ -1023,21 +968,12 @@ print(result_unknown)
 
 ```{r troubleshooting-ranges}
 # Very small or large trees may trigger warnings
-result_small <- fc_agc(
-  name = "Oak",
-  dbh = 5,      # Very small - below WCC minimum
-  height = 3,   # Very small
-  type = "broadleaf"
-)
+result_small <- fc_agc(name = "Oak", dbh = 5, height = 3,
+                       type = "broadleaf")
 
 # Check for warnings/flags in rich output
-result_small_rich <- fc_agc(
-  name = "Oak",
-  dbh = 5,
-  height = 3,
-  type = "broadleaf",
-  rich_output = TRUE
-)
+result_small_rich <- fc_agc(name = "Oak", dbh = 5, height = 3,
+                            type = "broadleaf", rich_output = TRUE)
 
 cat("=== Small Tree (may have validity warnings) ===\n")
 print(result_small_rich)
@@ -1091,12 +1027,8 @@ trees <- data.frame(
 )
 
 system.time({
-  results <- fc_agc(
-    name = trees$name,
-    dbh = trees$dbh,
-    height = trees$height,
-    type = trees$type
-  )
+  results <- fc_agc(name = trees$name, dbh = trees$dbh,
+                    height = trees$height, type = trees$type)
 })
 
 cat("Vectorized processing: efficient for large datasets\n")
@@ -1109,24 +1041,16 @@ Rich output is slightly slower but provides more information:
 ```{r performance-rich}
 # Standard output (faster)
 system.time({
-  results_std <- fc_agc(
-    name = trees$name[1:10],
-    dbh = trees$dbh[1:10],
-    height = trees$height[1:10],
-    type = trees$type[1:10],
-    rich_output = FALSE
-  )
+  results_std <- fc_agc(name = trees$name[1:10], dbh = trees$dbh[1:10],
+                        height = trees$height[1:10],
+                        type = trees$type[1:10], rich_output = FALSE)
 })
 
 # Rich output (slightly slower, more information)
 system.time({
-  results_rich <- fc_agc(
-    name = trees$name[1:10],
-    dbh = trees$dbh[1:10],
-    height = trees$height[1:10],
-    type = trees$type[1:10],
-    rich_output = TRUE
-  )
+  results_rich <- fc_agc(name = trees$name[1:10], dbh = trees$dbh[1:10],
+                         height = trees$height[1:10],
+                         type = trees$type[1:10], rich_output = TRUE)
 })
 
 cat("Rich output provides metadata but is slightly slower\n")
@@ -1140,13 +1064,9 @@ cat("Rich output provides metadata but is slightly slower\n")
 
 ```{r export-csv}
 # Calculate results
-results <- fc_agc(
-  name = trees$species,
-  dbh = trees$dbh,
-  height = trees$height,
-  type = trees$type,
-  output.all = TRUE
-)
+results <- fc_agc(name = trees$species, dbh = trees$dbh,
+                  height = trees$height, type = trees$type,
+                  output.all = TRUE)
 
 # Create export table
 export_table <- data.frame(

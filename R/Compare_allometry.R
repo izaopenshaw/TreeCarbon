@@ -52,11 +52,14 @@ utils::globalVariables(c("method", "value", "DBH", "Height", "tree", "ymin", "ym
 #' @param dbh diameter at breast height in centimetres
 #' @param height in metres (total height). For broadleaf species, WCC protocol
 #'   requires timber height (height to first branch). If \code{height_timber} is
-#'   not provided, it will be estimated from total height using a ratio of 0.85.
-#'   Other methods (BIOMASS, allodb, Bunce) use total height.
+#'   not provided, it will be estimated using \code{timber_ratio}. Other methods
+#'   (BIOMASS, allodb, Bunce) use total height.
 #' @param height_timber timber height in metres (height to first branch or merchantable top).
 #'   Required for accurate WCC protocol compliance for broadleaf species. If not provided
-#'   for broadleaves, will be estimated from total height with a warning.
+#'   for broadleaves, will be estimated using \code{timber_ratio}.
+#' @param timber_ratio ratio for estimating timber height from total height when \code{height_timber}
+#'   is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+#'   to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.
 #' @param type either 'broadleaf' or 'conifer'
 #' @param method method of converting biomass to carbon. Either 'Thomas' or
 #' 'IPCC2' has the error associated and "Matthews1", "Matthews2" or "IPCC1" do not.
@@ -114,7 +117,7 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
                         returnv = "AGC", region = "Europe", biome = "temperate",
                         coords = c(-0.088837,51.071610), re_dbh = 0.05,
                         re_h = 0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
-                        height_timber = NULL, checkTaxo = FALSE, rich_output = FALSE){
+                        height_timber = NULL, timber_ratio = 0.85, checkTaxo = FALSE, rich_output = FALSE){
 
   # ==== Input checks ====
   if (!is.character(genus) || !is.character(species))
@@ -130,8 +133,6 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   if (!is.null(height_timber)) {
     if (!is.numeric(height_timber) || any(height_timber < 0, na.rm = TRUE))
       stop("height_timber must be numeric and positive")
-    if (length(height_timber) != length(height))
-      stop("height_timber must have the same length as height")
   }
 
   if (!is.numeric(coords) || length(coords) != 2) {
@@ -176,31 +177,53 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
   name <- paste(genus, species)
 
   # Determine height_timber for WCC (for broadleaves)
-  # If not provided, estimate from total height using average ratio
-  # Average timber:total height ratio for UK broadleaves is approximately 0.85
-  # This is an approximation - actual ratio varies by species, age, and site conditions
+  # If not provided, use timber_ratio parameter (numeric ratio or "estimate")
   wcc_height_timber <- height_timber
+  height_timber_source <- character()
+  height_timber_estimated <- FALSE
+  
   if (is.null(wcc_height_timber)) {
-    # Estimate timber height for broadleaves if type is known
-    # Use average ratio of 0.85 (timber height is typically 85% of total height for broadleaves)
-    estimated_timber_ratio <- 0.85
-    wcc_height_timber <- height * estimated_timber_ratio
-    # Only apply to broadleaves (will be filtered in fc_agc functions)
-    if (any(type == "broadleaf", na.rm = TRUE)) {
-      warning("Timber height not provided for broadleaf species. Estimated from total height using ratio of 0.85. ",
-              "For accurate WCC protocol compliance and method comparison, measure and provide timber height (height to first branch). ",
-              "Actual timber:total height ratios vary by species (typically 0.75-0.95).")
+    # Validate timber_ratio parameter
+    if (is.character(timber_ratio) && timber_ratio == "estimate") {
+      # Use estimate_timber_height function with species-specific ratios
+      wcc_height_timber <- estimate_timber_height(
+        height = height,
+        genus = genus,
+        species = species,
+        spcode = NULL,  # Will be looked up in fc_agc functions
+        type = type,
+        default_ratio = 0.85
+      )
+      height_timber_source <- "estimated_via_species_ratios"
+      height_timber_estimated <- TRUE
+      if (any(type == "broadleaf", na.rm = TRUE)) {
+        warning("Timber height not provided for broadleaf species. Estimated from total height using species-specific ratios (or default 0.85 if not available). ",
+                "For accurate WCC protocol compliance and method comparison, measure and provide timber height (height to first branch).")
+      }
+    } else if (is.numeric(timber_ratio) && timber_ratio > 0 && timber_ratio <= 1) {
+      # Use provided numeric ratio
+      wcc_height_timber <- height * timber_ratio
+      height_timber_source <- paste0("estimated_via_fixed_ratio_", timber_ratio)
+      height_timber_estimated <- TRUE
+      if (any(type == "broadleaf", na.rm = TRUE)) {
+        warning("Timber height not provided for broadleaf species. Estimated from total height using ratio of ", timber_ratio, ". ",
+                "For accurate WCC protocol compliance, measure and provide timber height (height to first branch).")
+      }
+    } else {
+      stop("timber_ratio must be either a numeric value between 0 and 1, or the string 'estimate'")
     }
+  } else {
+    height_timber_source <- "provided_by_user"
   }
 
   if(method %in% c("Thomas", "IPCC2")){ # These methods contain errors for biomass conversion
     WCC <- suppressWarnings(fc_agc_error(name, dbh, height, type, method,
                                          biome, TRUE, re_dbh, re_h, re, nsg, sig_nsg,
-                                         height_timber = wcc_height_timber))
+                                         height_timber = wcc_height_timber, timber_ratio = timber_ratio))
   } else if((method %in% c("Matthews1", "Matthews2", "IPCC1"))) {
     WCC <- suppressWarnings(fc_agc(name, dbh, height, type,
                                    method, output.all = TRUE,
-                                   height_timber = wcc_height_timber))
+                                   height_timber = wcc_height_timber, timber_ratio = timber_ratio))
   } else {
     stop("Invalid method specified. Choose from 'Thomas', 'IPCC2', 'Matthews1',
          'Matthews2', or 'IPCC1'.")
@@ -320,6 +343,10 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
         species = species,
         dbh = dbh,
         height = height,
+        height_timber = if (height_timber_estimated) wcc_height_timber else height_timber,
+        height_timber_source = height_timber_source,
+        height_timber_estimated = height_timber_estimated,
+        timber_ratio = timber_ratio,
         type = type0,
         biome = biome,
         region = region,
@@ -329,8 +356,12 @@ allometries <- function(genus, species, dbh, height, type = NULL, method ="IPCC2
       # Methodological notes
       methodological_notes = list(
         height_measurement = if (any(type0 == "broadleaf", na.rm = TRUE)) {
-          if (is.null(height_timber)) {
-            "WCC method for broadleaves requires timber height (height to first branch) for tariff calculations. Timber height was estimated from total height using a ratio of 0.85. For accurate WCC protocol compliance and fair method comparison, measure and provide timber height. Other methods (BIOMASS, allodb, Bunce) use total height."
+          if (height_timber_estimated) {
+            if (height_timber_source == "estimated_via_species_ratios") {
+              "WCC method for broadleaves requires timber height (height to first branch) for tariff calculations. Timber height was estimated from total height using species-specific ratios (or default 0.85 if not available). For accurate WCC protocol compliance and fair method comparison, measure and provide timber height. Other methods (BIOMASS, allodb, Bunce) use total height."
+            } else {
+              paste0("WCC method for broadleaves requires timber height (height to first branch) for tariff calculations. Timber height was estimated from total height using a fixed ratio of ", timber_ratio, ". For accurate WCC protocol compliance and fair method comparison, measure and provide timber height. Other methods (BIOMASS, allodb, Bunce) use total height.")
+            }
           } else {
             "WCC method for broadleaves uses timber height (height to first branch) for tariff calculations, while other methods use total height. This methodological difference may cause WCC estimates to differ from other methods even for the same tree."
           }

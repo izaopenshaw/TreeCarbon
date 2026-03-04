@@ -1,12 +1,21 @@
 # ==============================================================================
 # Example 6: Complete WCC Workflow - All Equations and Methods
 # ==============================================================================
-# This example demonstrates the complete Woodland Carbon Code methodology
-# following the WCC Carbon Assessment Protocol v2.0 (Jenkins et al., 2018).
+# Full runnable pipeline for all WCC Methods A-E (Carbon Assessment Protocol v2.0).
 #
-# This example covers:
+# SIGNPOSTING:
+#   - Vignette: vignette("WCC-methods", package = "TreeCarbon") - narrative guide
+#   - Method reference: inst/examples/WCC_method_reference.R - Method | Functions | Section
+#   - Method selection: 8_WCC_method_selection.R - which method for your data?
+#
+# Use this file when: you want executable code for the full WCC pipeline.
+# Use the vignette when: you want explanations, troubleshooting, and step-by-step walkthrough.
+#
+# Covers:
+# - WCC Methods A-E: tariff_vol_area (A), broadleaf_tariff (B), conifer_tariff (C),
+#   stand_tariff/fc_stand_carbon (D), wcc_process_tally/wcc_dbh_class_carbon (E)
 # - Seedlings and saplings (height < 10m or DBH < 7cm)
-# - Tariff number calculations (broadleaf, conifer, stand-level)
+# - Tariff number calculations (Methods A-D)
 # - Volume estimation from basal area
 # - Biomass calculations (stem, crown, root)
 # - Carbon conversion using Matthews methods
@@ -33,9 +42,9 @@ sap_seedling2C(height = 3.0,    type = "conifer")
 
 # ==== Sapling with error ====
 # Seedling: height = 0.5m (50cm), broadleaf
-sap_seedling2C(height = 0.5,    type = "broadleaf",
-               re_h = 0.05,      # 5% height measurement error
-               re = 0.025)       # 2.5% coefficient error
+sap_seedling2C(height = 0.5, type = "broadleaf",
+               re_h = 0.05,  # 5% height measurement error
+               re = 0.025)   # 2.5% coefficient error
 
 # ==============================================================================
 # (2) TARIFF NUMBER CALCULATIONS
@@ -45,48 +54,39 @@ sap_seedling2C(height = 0.5,    type = "broadleaf",
 
 dbh_brdlf <- 45
 
-# ==== 2.1 Broadleaf Tariff (Equation 4) ====
+# ==== 2.1 Method B: Broadleaf Tariff (Equation 4) ====
 spcode <- lookupcode("Oak", type = "broadleaf")$code
 
-broadleaf_tariff(spcode = spcode,
-                 height_timber = 15,  # Uses timber height for broadleaves (WCC protocol requirement)
-                 dbh = dbh_brdlf)
+broadleaf_tariff(spcode = spcode, height_timber = 15, dbh = dbh_brdlf)
+# Timber height for broadleaves (WCC protocol requirement)
 # Timber height is the usable straight trunk length. Point clinometer or height
 # measuring instrument where the trunk becomes too thin to be useful timber
 # (where 7 cm diameter including bark).
 
-# ==== 2.2: Conifer Tariff (Equation 3) ====
+# ==== 2.2 Method C: Conifer Tariff (Equation 3) ====
 spcode_conifer <- lookupcode("Scots Pine", type = "conifer")$code
 
 conifer_tariff(spcode = spcode_conifer,     height = 20,    dbh = 30)
 
-# ==== 2.3: Stand Tariff (Equation 2) ====
+# ==== 2.3 Method D: Stand Tariff (Equation 4) ====
 # For stand-level calculations when DBH is not available
 # Uses top height (mean height of 100 largest trees per hectare)
+# Use calculate_top_height() to derive from plot data
 
-stand_tariff(spcode = spcode, height = 18)  # Top height in metres
+stand_tariff(spcode = spcode, stand_height = 18)  # Top height in metres
 
-# ==== 2.4: Tariff from Volume and Basal Area (Equation 1) ====
+# ==== 2.4 Method A: Tariff from Volume and Basal Area (Equation 1) ====
 # If you have measured volume from a felled sample tree
-# This is Method A from the WCC protocol
 
-tariff_vol_area(vol = 0.5,          # m³ (from felled tree)
-                dbh = dbh_brdlf,
-                sig_vol = 0.01,   # Uncertainty in volume measurement
-                re_dbh = 0.05,
-                dbh_brdlf)
+tariff_vol_area(vol = 0.5, dbh = dbh_brdlf,  # m³ (from felled tree)
+                sig_vol = 0.01, re_dbh = 0.05, re = 0.025)
 
-# ==== 2.5: Automatic Tariff Selection ====
-# tariffs() function automatically selects the appropriate method
-# based on species type and available inputs
+# ==== 2.5 Automatic Tariff Selection (Methods B/C) ====
+# tariffs() automatically selects broadleaf_tariff (B) or conifer_tariff (C)
 
-tariff_auto <- tariffs(spcode = spcode,
-  height = NULL,  # Total height (used for conifers, fallback for broadleaves)
-  dbh = dbh_brdlf,
-  type = "broadleaf",
-  height_timber = 20,  # Timber height for broadleaves
-  re_h = 0.05,
-  re_dbh = 0.025)
+tariff_auto <- tariffs(spcode = spcode, height = 20, dbh = dbh_brdlf,
+                       type = "broadleaf", height_timber = 20,
+                       re_h = 0.05, re_dbh = 0.025)
 
 # ==============================================================================
 # PART 3: VOLUME ESTIMATION
@@ -129,12 +129,9 @@ basal_area <- (pi * dbh_brdlf^2) / 40000  # m²
 nsg_lookup <- lookupcode(species_name, code = "NSG")
 nsg <- as.numeric(nsg_lookup$code)
 
-wood_bio <- woodbiomass(
-  treevol = stem_vol$stemvolume,
-  nsg = nsg,
-  sig_treevol = stem_vol$sigma,
-  sig_nsg = 0.094  # Default NSG uncertainty (from UK timber data)
-)
+wood_bio <- woodbiomass(treevol = stem_vol$stemvolume, nsg = nsg,
+                        sig_treevol = stem_vol$sigma,
+                        sig_nsg = 0.094)  # Default NSG uncertainty
 
 # ==== 4.2: Crown Biomass (Equations 6-7) ====
 # Crown biomass includes branches, stem tips, and foliage
@@ -143,12 +140,8 @@ wood_bio <- woodbiomass(
 crown_code_lookup <- lookupcode(species_name, code = "Crown")
 crown_code <- crown_code_lookup$code
 
-crown_bio <- crownbiomass(
-  spcode = crown_code,
-  dbh = dbh_brdlf,
-  re_d = 0.025,  # Relative error in DBH
-  re = 0.025     # Relative error in coefficients
-)
+crown_bio <- crownbiomass(spcode = crown_code, dbh = dbh_brdlf,
+                          re_d = 0.025, re = 0.025)
 
 # ==== 4.3: Root Biomass (Equations 8-9) ====
 # Below-ground biomass estimation
@@ -157,12 +150,8 @@ crown_bio <- crownbiomass(
 root_code_lookup <- lookupcode(species_name, code = "Root")
 root_code <- root_code_lookup$code
 
-root_bio <- rootbiomass(
-  spcode = root_code,
-  dbh = dbh_brdlf,
-  re_dbh = 0.025,
-  re = 0.025
-)
+root_bio <- rootbiomass(spcode = root_code, dbh = dbh_brdlf,
+                        re_dbh = 0.025, re = 0.025)
 
 # ==== 4.4: Total Above-Ground Biomass ====
 # AGB = stem wood biomass + crown biomass
@@ -187,48 +176,30 @@ total_biomass_sigma <- sqrt(agb_sigma^2 + root_bio$sigma^2)
 # Simplest method: CF = 50% for all trees
 # Suitable for quick estimates
 
-carbon_matthews1 <- biomass2c(
-  biomass = agb,
-  method = "Matthews1",
-  sig_biomass = agb_sigma
-)
+carbon_matthews1 <- biomass2c(biomass = agb, method = "Matthews1",
+                              sig_biomass = agb_sigma)
 
 # ==== 5.2: Matthews Method 2 (Matthews2) ====
 # CF varies by tree type (broadleaf vs conifer)
 # Recommended for UK WCC applications
 
-carbon_matthews2 <- biomass2c(
-  biomass = agb,
-  method = "Matthews2",
-  type = "broadleaf",
-  sig_biomass = agb_sigma
-)
+carbon_matthews2 <- biomass2c(biomass = agb, method = "Matthews2",
+                              type = "broadleaf", sig_biomass = agb_sigma)
 
 # ==== 5.3: Other Methods (for comparison) ====
 # IPCC1: CF = 47.7% (default IPCC value)
-carbon_ipcc1 <- biomass2c(
-  biomass = agb,
-  method = "IPCC1",
-  sig_biomass = agb_sigma
-)
+carbon_ipcc1 <- biomass2c(biomass = agb, method = "IPCC1",
+                          sig_biomass = agb_sigma)
 
 # IPCC2: CF varies by type and biome
-carbon_ipcc2 <- biomass2c(
-  biomass = agb,
-  method = "IPCC2",
-  type = "broadleaf",
-  biome = "temperate",
-  sig_biomass = agb_sigma
-)
+carbon_ipcc2 <- biomass2c(biomass = agb, method = "IPCC2",
+                          type = "broadleaf", biome = "temperate",
+                          sig_biomass = agb_sigma)
 
 # Thomas: CF from empirical synthesis (most detailed)
-carbon_thomas <- biomass2c(
-  biomass = agb,
-  method = "Thomas",
-  type = "broadleaf",
-  biome = "temperate",
-  sig_biomass = agb_sigma
-)
+carbon_thomas <- biomass2c(biomass = agb, method = "Thomas",
+                           type = "broadleaf", biome = "temperate",
+                           sig_biomass = agb_sigma)
 
 # ==============================================================================
 # PART 6: COMPLETE SINGLE TREE WORKFLOW
@@ -249,60 +220,36 @@ tree_spcode <- spcode_lookup$code
 
 # Step 2: Tariff calculation
 # For broadleaves, use timber height (WCC protocol requirement)
-tree_tariff <- tariffs(
-  spcode = tree_spcode,
-  height = tree_height_total,  # Total height (used for conifers, fallback for broadleaves)
-  dbh = tree_dbh,
-  type = tree_type,
-  height_timber = tree_height_timber,  # Timber height for broadleaves
-  re_h = 0.05,
-  re_dbh = 0.025
-)
+tree_tariff <- tariffs(spcode = tree_spcode, height = tree_height_total,
+                       dbh = tree_dbh, type = tree_type,
+                       height_timber = tree_height_timber,
+                       re_h = 0.05, re_dbh = 0.025)
 
 # Step 3: Volume estimation
-tree_merch_vol <- merchtreevol(
-  dbh = tree_dbh,
-  tariff = tree_tariff$tariff,
-  re_dbh = 0.025,
-  sig_tariff = tree_tariff$sigma
-)
+tree_merch_vol <- merchtreevol(dbh = tree_dbh, tariff = tree_tariff$tariff,
+                               re_dbh = 0.025, sig_tariff = tree_tariff$sigma)
 
-tree_stem_vol <- treevol(
-  mtreevol = tree_merch_vol$volume,
-  dbh = tree_dbh,
-  sig_mtreevol = tree_merch_vol$sigma
-)
+tree_stem_vol <- treevol(mtreevol = tree_merch_vol$volume, dbh = tree_dbh,
+                         sig_mtreevol = tree_merch_vol$sigma)
 
 # Step 4: Biomass calculation
 tree_nsg <- as.numeric(lookupcode(tree_name, code = "NSG")$code)
-tree_wood_bio <- woodbiomass(
-  treevol = tree_stem_vol$stemvolume,
-  nsg = tree_nsg,
-  sig_treevol = tree_stem_vol$sigma,
-  sig_nsg = 0.094
-)
+tree_wood_bio <- woodbiomass(treevol = tree_stem_vol$stemvolume, nsg = tree_nsg,
+                             sig_treevol = tree_stem_vol$sigma, sig_nsg = 0.094)
 
 tree_crown_code <- lookupcode(tree_name, code = "Crown")$code
-tree_crown_bio <- crownbiomass(
-  spcode = tree_crown_code,
-  dbh = tree_dbh,
-  re_d = 0.025,
-  re = 0.025
-)
+tree_crown_bio <- crownbiomass(spcode = tree_crown_code, dbh = tree_dbh,
+                               re_d = 0.025, re = 0.025)
 
 tree_agb <- tree_wood_bio$woodbiomass + tree_crown_bio$biomass
 tree_agb_sigma <- sqrt(tree_wood_bio$sigma^2 + tree_crown_bio$sigma^2)
 
 # Step 5: Carbon conversion (using Matthews2 as recommended for WCC)
-tree_carbon <- biomass2c(
-  biomass = tree_agb,
-  method = "Matthews2",
-  type = tree_type,
-  sig_biomass = tree_agb_sigma
-)
+tree_carbon <- biomass2c(biomass = tree_agb, method = "Matthews2",
+                         type = tree_type, sig_biomass = tree_agb_sigma)
 
 # ==============================================================================
-# PART 7: COMPARISON WITH HIGH-LEVEL FUNCTIONS
+# PART 7: COMPARISON WITH HIGH-LEVEL FUNCTIONS (Methods B/C)
 # ==============================================================================
 # The high-level functions (fc_agc, fc_agc_error) perform all steps above
 # automatically. Compare results to verify consistency.
@@ -310,18 +257,72 @@ tree_carbon <- biomass2c(
 
 # High-level function result
 # For broadleaves, provide timber height for WCC protocol compliance
-result_highlevel <- fc_agc_error(
-  name = tree_name,
-  dbh = tree_dbh,
-  height = tree_height_total,  # Total height
-  type = tree_type,
-  height_timber = tree_height_timber,  # Timber height for WCC protocol compliance
-  method = "Matthews2",  # Use Matthews2 method
-  re_dbh = 0.025,
-  re_h = 0.05,
-  re = 0.025
-)
+result_highlevel <- fc_agc_error(name = tree_name, dbh = tree_dbh,
+                                 height = tree_height_total, type = tree_type,
+                                 height_timber = tree_height_timber,
+                                 method = "Matthews2",
+                                 re_dbh = 0.025, re_h = 0.05, re = 0.025)
 
 # Results should be very similar (small differences may occur due to rounding)
 # Step-by-step: tree_carbon$AGC
 # High-level: result_highlevel$AGC_WCC_t
+
+# ==============================================================================
+# PART 8: METHOD D - STAND-LEVEL CARBON (fc_stand_carbon)
+# ==============================================================================
+# When you have DBH and height from sample trees and want stand-level carbon.
+# Uses calculate_top_height() and stand_tariff internally.
+# ==============================================================================
+
+dbh_stand <- c(45, 52, 38, 60, 42, 55, 48, 35, 58, 40)
+height_stand <- c(18, 22, 15, 24, 17, 21, 19, 14, 23, 16)
+area_ha <- 0.1
+
+# Method D: Stand-level carbon
+fc_stand_carbon(name = "Oak", dbh = dbh_stand, height = height_stand,
+                area_ha = area_ha, type = "broadleaf",
+                re_dbh = 0.05, re_h = 0.05, output.all = TRUE)
+
+# ==============================================================================
+# PART 9: METHOD E - DBH CLASS TALLIES (wcc_process_tally, wcc_dbh_class_carbon)
+# ==============================================================================
+# When trees are tallied by DBH class rather than measured individually.
+# ==============================================================================
+
+dbh_classes <- c(5, 15, 25, 35, 45)   # cm midpoints
+counts <- c(150, 200, 180, 120, 50)   # trees per class
+heights <- c(3, 8, 15, 20, 22)        # representative heights (m)
+
+# Process tally
+tally_data <- wcc_process_tally(dbh_class = dbh_classes, count = counts,
+                                height = heights, use_midpoints = TRUE)
+
+# Method E: Carbon from DBH class tallies
+wcc_dbh_class_carbon(name = "Oak", tally_data = tally_data,
+                     type = "broadleaf", area_ha = 1.0,
+                     output.all = TRUE)
+
+# ==============================================================================
+# PART 10: AVERAGING TREES AND PER-HECTARE SCALING
+# ==============================================================================
+# WCC protocol often requires averaging trees (e.g. mean tariff) and scaling
+# to per-hectare values. Helper functions support these operations.
+# ==============================================================================
+
+# ==== 10.1 Mean tariff from sample trees (WCC protocol requirement) ====
+mean_tariff <- wcc_mean_tariff(spcode = lookupcode("Oak", type = "broadleaf")$code,
+                               height = c(18, 20, 19, 22, 17),
+                               dbh = c(45, 48, 42, 52, 38),
+                               type = "broadleaf",
+                               re_h = 0.05, re_dbh = 0.025)
+
+# ==== 10.2 Scale per-tree carbon to per-hectare (with uncertainty) ====
+per_ha <- wcc_per_hectare(carbon_per_tree = c(0.5, 0.6, 0.45, 0.55, 0.5),
+                          trees_per_ha = 200, area_ha = 0.5,
+                          sig_carbon_per_tree = 0.05)
+
+# ==== 10.3 Aggregate carbon across stratified stands (with uncertainty) ====
+strata <- data.frame(area_ha = c(0.5, 0.3, 0.2),
+                     carbon_per_ha_t = c(120, 95, 80),
+                     carbon_per_ha_sig_t = c(15, 12, 10))
+wcc_stratify(strata, carbon_col = "carbon_per_ha_t")

@@ -20,11 +20,140 @@
 #
 # ==============================================================================
 #
+############# Estimate Timber Height from Total Height ################
+#'
+#' @title Estimate timber height from total height using species-specific ratios
+#' @description Estimates timber height (height to first branch or merchantable top)
+#'   from total height using species-specific ratios. Timber height is required
+#'   for WCC broadleaf tariff calculations. If species-specific ratios are not
+#'   available, uses a default ratio of 0.85.
+#' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
+#' @param height Total tree height in metres
+#' @param genus Genus name (optional, for species-specific ratios)
+#' @param species Species name (optional, for species-specific ratios)
+#' @param spcode Species code (optional, for species-specific ratios)
+#' @param type Tree type: "broadleaf" or "conifer" (optional)
+#' @param default_ratio Default ratio to use if species-specific ratio not found
+#'   (default = 0.85, typical for UK broadleaves)
+#' @return Numeric vector of estimated timber heights in metres
+#' @details
+#'   Timber height (also called merchantable height or clear bole height) is the
+#'   height from ground to the first major branch or merchantable top. For
+#'   broadleaf species, the WCC protocol requires timber height for tariff
+#'   calculations, while other allometric methods use total height.
+#'
+#'   This function uses species-specific timber:total height ratios when available.
+#'   If no species-specific ratio is found, it falls back to a default ratio
+#'   (typically 0.85 for broadleaves). For conifers, timber height typically
+#'   equals total height (ratio = 1.0).
+#'
+#'   The ratios are sourced from forestry literature and may vary by:
+#'   - Species (genetic differences)
+#'   - Age (younger trees may have lower ratios)
+#'   - Site conditions (competition, management)
+#'   - Management history (pruning, thinning)
+#'
+#'   For accurate WCC protocol compliance, measured timber height should be used
+#'   when available. Timber height estimation is crude; measured values are
+#'   required for WCC certification. Estimated timber height may be less
+#'   accurate for large, old trees (>20 m height).
+#' @references
+#'   Jenkins, T.A.R., et al. (2018). FC Woodland Carbon Code: Carbon
+#'   Assessment Protocol (v2.0). Forestry Commission, Edinburgh.
+#' @examples
+#' # Estimate timber height for a broadleaf tree
+#' estimate_timber_height(height = 20, genus = "Quercus", species = "robur")
+#'
+#' # Estimate using species code
+#' estimate_timber_height(height = 15, spcode = "OK", type = "broadleaf")
+#'
+#' # Multiple trees
+#' estimate_timber_height(height = c(15, 20, 18), spcode = c("OK", "BI", "AH"))
+#' @export
+estimate_timber_height <- function(height, genus = NULL, species = NULL,
+                                   spcode = NULL, type = NULL,
+                                   default_ratio = 0.85) {
+
+  # Validate inputs
+  if (!is.numeric(height) || any(height < 0, na.rm = TRUE)) {
+    stop("height must be numeric and non-negative")
+  }
+  if (!is.numeric(default_ratio) || default_ratio <= 0 || default_ratio > 1) {
+    stop("default_ratio must be numeric, positive, and <= 1")
+  }
+
+  n <- length(height)
+
+  # Initialize result vector
+  timber_height <- numeric(n)
+
+  # Check if timber_height_ratios data exists (will be created from PDF)
+  # For now, use default ratio with species-specific lookup if available
+  # Note: timber_height_ratios data doesn't exist yet, so this will always return FALSE
+  # When the data is added, it will be lazy-loaded automatically (LazyData: true)
+  has_ratios_data <- exists("timber_height_ratios")
+
+  if (has_ratios_data && exists("timber_height_ratios")) {
+    timber_ratios <- get("timber_height_ratios")
+
+    # Lookup species-specific ratios
+    ratios <- rep(default_ratio, n)
+
+    # Try lookup by spcode first (most reliable)
+    if (!is.null(spcode) && "spcode" %in% colnames(timber_ratios)) {
+      match_idx <- match(spcode, timber_ratios$spcode)
+      found_idx <- !is.na(match_idx)
+      if (any(found_idx)) {
+        ratios[found_idx] <- timber_ratios$ratio[match_idx[found_idx]]
+      }
+    }
+
+    # Try lookup by genus + species
+    if (!is.null(genus) && !is.null(species) &&
+        "genus" %in% colnames(timber_ratios) && "species" %in% colnames(timber_ratios)) {
+      name_match <- paste(genus, species)
+      ratio_match <- paste(timber_ratios$genus, timber_ratios$species)
+      match_idx <- match(name_match, ratio_match)
+      found_idx <- !is.na(match_idx) & ratios == default_ratio  # Only update if not already found
+      if (any(found_idx)) {
+        ratios[found_idx] <- timber_ratios$ratio[match_idx[found_idx]]
+      }
+    }
+
+    # For conifers, typically use ratio of 1.0 (timber height = total height)
+    if (!is.null(type)) {
+      conifer_idx <- type == "conifer"
+      if (any(conifer_idx, na.rm = TRUE)) {
+        ratios[conifer_idx] <- 1.0
+      }
+    }
+
+    timber_height <- height * ratios
+
+  } else {
+    # No species-specific data available - use default ratio with type-based logic
+    ratios <- rep(default_ratio, n)
+
+    # For conifers, typically timber height = total height (ratio = 1.0)
+    if (!is.null(type)) {
+      conifer_idx <- type == "conifer"
+      if (any(conifer_idx, na.rm = TRUE)) {
+        ratios[conifer_idx] <- 1.0
+      }
+    }
+
+    timber_height <- height * ratios
+  }
+
+  return(timber_height)
+}
+
 ############# Tariff number from volume and tree basal area (WCC Eq 1) ############
 #'
-#' @title Tariff number from volume and basal area
+#' @title Tariff number from volume and basal area (WCC Method A)
 #' @description Using the sample tree’s basal area and volume to calculate the
-#' tariff number. Basal area is calculated by ba = (pi * dbh^2)/40000.
+#' tariff number. Implements WCC Protocol Method A (Fell sample trees).
+#' Basal area is calculated by ba = (pi * dbh^2)/40000.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param vol tree volume (metres cubed)
 #' @param dbh diameter at breast height (centimetres)
@@ -97,8 +226,10 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
 
 ############# Conifer tree tariff number (WCC Eq 3) ############################
 #'
-#' @title Conifer tree tariff number
-#'  sample tree. species-specific estimates of a1-a3 are found in the
+#' @title Conifer tree tariff number (WCC Method C)
+#' @description Conifer sample tree tariff. Implements WCC Protocol Method C
+#' (Conifers only: measure total height of sample trees). Species-specific
+#' estimates of a1-a3 are found in the
 #'  R data file, 'tariff_coniferdf'.
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
 #' @param height tree height in metres
@@ -182,8 +313,9 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
 
 ############# Broadleaf tree tariff number (WCC Eq 2) ##########################
 #'
-#' @title Carbon tariff number for broadleaf tree
-#' @description Use dbh and timber height (height to first branch or merchantable top)
+#' @title Carbon tariff number for broadleaf tree (WCC Method B)
+#' @description Use dbh and timber height (height to first branch or merchantable top).
+#' Implements WCC Protocol Method B (Broadleaves only: measure timber height of sample trees).
 #' to derive the tariff number of each sample tree. Species-specific estimates of
 #' a1-a4 are found in the R data file, 'tariff_broaddf'. According to WCC protocol,
 #' broadleaf species require timber height, not total height, for tariff calculations.
@@ -274,30 +406,65 @@ broadleaf_tariff <- function(spcode, height_timber, dbh, re_dbh = NULL, re_h = 0
 
 ############# Tariff number by stand height (WCC Eq 4) ################
 #'
-#' @title Tariff number by stand height
+#' @title Tariff number by stand height (WCC Method D)
 #' @description Use the estimated stand top height to calculate the stand
-#' tariff number based on species-specific coefficients.
+#' tariff number based on species-specific coefficients. This function
+#' implements WCC Protocol Method D (Section 4.1.4).
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
-#' @param height tree height in metres
+#' @param stand_height Top height in metres. This is the mean height of
+#'   the 100 largest trees per hectare (by DBH), as defined in WCC Protocol
+#'   Method D. You can calculate top height from tree data using
+#'   \code{calculate_top_height()}.
 #' @param spcode species code
 #' @param re_h relative error of height measurement (optional)
 #' @param re relative error of coefficients (default = 0.025)
 #' @return either tariff number or if re_h is provided, then returns a list
 #' of the tariff number and an estimate of sigma for tariff number
+#' @details
+#'   This function implements WCC Protocol Method D (Section 4.1.4). Top height
+#'   is a specific forestry measurement defined as the mean height of the 100
+#'   largest trees per hectare (by DBH). This method is intended for stand-level
+#'   assessments when individual tree DBH measurements are not available.
+#'
+#'   Use this function when:
+#'   - You have measured top height following WCC protocol
+#'   - You do NOT have individual tree DBH measurements
+#'   - You're doing a stand-level carbon assessment
+#'
+#'   If:
+#'   - You have individual tree DBH → Use \code{broadleaf_tariff()} or
+#'     \code{conifer_tariff()}
+#'   - You need to calculate top height from tree data → Use \code{calculate_top_height()} first
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
-#' Carbon Assessment Protocol (v2. 0)." (2018).
+#' Carbon Assessment Protocol (v2. 0)." (2018). Section 4.1.4, Method D.
 #' @examples
-#' stand_tariff("OK", height = 10)
-#' stand_tariff("OK", height = 10, re_h = 0.01)
-#' stand_tariff(spcode = "AH", height = 10, re_h = 0.05)
+#' # Example 1: Using measured top height
+#' stand_tariff("OK", stand_height = 18)
+#'
+#' # Example 2: With uncertainty
+#' stand_tariff("OK", stand_height = 18, re_h = 0.05)
+#'
+#' # Example 3: Calculate top height from tree data, then use stand_tariff
+#' dbh <- c(45, 52, 38, 60, 42, 55, 48, 35, 58, 40)
+#' height <- c(18, 22, 15, 24, 17, 21, 19, 14, 23, 16)
+#' area_ha <- 0.1
+#' top_h_result <- calculate_top_height(dbh, height, area_ha, re_h = 0.05)
+#' # Use top height and propagate uncertainty
+#' tariff <- stand_tariff("OK", stand_height = top_h_result$top_height,
+#'                        re_h = top_h_result$re_h)
 #' @export
 #' @aliases stand_tariff
 #'
-stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
+stand_tariff <- function(spcode, stand_height, re_h = NULL, re = 0.025) {
 
-  # Check height is numeric and positive
-  if(!is.numeric(height) || any(height < 0, na.rm = TRUE))
-    stop("height must be numeric and positive")
+  # Check stand_height is numeric and positive
+  if(!is.numeric(stand_height) || any(stand_height < 0, na.rm = TRUE))
+    stop("stand_height must be numeric and positive")
+
+  # Warn if stand_height seems unusually low (might be individual tree height)
+  if (any(stand_height < 5, na.rm = TRUE)) {
+    warning("Stand height values < 5m are unusual. Ensure you're using the mean height of the 100 largest trees per hectare (top height), not individual tree height or mean of all trees. See ?calculate_top_height for help calculating top height from tree data.")
+  }
 
   # Lookup coefficients for tariff equation by spcode in tarif2heightdf
   lookup_index <- match(spcode, tarif2heightdf$abbreviation)
@@ -323,7 +490,7 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
                     "species codes not found"))}
   }
   # Calculate tariff number using coefficients stored in rec
-  tariff <- rec$a1 + (rec$a2 * height) + (rec$a3 * height^2)
+  tariff <- rec$a1 + (rec$a2 * stand_height) + (rec$a3 * stand_height^2)
 
   # If re_h is specified and not null, then calculate the error
   if(!is.null(re_h)){
@@ -335,13 +502,13 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
 
     # Propagate the error using error_product formula
     sigma <- sqrt((rec$a1 * re)^2 +
-                    error_product(rec$a2, rec$a2 * re, height, re_h*height))
+                    error_product(rec$a2, rec$a2 * re, stand_height, re_h*stand_height))
 
     # If rec$a3 is not equal to zero and included in the formula then
     if (any(rec$a3 != 0, na.rm = TRUE)) {
 
       # Calculate the error for the quadratic term in the formula
-      quad <- error_product(rec$a3, rec$a3 * re, height, re_h*height)
+      quad <- error_product(rec$a3, rec$a3 * re, stand_height, re_h*stand_height)
       # For the terms with rec$a3 = 0, set the quad term to 0
       quad[is.na(quad)] <- 0
       # Propagate terms using addition equation and sum errors
@@ -354,85 +521,253 @@ stand_tariff <- function(spcode, height, re_h = NULL, re = 0.025) {
   }
 }
 
+############# Calculate Stand Top Height (WCC Method D) ################
+#'
+#' @title Calculate stand top height from tree data
+#' @description Calculates top height (mean height of the 100 largest trees per
+#'   hectare by DBH) from woodland tree data, as defined in WCC Protocol Method D
+#'   (Section 4.1.4). Top height is a specific forestry measurement required for
+#'   stand-level carbon assessments when individual tree DBH measurements are not
+#'   available.
+#' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw. I.Openshaw@kew.org
+#' @param dbh Diameter at breast height in centimetres (vector of tree measurements)
+#' @param height Tree height in metres (vector of tree measurements, same length as dbh)
+#' @param area_ha Area of the woodland/stand in hectares. If NULL, assumes data
+#'   represents trees per hectare (i.e., length(dbh) = trees per hectare)
+#' @param re_h Relative error of height measurement (optional, for uncertainty calculation)
+#' @param n_trees Number of largest trees per hectare to use (default = 100, as per WCC protocol)
+#' @return If re_h is NULL: numeric value of top height in metres. If re_h is
+#'   provided: data.frame with top_height, sigma (uncertainty), and re_h
+#'   (relative error for use in stand_tariff).
+#' @details
+#'   Top height is defined in WCC Protocol v2.0 (Section 4.1.4) as the mean height
+#'   of the 100 largest trees per hectare (by DBH). This is a stand-level measurement
+#'   used in Method D when individual tree DBH measurements are not available for
+#'   all trees.
+#'
+#'   The function calculates top height by:
+#'   1. Determining trees per hectare (from area_ha or assuming data is per hectare)
+#'   2. Selecting the n_trees largest trees by DBH (or all trees if fewer than n_trees)
+#'   3. Calculating the mean height of those trees
+#'   4. Returning the top height with optional uncertainty
+#'
+#'   **When to use this function:**
+#'   - You have tree DBH and height measurements from a sample plot
+#'   - You want to calculate top height from plot data for Method D
+#'   - You're doing stand-level carbon assessment from plot samples
+#'
+#'   **When NOT to use this function:**
+#'   - You have measured top height directly in the field → Use \code{stand_tariff()} directly
+#'   - You have DBH and height for all trees → Use \code{fc_agc()} for individual trees (Method B/C/E)
+#'   - You want individual tree carbon estimates → Use \code{fc_agc()}
+#'
+#'   **Note:** Top height can be measured directly in the field (standard forestry practice)
+#'   without needing individual tree measurements. This function is a helper for when
+#'   you have plot data and want to calculate top height from it.
+#' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
+#' Carbon Assessment Protocol (v2. 0)." (2018). Section 4.1.4, Method D.
+#' @examples
+#' # Example 1: Stand with known area
+#' dbh <- c(45, 52, 38, 60, 42, 55, 48, 35, 58, 40)  # 10 trees
+#' height <- c(18, 22, 15, 24, 17, 21, 19, 14, 23, 16)
+#' area_ha <- 0.1  # 0.1 hectare plot
+#'
+#' top_h <- calculate_top_height(dbh, height, area_ha)
+#' print(top_h)
+#'
+#' # Example 2: With uncertainty
+#' top_h_unc <- calculate_top_height(dbh, height, area_ha, re_h = 0.05)
+#' print(top_h_unc)
+#'
+#' # Example 3: Data already represents trees per hectare (omit area_ha)
+#' dbh_ha <- c(rep(45, 50), rep(52, 30), rep(38, 20))  # 100 trees/ha
+#' height_ha <- c(rep(18, 50), rep(22, 30), rep(15, 20))
+#' top_h2 <- calculate_top_height(dbh_ha, height_ha, area_ha = NULL)
+#'
+#' # Example 4: Use top height with stand_tariff
+#' spcode <- "OK"  # Oak
+#' tariff <- stand_tariff(spcode, stand_height = top_h)
+#' @export
+#' @aliases calculate_top_height
+#'
+calculate_top_height <- function(dbh, height, area_ha = NULL, re_h = NULL, n_trees = 100) {
+
+  # Validate inputs
+  if (!is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)) {
+    stop("dbh must be numeric and non-negative")
+  }
+  if (!is.numeric(height) || any(height < 0, na.rm = TRUE)) {
+    stop("height must be numeric and non-negative")
+  }
+  if (length(dbh) != length(height)) {
+    stop("dbh and height must have the same length")
+  }
+  if (!is.null(area_ha) && (!is.numeric(area_ha) || area_ha <= 0)) {
+    stop("area_ha must be numeric and positive")
+  }
+  if (!is.numeric(n_trees) || n_trees <= 0) {
+    stop("n_trees must be numeric and positive")
+  }
+
+  # Remove invalid values (NA, zero, or negative)
+  valid_idx <- !is.na(dbh) & !is.na(height) & dbh > 0 & height > 0
+  if (!any(valid_idx)) {
+    stop("No valid tree measurements (dbh > 0 and height > 0) found")
+  }
+
+  dbh <- dbh[valid_idx]
+  height <- height[valid_idx]
+  n_measured <- length(dbh)
+
+  # Calculate trees per hectare
+  if (!is.null(area_ha)) {
+    trees_per_ha <- n_measured / area_ha
+  } else {
+    # Assume data represents trees per hectare
+    trees_per_ha <- n_measured
+    warning("area_ha not provided. Assuming data represents trees per hectare. ",
+            "If this is a plot sample, provide area_ha to scale correctly.")
+  }
+
+  # Select the n_trees largest trees per hectare by DBH
+  # If we have more than n_trees per hectare, select proportionally from sample
+  if (trees_per_ha > n_trees) {
+    n_select <- round((n_trees / trees_per_ha) * n_measured)
+    n_select <- max(1, min(n_select, n_measured))  # At least 1, at most n_measured
+  } else {
+    # Fewer than n_trees per hectare, use all trees
+    n_select <- n_measured
+  }
+
+  # Sort by DBH (descending) and select the n_select largest trees
+  sorted_idx <- order(dbh, decreasing = TRUE)
+  selected_idx <- sorted_idx[1:n_select]
+  selected_heights <- height[selected_idx]
+
+  # Calculate mean height (top height)
+  top_height <- mean(selected_heights, na.rm = TRUE)
+
+  # Calculate uncertainty if re_h is provided
+  if (!is.null(re_h)) {
+    if (!is.numeric(re_h) || any(re_h < 0, na.rm = TRUE)) {
+      stop("re_h must be numeric and non-negative")
+    }
+    if (any(re_h > 1, na.rm = TRUE)) {
+      warning("Relative error indicates high uncertainty to measured value")
+    }
+
+    # Uncertainty of mean: σ_mean = re_h * sqrt(sum(h_i²)) / n
+    # For single re_h value
+    if (length(re_h) == 1) {
+      sigma_mean <- re_h * sqrt(sum(selected_heights^2, na.rm = TRUE)) / n_select
+    } else {
+      # Vector of re_h values
+      if (length(re_h) != length(valid_idx)) {
+        stop("re_h must be a single value or have the same length as dbh/height")
+      }
+      re_h_selected <- re_h[valid_idx][selected_idx]
+      sigma_mean <- sqrt(sum((re_h_selected * selected_heights)^2, na.rm = TRUE)) / n_select
+    }
+
+    # Relative error for use in stand_tariff
+    re_h_mean <- sigma_mean / top_height
+
+    return(data.frame(top_height = top_height,
+                     sigma = sigma_mean,
+                     re_h = re_h_mean))
+  } else {
+    return(top_height)
+  }
+}
+
 ############# Tariff number depending on inputs ################
-#' @title Calculate tariff numbers for list of trees
-#' @description Depending on inputs, calcualte the tariff number using either
-#' stand_tariff, broadleaf_tariff or conifer_tariff for a list of trees.
-#' For broadleaf species, uses timber height (height_timber) if provided,
-#' otherwise uses total height. WCC protocol requires timber height for broadleaves.
+#' @title Calculate tariff numbers for individual trees
+#' @description Calculate the tariff number using either broadleaf_tariff (Method B) or
+#'   conifer_tariff (Method C) for individual trees. Requires both DBH and height measurements.
+#'   For stand-level calculations (Method D), use \code{stand_tariff()} directly 
+#'   with top height from \code{calculate_top_height()}.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param spcode species code (short)
 #' @param height tree height in metres (total height for conifers, used as fallback for broadleaves)
-#' @param re_h relative error of height measurement (optional)
-#' @param dbh diameter at breast height in centimetres
+#' @param dbh diameter at breast height in centimetres (required)
 #' @param type conifer or broadleaf
 #' @param height_timber timber height in metres (height to first branch, for broadleaves only)
+#' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients (default = 0.025)
 #' @return either tariff number or if re_h is provided, then returns a list
-#' of the tariff number and uncertainty
+#'   of the tariff number and uncertainty
+#' @details
+#'   This function calculates tariff numbers for individual trees using Methods B 
+#'   (broadleaves) or C (conifers) from WCC Protocol. Both DBH and height are required.
+#'   
+#'   For stand-level calculations (Method D) when DBH is not available, use:
+#'   \itemize{
+#'     \item \code{calculate_top_height()} to calculate top height from tree data
+#'     \item \code{stand_tariff()} to calculate stand tariff from top height
+#'   }
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
-#' tariffs(spcode = "OK", height= 10, dbh = 20)
-#' tariffs("OK", 10, 20, re_h = 0.1, re_dbh = 0.05)
-#' tariffs(spcode = c("OK","NS", "NS", "SP", "SP"), height = c(10,10,5,10,10),
-#' dbh = c(20,20,10,20,NA), re_h = 0.01, re_dbh = 0.05)
+#' # Individual trees (Method B/C)
+#' tariffs(spcode = "OK", height = 18, dbh = 45)
+#' tariffs("OK", 18, 45, re_h = 0.1, re_dbh = 0.05)
+#' 
+#' # Multiple trees
+#' tariffs(spcode = c("OK","NS", "SP"), 
+#'         height = c(18, 20, 22), 
+#'         dbh = c(45, 38, 42), 
+#'         re_h = 0.05, re_dbh = 0.05)
 #' @export
 #' @aliases tariffs
 #'
-tariffs <- function(spcode, height, dbh = NULL, type = NULL,
+tariffs <- function(spcode, height, dbh, type = NULL,
                     height_timber = NULL, re_h = NULL, re_dbh = 0.05, re = 0.025) {
 
-  # Check spcode is a character
+  # Validate inputs
   if (!is.character(spcode)) warning("spcode must be characters")
+  if (is.null(dbh) || all(is.na(dbh))) {
+    stop("dbh is required for individual tree tariff calculations. ",
+         "For stand-level calculations (Method D), use stand_tariff() with top height.")
+  }
 
   # Set n as the length of height input
   n <- length(height)
   # Check that input lengths are consistent
-  if (!(length(spcode) == n || length(dbh) == n )) {
+  if (length(spcode) != n || length(dbh) != n) {
     stop("Input vectors (spcode, height, dbh) must have the same length.")
   }
 
   if (!is.null(height_timber)) {
-    if (is.numeric(height_timber)) {
-      stop("height_timber be numeric")
+    if (!is.numeric(height_timber)) {
+      stop("height_timber must be numeric")
     }
   }
 
   # Lookup type (conifer or broadleaf classification) using lookup_df
-  lookup_index <- match(spcode, lookup_df$short) # index lookup for efficiency
-  lookup_type <- lookup_df$type[lookup_index]  # list of types
-  # Set use_original to if lookup_type is NA or 'any' from lookup_df
+  lookup_index <- match(spcode, lookup_df$short)
+  lookup_type <- lookup_df$type[lookup_index]
   use_original <- is.na(lookup_type) | lookup_type == "any"
-  # If use_original is NA or 'any' then use the input classification type
   type <- ifelse(use_original, type, lookup_type)
 
-  # Initialise an output data frame
+  # Initialise output data frame
   results <- data.frame(tariff = rep(NA, n))
-  # If re_h is NA then create df for the error
   error <- !is.null(re_h)
   if (error) results$sigma <- rep(NA, n)
 
-  # Logical lists to know which function to use depending on inputs
-  # NA_type is TRUE if type is NA or equal to 'any'
-  NA_type <- is.na(type)   | type == "NA" | type == "any"
-  # NA_spcode is TRUE if spcode is NA or equal to 'MX'
+  # Determine which function to use
+  NA_type <- is.na(type) | type == "NA" | type == "any"
   NA_spcode <- is.na(spcode) | spcode == "NA" | spcode == "MX"
-  # spcode_type is TRUE if spcode or type are inputted
   spcode_type <- !(NA_spcode & NA_type)
-  # height_dbh is TRUE if height and dbh are both inputted
   height_dbh <- !(is.na(dbh) | is.na(height))
 
-  # For each input get the index depended on inputs for the function to use
-  stand_indices <- is.na(dbh) & !is.na(height) & !NA_spcode
-  conifer_indices   <- type == "conifer" & height_dbh & spcode_type
+  conifer_indices <- type == "conifer" & height_dbh & spcode_type
   broadleaf_indices <- type == "broadleaf" & height_dbh & spcode_type
-  mixed_indices <- ((NA_spcode & is.na(type) ) | type == "any" | type == "NA") & height_dbh
+  mixed_indices <- ((NA_spcode & is.na(type)) | type == "any" | type == "NA") & height_dbh
 
-  if(any(NA_spcode)) warning ("Skipping calculations for unfound spcode inputs")
+  if(any(NA_spcode)) warning("Skipping calculations for unfound spcode inputs")
 
-  # Helper Function to extract result from tariff function
+  # Helper function to extract result from tariff function
   process_result <- function(tariff_output, indices, results, error) {
     if(error && "sigma" %in% names(tariff_output)) {
       results$tariff[indices] <- tariff_output$tariff
@@ -443,16 +778,17 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
     return(results)
   }
 
-  # Apply Tariff Functions Using the Helper Function
+  # Apply tariff functions
   if (any(conifer_indices, na.rm = TRUE)) {
     tariff_output <- suppressWarnings(
       conifer_tariff(spcode[conifer_indices], height[conifer_indices],
                      dbh[conifer_indices], re_h, re_dbh, re))
     results <- process_result(tariff_output, conifer_indices, results, error)
   }
+  
   if (any(broadleaf_indices, na.rm = TRUE)) {
     # For broadleaves, use height_timber if provided, otherwise use height
-    # Note: WCC protocol requires timber height for broadleaves
+    # WCC protocol requires timber height for broadleaves
     broadleaf_height <- if (!is.null(height_timber)) {
       height_timber[broadleaf_indices]
     } else {
@@ -463,32 +799,31 @@ tariffs <- function(spcode, height, dbh = NULL, type = NULL,
                        dbh[broadleaf_indices], re_h, re_dbh, re))
     results <- process_result(tariff_output, broadleaf_indices, results, error)
   }
-  if (any(stand_indices, na.rm = TRUE)) {
-    tariff_output <- suppressWarnings(
-      stand_tariff(spcode[stand_indices], height[stand_indices], re_h, re))
-    results <- process_result(tariff_output, stand_indices, results, error)
-  }
 
-  # Handle Mixed species Case
+  # Handle mixed species case
   if (any(mixed_indices, na.rm = TRUE)) {
-    # For mixed species, use height_timber for broadleaf component if provided
     mixed_height_timber <- if (!is.null(height_timber)) {
       height_timber[mixed_indices]
     } else {
       height[mixed_indices]
     }
-    broadleaf_values <- broadleaf_tariff(rep("XB", sum(mixed_indices)), mixed_height_timber, dbh[mixed_indices], re_h, re_dbh, re)
-    conifer_values <- conifer_tariff(rep("XC", sum(mixed_indices)), height[mixed_indices], dbh[mixed_indices], re_h, re_dbh, re)
+    broadleaf_values <- broadleaf_tariff(rep("XB", sum(mixed_indices)), 
+                                         mixed_height_timber, dbh[mixed_indices], 
+                                         re_h, re_dbh, re)
+    conifer_values <- conifer_tariff(rep("XC", sum(mixed_indices)), 
+                                     height[mixed_indices], dbh[mixed_indices], 
+                                     re_h, re_dbh, re)
 
     if (error) {
-      results$tariff[mixed_indices] <- rowMeans(cbind(broadleaf_values$tariff, conifer_values$tariff), na.rm = TRUE)
+      results$tariff[mixed_indices] <- rowMeans(cbind(broadleaf_values$tariff, 
+                                                      conifer_values$tariff), na.rm = TRUE)
       results$sigma[mixed_indices] <- sqrt(broadleaf_values$sigma^2 + conifer_values$sigma^2)
     } else {
       results$tariff[mixed_indices] <- rowMeans(cbind(broadleaf_values, conifer_values), na.rm = TRUE)
     }
   }
 
-  # Return Final Output
+  # Return output
   if (error) {
     return(results)
   } else {
@@ -823,4 +1158,5 @@ rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
 
   return(results)
 }
+
 

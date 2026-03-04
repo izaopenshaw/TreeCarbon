@@ -4,7 +4,7 @@
 \alias{sd_area}
 \title{Standard Deviation for Measurement of the total Area}
 \usage{
-sd_area(perimeter, RMSE, sum_plots = FALSE)
+sd_area(perimeter, RMSE, n_vertices = NULL, sum_plots = FALSE)
 }
 \arguments{
 \item{perimeter}{A numeric vector of perimeters (in meters).}
@@ -12,8 +12,13 @@ sd_area(perimeter, RMSE, sum_plots = FALSE)
 \item{RMSE}{A numeric value representing the Root Mean Square Error (RMSE)
 of the perimeter measurement (in meters).}
 
-\item{sum_plots}{if equal to TRUE then sum all of the standard deviations of
-the plots. If false then outputs the standard deviation of each input.}
+\item{n_vertices}{Optional. Number of independently measured boundary
+vertices. If provided, the vertex method is used; otherwise the band
+method is used.}
+
+\item{sum_plots}{If \code{TRUE}, return the combined standard deviation
+across all plots (\code{sqrt(sum(sigma_i^2))}). If \code{FALSE}, return
+the standard deviation for each plot.}
 }
 \value{
 A numeric vector representing the standard deviation of the area for
@@ -21,12 +26,30 @@ each corresponding perimeter (in hectares).
 }
 \description{
 This function calculates the standard deviation of the area
-based on the perimeter and Root Mean Square Error (RMSE).
+for GPS-mapped plot boundaries. Two methods are available depending on
+how the boundary was measured.
+}
+\details{
+\strong{Band method} (default, \code{n_vertices = NULL}): Uses the epsilon-band
+model for continuously GPS-traced boundaries. Formula:
+\eqn{\sigma_A = 2 \times \mathrm{RMSE} \times P / 10000} (output in
+hectares). This treats positional error as creating a strip of width RMSE
+on both sides of the boundary. It yields a \strong{conservative} (upper)
+estimate of uncertainty, because errors along the boundary are assumed
+to add rather than cancel. Use for boundaries walked with a GPS logger.
+
+\strong{Vertex method} (\code{n_vertices} provided): For plots where only the
+corner vertices were GPS'd (e.g. irregular rectangle, quadrilateral).
+Uses \eqn{\sigma_A = \mathrm{RMSE} \times P / (\sqrt{n} \times 10000)},
+reflecting independent positional error at each of \eqn{n} vertices.
+Typically gives a smaller, less conservative estimate than the band method.
 }
 \examples{
-# Example with multiple perimeters of 200m, 300m, and 400m.
-# If measured to the nearest 50cm within 100m plot, the RMSE = 0.5m
+# Band method: GPS-traced boundary, perimeter 200m, RMSE 0.5m
 sd_area(c(200, 300, 400), 0.5)
+
+# Vertex method: 4 GPS'd corners of irregular rectangle, P=130m
+sd_area(130, 3, n_vertices = 4)
 }
 \references{
 Taylor, J. R. (1997). An Introduction to Error Analysis: The
@@ -36,6 +59,9 @@ Science Books.
 Goodchild, M. F., & Hunter, G. J. (1997). "A simple positional
 accuracy measure for linear features." International Journal of Geographical
 Information Science, 11(3), 299-306.
+}
+\seealso{
+\code{\link{sd_area_circle}} for circular plots with measured radius.
 }
 \author{
 Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
