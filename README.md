@@ -54,7 +54,7 @@ remotes::install_github("ropensci/allodb")
 This is a basic example which shows you how to use the most common problem features of this package:
 
 ``` r
-devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
+devtools::install_github("gistin/TreeCarbon", force = TRUE)
 
 library(TreeCarbon)
 ## example to calculate the above ground carbon for a European Oak (Quercus robur)

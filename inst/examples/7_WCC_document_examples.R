@@ -15,18 +15,41 @@
 library(TreeCarbon)
 
 # ==============================================================================
-# APPENDIX 4: 10.2ha CONIFER PROJECT
+# APPENDIX 4: 10.2ha CONIFER PROJECT (FC_WCC Carbon Assessment Protocol v2.0)
 # ==============================================================================
-# Compartment 1: Sitka Spruce (SS)
-# Compartment 2: Mixed conifers
+# Greenwood: Compartment 1 = Scots Pine (5.6 ha net), Compartment 2 = Corsican Pine (3.6 ha net)
+# Method C (plot-based, conifers). Total project carbon: 654 t C (411.8 + 242.24)
 # ==============================================================================
 
-# ==== Compartment 1: Sitka Spruce ====
-# Data from WCC document Appendix 4, Compartment 1
+# ==== STAND-LEVEL CARBON (Method D) - matches Appendix 4 workflow ====
+# When you have DBH and height from sample trees, use fc_stand_carbon()
+# Compartment 1: Scots Pine (representative of 24 height sample trees)
+dbh_comp1 <- c(22, 24, 26, 28, 26, 24, 28, 30, 26, 24)  # cm
+height_comp1 <- c(14, 15, 16, 17, 15, 14, 16, 18, 15, 14)  # m
+stand1 <- fc_stand_carbon(name = "Scots Pine", dbh = dbh_comp1, height = height_comp1,
+                          area_ha = 5.6, type = "conifer",
+                          re_dbh = 0.05, re_h = 0.05, output.all = TRUE)
+cat("=== Appendix 4 Compartment 1: Scots Pine (stand-level) ===\n")
+cat(sprintf("Stand carbon: %.1f t C\n", stand1$stand_AGC_t))
 
-comp1_species <- "Sitka Spruce"
+# Compartment 2: Corsican Pine (representative of 16 height sample trees)
+dbh_comp2 <- c(16, 18, 20, 18, 16, 20, 18, 19)
+height_comp2 <- c(10, 11, 12, 11, 10, 12, 11, 11)
+stand2 <- fc_stand_carbon(name = "Corsican Pine", dbh = dbh_comp2, height = height_comp2,
+                          area_ha = 3.6, type = "conifer",
+                          re_dbh = 0.05, re_h = 0.05, output.all = TRUE)
+cat(sprintf("Stand carbon: %.1f t C\n", stand2$stand_AGC_t))
+
+# Total project carbon (Appendix 4: 654 t C)
+total_app4 <- stand1$stand_AGC_t + stand2$stand_AGC_t
+cat(sprintf("Total project carbon: %.1f t C (Appendix 4 reference: 654 t C)\n", total_app4))
+cat(sprintf("tCO2e: %.0f (× 44/12)\n\n", total_app4 * 44/12))
+
+# ==== Compartment 1: Individual trees by DBH class (alternative) ====
+# When you have trees by DBH class rather than stand-level samples
+comp1_species <- "Scots Pine"
 comp1_type <- "conifer"
-comp1_area_ha <- 5.1  # hectares
+comp1_area_ha <- 5.6  # hectares (net)
 
 # Sample tree data (from Method C: Measure total height)
 comp1_trees <- data.frame(
@@ -40,7 +63,8 @@ comp1_spcode <- lookupcode(comp1_species, type = comp1_type)$code
 
 comp1_tariffs <- tariffs(spcode = rep(comp1_spcode, nrow(comp1_trees)),
                          height = comp1_trees$height_m, dbh = comp1_trees$dbh_cm,
-                         type = comp1_type, re_h = 0.05, re_dbh = 0.025)
+                         type = comp1_type, timber_ratio = 0.85,  # broadleaf: estimate timber height
+                         re_h = 0.05, re_dbh = 0.025)
 
 # Mean tariff (rounded down as per WCC protocol)
 comp1_mean_tariff <- floor(mean(comp1_tariffs$tariff))
@@ -133,15 +157,18 @@ app5_trees <- data.frame(
   count = c(5, 8, 12, 15, 18, 20, 10)
 )
 
-# For broadleaves, tariff uses timber height
+# For broadleaves, tariffs() uses timber height (or timber_ratio to estimate)
 app5_spcode <- lookupcode(app5_species, type = app5_type)$code
 
-app5_tariffs <- broadleaf_tariff(spcode = rep(app5_spcode, nrow(app5_trees)),
-                                 height_timber = app5_trees$height_timber_m,
-                                 dbh = app5_trees$dbh_cm,
-                                 re_h = 0.05, re_dbh = 0.025)
+app5_tariffs <- tariffs(spcode = rep(app5_spcode, nrow(app5_trees)),
+                        height = app5_trees$height_total_m,
+                        dbh = app5_trees$dbh_cm,
+                        type = app5_type,
+                        height_timber = app5_trees$height_timber_m,
+                        re_h = 0.05, re_dbh = 0.025)
 
 app5_mean_tariff <- floor(mean(app5_tariffs$tariff))
+# app5_tariffs$tariff_method shows "broad_timber" (measured) per tree
 
 # Calculate carbon for each tree
 # Note: fc_agc uses total height, but internally uses timber height for broadleaf tariff
@@ -157,7 +184,9 @@ for (i in 1:nrow(app5_trees)) {
   tree_carbon <- fc_agc_error(name = app5_species,
                               dbh = app5_trees$dbh_cm[i],
                               height = app5_trees$height_total_m[i],
-                              type = app5_type, method = "Matthews2",
+                              type = app5_type,
+                              height_timber = app5_trees$height_timber_m[i],
+                              method = "Matthews2",
                               re_dbh = 0.025, re_h = 0.05)
   
   app5_results$carbon_per_tree[i] <- tree_carbon$AGC_WCC_t

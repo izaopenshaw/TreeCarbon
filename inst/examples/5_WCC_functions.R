@@ -37,9 +37,10 @@ cat(sprintf("WCC Code: %s\n", spcode))
 dbh <- 45  # cm
 height <- 18  # m
 
-# Calculate tariff number
+# Calculate tariff number (broadleaf: use height_timber or timber_ratio)
 tariff_result <- tariffs(spcode = spcode, height = height, dbh = dbh,
                          type = "broadleaf",
+                         timber_ratio = 0.85,  # or height_timber if measured
                          re_h = 0.05, re_dbh = 0.025)
 
 cat(sprintf("Tariff number: %.2f ± %.2f\n",

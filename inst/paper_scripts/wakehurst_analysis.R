@@ -1,126 +1,298 @@
-# ============================================================================
-# Wakehurst Tree Carbon Analysis
-# ============================================================================
-
+# ===== Wakehurst Tree Carbon Analysis ====================================
 setwd("C:/git/TreeCarbon")
 devtools::load_all()
 
-# ============================================================================
-# 1. LOAD AND PREPARE DATA
-# ============================================================================
-# Import2.R: loads wakehurst_agb 2.csv with TLS tree data
+# ========= Import =================
 source("inst/paper_scripts/Import2.R")
 
 # Select relevant columns from imported data
-# Expected columns: Name, Genus, Species, DBH_Manual, DBH, ID, Height, Habitat, Plot,
-# Classification, trunk_height (timber height for broadleaf WCC), agc (TLS carbon)
 trees <- df
 
-# Show available habitats
-print(table(trees$Habitat))
+print(table(trees$Habitat)) # Habitats
+print(sprintf("Total trees: %d", nrow(trees))) # Total trees
 
-# Total trees
-print(sprintf("Total trees: %d", nrow(trees)))
+# ======== Habitat Area SD =================================================
+# Wakehurst Place coordinates
+coords <- c(-0.0867, 51.0660)  # Longitude, Latitude
+wakehurst_coords <- coords  # used by allometries, BIOMASS, etc.
 
-# ============================================================================
-# 2. WAKEHURST COORDINATES AND HABITAT AREAS
-# ============================================================================
-
-# Wakehurst Place, Sussex, UK coordinates
-wakehurst_coords <- c(-0.0867, 51.0660)  # Longitude, Latitude
-
-sd_area()
-
-
-# Define habitat areas (hectares)
-
-habitat_areas <- data.frame(
-  Habitat = c("broadleaf", "conifer", "coppice"),
-  area_ha = c(0.59593, 0.684347, 0.36536),          # Habitat areas in hectares
-  sigma_area_ha = c(0.5, 0.3, 0.15)     # Uncertainty in area measurement
-)
-
-# If you have perimeter measurements, calculate sigma_area using sd_area():
-# habitat_areas$sigma_area_ha <- sd_area(perimeter_m = c(1500, 1100, 750), RMSE = 0.5)
+# Calculate habitat area sd
+habitat_areas$sd_area <- c(
+  sd_area(plot_areas$perimeter[plot_areas$Plot_ID %in% plots],
+          RMSE = 0.5, n_vertices = 4, sum_plots = TRUE),
+  sd_area(perimeter = habitat_areas$perimeter_m[c(2:3)], RMSE = 0.5))
 
 print(habitat_areas)
 
-# Set working directory to save graphs
-setwd("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Wakehurst_analysis/broadleaf")
+# ========== Calculate allometric carbon ===============================
+genus <- as.character(trees$Genus)
+species <- as.character(trees$Species)
+dbh <- trees$DBH # "DBHqsm"               "DBHcyl"               "DBHqsm_100"  "DBHcyl_100"           "DBHsec"               "DBHsec_100"
+height = trees$Height
+type = trees$Classification
+height_timber = trees$timber_height
+method = "IPCC2"          # Carbon conversion method
+returnv = "AGC"           # Return Above-Ground Carbon
+re_dbh = 0.05             # 5% DBH measurement error
+re_h = 0.10               # 10% height measurement error
+re = 0.025                # 2.5% coefficient error
+region = "Europe"
 
-# ============================================================================
-# 3. CALCULATE CARBON WITH ALL METHODS
-# ============================================================================
+# allometries() function includes WCC, BIOMASS, allodb, and Bunce
+results <- allometries(genus = genus, species = species, dbh = dbh,
+                       height = height, type = type, method = method, returnv = "AGC",
+                       coords = wakehurst_coords, height_timber = height_timber,
+                       re_dbh = re_dbh, re_h = re_h, re = re, checkTaxo = FALSE)
+trees$allo_WCC_C_t <- results$WCC_C_t
+trees$allo_WCC_C_sd <- results$WCC_C_sig
+trees$allo_species <- results$species
+trees$allo_H <- results$height
+trees$allo_d <- results$dbh
 
-# Use allometries() to calculate all methods at once
-# This includes WCC, BIOMASS, allodb, and Bunce
+# ==== Calculate AGB by WCC ====
+name <- paste(genus, species)
+wcc  <- fc_agc_error(name = name, dbh = dbh, height = height, type = type,
+                     height_timber = height_timber, method = method,
+                     re_dbh = re_dbh, re_h = re_h, re = re, rich_output = TRUE)
 
-results <- tryCatch({
-  allometries(
-    genus = trees$Genus,
-    species = trees$Species,
-    dbh = trees$DBH,
-    height = trees$Height,
-    type = trees$type,
-    height_timber = trees$trunk_height,  # Timber height for broadleaf WCC tariff (from trunk_height column)
-    coords = wakehurst_coords,
-    region = "Europe",
-    biome = "temperate",
-    method = "IPCC2",          # Carbon conversion method
-    returnv = "AGC",           # Return Above-Ground Carbon
-    re_dbh = 0.05,             # 5% DBH measurement error
-    re_h = 0.10,               # 10% height measurement error
-    re = 0.025,                # 2.5% coefficient error
-    checkTaxo = FALSE          # Don't check taxonomy (faster)
+print(wcc) # rich_output
+wcc_df <- wcc$detailed_output
+
+# =============================================================================
+# WCC CARBON BY DATA TYPE: Which method to use depending on your data
+# =============================================================================
+# ---- (1) INDIVIDUAL TREES: DBH + Height ----
+#   results <- allometries()
+#   wcc <- fc_agc_error()
+
+# ---- (2) STAND-LEVEL: DBH + Height from sample trees ----
+# When you have plot samples and want stand-level carbon (WCC Method D):
+# Use: fc_stand_carbon() - calculates top height, stand tariff, mean volume, scales to stand
+# Calculate for each of the 3 habitats (broadleaf, conifer, coppice):
+stand_carbon_by_hab <- data.frame()
+for (hab in as.character(habitat_areas$Habitat)) {
+  idx <- which(as.character(trees$Habitat) == hab)
+  if (length(idx) < 5) next
+  area_hab <- habitat_areas$area_ha[as.character(habitat_areas$Habitat) == hab][1]
+  # Use most common species in habitat as representative (for mixed stands, stratify by species in practice)
+  sp_tab <- table(paste(trees$Genus[idx], trees$Species[idx]))
+  dom_sp <- names(which.max(sp_tab))
+  res <- fc_stand_carbon(
+    name = dom_sp,
+    dbh = trees$DBH[idx], height = trees$Height[idx],
+    area_ha = area_hab,
+    type = as.character(trees$Classification[idx[1]]),
+    re_dbh = re_dbh, re_h = re_h, output.all = TRUE
   )
-}, error = function(e) {
-  warning("Error in allometries(): ", e$message)
-  NULL
-})
-
-# ============================================================================
-# 3B. TLS-BASED CARBON (from wakehurst_agb 2.csv)
-# ============================================================================
-# TLS (Terrestrial Laser Scanning) carbon: use pre-calculated agc from CSV when
-# available (Volume × wood density × carbon fraction). Otherwise fall back to
-# volume-based calculation for compatibility.
-
-if ("agc" %in% colnames(trees) && sum(!is.na(trees$agc)) > 0) {
-  # Use pre-calculated TLS carbon from wakehurst_agb 2.csv (paper values)
-  results$TLS_C_t <- trees$agc
-  results$TLS_C_sig <- if ("agc_var" %in% colnames(trees) && sum(!is.na(trees$agc_var)) > 0) {
-    sqrt(trees$agc_var)
-  } else {
-    trees$agc * 0.15  # Default 15% CV if variance not available
-  }
-} else if ("TotalVolume_opt" %in% colnames(trees) && sum(!is.na(trees$TotalVolume_opt)) > 0) {
-  # Fallback: calculate TLS carbon from volume
-  median_vol <- median(trees$TotalVolume_opt, na.rm = TRUE)
-  tls_volume_m3 <- if (median_vol > 100) trees$TotalVolume_opt / 1000 else trees$TotalVolume_opt
-  spcodes <- lookupcode(trees$Name, trees$type, code = "short")
-  nsg_idx <- match(spcodes$code, lookup_df$short)
-  wood_density <- lookup_df$NSG[nsg_idx]
-  wood_density[is.na(wood_density)] <- 0.55
-  tls_biomass_t <- tls_volume_m3 * wood_density
-  tls_biomass_sigma <- if ("TotalVolume_std" %in% colnames(trees)) {
-    (trees$TotalVolume_std / 1000) * wood_density
-  } else {
-    tls_biomass_t * 0.10
-  }
-  tls_carbon <- biomass2c(tls_biomass_t, method = "IPCC2", type = trees$type,
-                          biome = "temperate", sig_biomass = tls_biomass_sigma)
-  results$TLS_C_t <- tls_carbon$AGC
-  results$TLS_C_sig <- tls_carbon$sig_AGC
-} else {
-  warning("TLS carbon (agc) or TotalVolume_opt not found - TLS comparison skipped")
-  results$TLS_C_t <- NA
-  results$TLS_C_sig <- NA
+  stand_carbon_by_hab <- rbind(stand_carbon_by_hab,
+    data.frame(Habitat = hab, Species = dom_sp, Area_ha = area_hab,
+               Stand_AGC_t = res$stand_AGC_t,
+               sig_Stand_AGC = if ("sig_stand_AGC" %in% names(res)) res$sig_stand_AGC else NA,
+               Carbon_per_ha = res$stand_AGC_t / area_hab))
+}
+if (nrow(stand_carbon_by_hab) > 0) {
+  cat("=== Stand-level carbon (Method D) by habitat ===\n")
+  print(stand_carbon_by_hab)
+  cat(sprintf("Total stand carbon: %.2f t C\n", sum(stand_carbon_by_hab$Stand_AGC_t)))
 }
 
-# ============================================================================
-# 4. SUMMARIZE RESULTS BY METHOD
-# ============================================================================
+# ---- (2b) METHOD B/C: Sample-level tariff by habitat (FC_WCC protocol) ----
+# FC_WCC: Use broadleaf_tariff (Method B) for broadleaves, conifer_tariff (Method C) for conifers.
+# Protocol: mean tariff rounded DOWN to whole number. Sample trees = trees in each habitat.
+method_bc_by_hab <- data.frame()
+for (hab in as.character(habitat_areas$Habitat)) {
+  idx <- which(as.character(trees$Habitat) == hab)
+  if (length(idx) < 3) next
+  area_hab <- habitat_areas$area_ha[as.character(habitat_areas$Habitat) == hab][1]
+  hab_type <- as.character(trees$Classification[idx[1]])
+  sp_tab <- table(paste(trees$Genus[idx], trees$Species[idx]))
+  dom_sp <- names(which.max(sp_tab))
+  spcode <- lookupcode(dom_sp, type = hab_type)$code
 
+  # Sample-level tariff: Method B (broadleaf) or Method C (conifer) per FC_WCC
+  if (hab_type == "conifer") {
+    tariff_out <- conifer_tariff(spcode = rep(spcode, length(idx)),
+                                 height = trees$Height[idx], dbh = trees$DBH[idx],
+                                 re_h = re_h, re_dbh = re_dbh)
+  } else {
+    h_timber <- trees$timber_height[idx]
+    h_timber[is.na(h_timber)] <- trees$Height[idx][is.na(h_timber)] * 0.85
+    tariff_out <- broadleaf_tariff(spcode = rep(spcode, length(idx)),
+                                   height_timber = h_timber, dbh = trees$DBH[idx],
+                                   re_h = re_h, re_dbh = re_dbh)
+  }
+  tariff_vals <- if (is.data.frame(tariff_out)) tariff_out$tariff else tariff_out
+  mean_tariff_raw <- mean(tariff_vals, na.rm = TRUE)
+  # FC_WCC: "If not a whole number it should be rounded down to the next whole tariff number"
+  mean_tariff <- floor(mean_tariff_raw)
+
+  # Quadratic mean dbh (FC_WCC Section 4.1.5)
+  qmd <- sqrt(mean(trees$DBH[idx]^2, na.rm = TRUE))
+  mean_dbh <- mean(trees$DBH[idx], na.rm = TRUE)
+
+  # Volume → biomass → carbon pipeline (FC_WCC Section 4.1.5, 5.2)
+  sig_tariff <- if (is.data.frame(tariff_out) && "sigma" %in% names(tariff_out))
+    mean(tariff_out$sigma, na.rm = TRUE) else NULL
+  mercvol <- merchtreevol(dbh = mean_dbh, tariff = mean_tariff, re_dbh = re_dbh, sig_tariff = sig_tariff)
+  mercvol_val <- if (is.list(mercvol)) mercvol$volume else mercvol
+  mercvol_sig <- if (is.list(mercvol)) mercvol$sigma else NULL
+  stemvol <- treevol(mtreevol = mercvol_val, dbh = mean_dbh, sig_mtreevol = mercvol_sig)
+  stemvol_val <- if (is.data.frame(stemvol)) stemvol$stemvolume else stemvol
+  stemvol_sig <- if (is.data.frame(stemvol) && "sigma" %in% names(stemvol)) stemvol$sigma else NULL
+  nsg <- as.numeric(lookupcode(dom_sp, code = "NSG")$code)
+  woodbio <- woodbiomass(treevol = stemvol_val, nsg = nsg, sig_treevol = stemvol_sig)
+  crownbio <- crownbiomass(spcode = lookupcode(dom_sp, code = "Crown")$code, dbh = qmd, re_d = re_dbh)
+  agb <- woodbio$woodbiomass + crownbio$biomass
+  carb <- biomass2c(agb, method = "Matthews2", type = hab_type)
+  carbon_tree <- if (is.data.frame(carb)) carb$AGC[1] else carb[1]
+  n_trees <- length(idx)
+  total_carbon_bc <- carbon_tree * n_trees
+
+  method_bc_by_hab <- rbind(method_bc_by_hab,
+    data.frame(Habitat = hab, Method = if (hab_type == "conifer") "C" else "B",
+               Species = dom_sp, Area_ha = area_hab, N_trees = n_trees,
+               Mean_tariff_raw = round(mean_tariff_raw, 2), Mean_tariff_floor = mean_tariff,
+               Carbon_per_tree_t = carbon_tree, Stand_AGC_t = total_carbon_bc))
+}
+if (nrow(method_bc_by_hab) > 0) {
+  cat("\n=== Method B/C carbon by habitat (sample-level tariff, FC_WCC protocol) ===\n")
+  print(method_bc_by_hab)
+  cat(sprintf("Total (Methods B/C): %.2f t C\n", sum(method_bc_by_hab$Stand_AGC_t)))
+}
+
+# ---- (2c) SENSITIVITY ANALYSIS: Methods B and C by habitat ----
+# Vary re_dbh and re_h to assess sensitivity of carbon to measurement error
+re_scenarios <- list(
+  "Low (2.5%, 5%)" = c(re_dbh = 0.025, re_h = 0.05),
+  "Typical (5%, 10%)" = c(re_dbh = 0.05, re_h = 0.10),
+  "High (10%, 15%)" = c(re_dbh = 0.10, re_h = 0.15)
+)
+sens_bc <- data.frame()
+for (hab in as.character(habitat_areas$Habitat)) {
+  idx <- which(as.character(trees$Habitat) == hab)
+  if (length(idx) < 3) next
+  hab_type <- as.character(trees$Classification[idx[1]])
+  dom_sp <- names(which.max(table(paste(trees$Genus[idx], trees$Species[idx]))))
+  spcode <- lookupcode(dom_sp, type = hab_type)$code
+  h_timber <- trees$timber_height[idx]
+  h_timber[is.na(h_timber)] <- trees$Height[idx][is.na(h_timber)] * 0.85
+
+  for (scen_name in names(re_scenarios)) {
+    re_d <- re_scenarios[[scen_name]]["re_dbh"]
+    re_h_s <- re_scenarios[[scen_name]]["re_h"]
+    if (hab_type == "conifer") {
+      t_out <- conifer_tariff(rep(spcode, length(idx)), trees$Height[idx], trees$DBH[idx], re_h = re_h_s, re_dbh = re_d)
+    } else {
+      t_out <- broadleaf_tariff(rep(spcode, length(idx)), h_timber, trees$DBH[idx], re_h = re_h_s, re_dbh = re_d)
+    }
+    t_vals <- if (is.data.frame(t_out)) t_out$tariff else t_out
+    mean_t <- floor(mean(t_vals, na.rm = TRUE))
+    qmd <- sqrt(mean(trees$DBH[idx]^2, na.rm = TRUE))
+    mean_d <- mean(trees$DBH[idx], na.rm = TRUE)
+    mercvol <- merchtreevol(mean_d, mean_t)
+    stemvol_res <- treevol(mercvol, mean_d)
+    stemvol_val <- if (is.data.frame(stemvol_res)) stemvol_res$stemvolume else stemvol_res
+    nsg <- as.numeric(lookupcode(dom_sp, code = "NSG")$code)
+    woodbio <- woodbiomass(stemvol_val, nsg)
+    crownbio <- crownbiomass(lookupcode(dom_sp, code = "Crown")$code, qmd, re_d = re_d)
+    agb <- woodbio + crownbio$biomass
+    carb <- biomass2c(agb, method = "Matthews2", type = hab_type)
+    carbon_tree <- if (is.data.frame(carb)) carb$AGC[1] else carb[1]
+    sens_bc <- rbind(sens_bc, data.frame(Habitat = hab, Scenario = scen_name,
+                                         Carbon_per_tree_t = carbon_tree,
+                                         Stand_AGC_t = carbon_tree * length(idx)))
+  }
+}
+if (nrow(sens_bc) > 0) {
+  cat("\n=== Sensitivity: Method B/C carbon vs measurement error scenario ===\n")
+  sens_wide <- reshape(sens_bc[, c("Habitat", "Scenario", "Stand_AGC_t")],
+                       idvar = "Habitat", timevar = "Scenario", direction = "wide")
+  print(sens_wide)
+}
+
+# ---- (3) DBH CLASS TALLIES: Counts by DBH class ----
+# When trees are tallied by DBH class (WCC Method E, plot-based):
+# Use: wcc_process_tally() + wcc_dbh_class_carbon()
+# Example: aggregate Wakehurst trees into DBH classes
+dbh_breaks <- c(0, 20, 40, 60, 80, 100, Inf)
+dbh_class_mid <- c(10, 30, 50, 70, 90, 110)
+dbh_cuts <- cut(trees$DBH, breaks = dbh_breaks, labels = dbh_class_mid)
+tally_counts <- table(dbh_cuts)
+tally_heights <- tapply(trees$Height, dbh_cuts, mean, na.rm = TRUE)
+# Use height ~ 0.4*DBH as fallback where mean height is NA
+heights_vec <- as.numeric(tally_heights[names(tally_counts)])
+na_idx <- is.na(heights_vec)
+heights_vec[na_idx] <- as.numeric(names(tally_counts))[na_idx] * 0.4
+tally_dbh <- wcc_process_tally(
+  dbh_class = as.numeric(names(tally_counts)),
+  count = as.numeric(tally_counts),
+  height = heights_vec,
+  use_midpoints = TRUE
+)
+# Carbon from tally (single species example - for mixed stands, do per species)
+carbon_from_tally <- wcc_dbh_class_carbon(
+  name = "Oak", tally_data = tally_dbh, type = "broadleaf",
+  area_ha = sum(habitat_areas$area_ha, na.rm = TRUE),
+  re_dbh = re_dbh, re_h = re_h
+)
+cat("\n=== Carbon from DBH class tally (Method E style) ===\n")
+print(carbon_from_tally[, c("dbh_midpoint", "count", "carbon_per_tree_t", "class_carbon_t", "total_carbon_t")])
+
+# ---- (4) VOLUME: Measured stem volume (e.g. TLS, felled trees) ----
+# When you have measured volume per tree:
+# Carbon = volume × wood_density × carbon_fraction
+# Use: woodbiomass() for stem, crownbiomass() for crown, biomass2c() for carbon
+# Or directly: biomass2c(volume * wood_density, method, type)
+# Example (TLS - already in trees):
+#   trees$TLS_carbon <- biomass2c(trees$TotalVolume_opt_100 * trees$wd, method, type)
+# For stem-only volume (no crown): biomass2c(vol * NSG, method, type) then add crown
+# if you have DBH for crown estimation:
+if ("TotalVolume_opt_100" %in% names(trees) && "wd" %in% names(trees)) {
+  # Volume-based carbon (stem only from TLS volume)
+  stem_biomass_tls <- trees$TotalVolume_opt_100 * trees$wd  # t
+  carbon_from_volume <- biomass2c(stem_biomass_tls, method = method, type = type)
+  # biomass2c returns vector or data.frame depending on sig_biomass
+  total_vol_c <- if (is.data.frame(carbon_from_volume)) sum(carbon_from_volume$AGC, na.rm = TRUE) else sum(carbon_from_volume, na.rm = TRUE)
+  cat("\n=== Volume-based carbon (TLS stem volume × WD × CF) ===\n")
+  cat(sprintf("Total carbon (stem only): %.2f t C\n", total_vol_c))
+}
+
+# ---- (5) STAND-LEVEL VOLUME: Volume per hectare from tariff ----
+# When you have stand-level volume (m³/ha) from yield tables or tariff:
+# Biomass = volume × NSG; Carbon = biomass × 0.5 (Matthews)
+# Use: woodbiomass(volume, nsg) then biomass2c()
+# Example:
+vol_per_ha <- 200  # m³/ha
+nsg_oak <- as.numeric(lookupcode("Oak", code = "NSG")$code)
+stand_biomass_per_ha <- vol_per_ha * nsg_oak / 1000  # t/ha (volume in m³, NSG t/m³)
+stand_carbon_per_ha <- biomass2c(stand_biomass_per_ha, method = "Matthews2", type = "broadleaf")
+cat(sprintf("\n=== Stand volume example: %.0f m³/ha → %.1f t C/ha\n", vol_per_ha, stand_carbon_per_ha))
+
+# ---- Summary: Method selection by data type ----
+# | Data available              | Function(s)                    | WCC Method |
+# |----------------------------|--------------------------------|------------|
+# | DBH + height per tree      | fc_agc_error, allometries     | B, C, E    |
+# | DBH + height (sample)      | fc_stand_carbon                | D          |
+# | DBH class + counts         | wcc_process_tally, wcc_dbh_class_carbon | E    |
+# | Volume per tree            | volume×WD, biomass2c           | A (stem)   |
+# | Volume per ha (stand)      | vol×NSG, biomass2c             | A-D        |
+# =============================================================================
+
+# ================= TLS Carbon ===============================================
+# Volume × wood density × carbon fraction
+
+trees$TLS_C1 <- trees$TotalVolume_opt_100 * trees$wd * trees$cf
+#table(trees$TLS_biomass == trees$)
+
+wd.global <- global_wd(name)
+trees$WD_glob <- wd.global$wd
+trees$WD_sd_glob <- wd.global$sd
+
+table(trees$WD_glob == trees$wd) # true only for Holly
+
+trees$TLS_carbon <- biomass2c(trees$TotalVolume_opt_100 * trees$wd, method = "IPCC2", type = type)
+
+# ==== summarise results by method ============================
 # Extract carbon columns (now including TLS)
 carbon_cols <- c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t", "TLS_C_t")
 error_cols <- c("WCC_C_sig", "biomass_C_sig", "allodb_C_sig", "Bunce_C_sig", "TLS_C_sig")
@@ -184,13 +356,7 @@ if (length(valid_totals) > 1) {
   print(cross_method_stats)
 }
 
-# ============================================================================
-# 4B. SUMMARIZE BY HABITAT
-# ============================================================================
-
-# ============================================================================
-# 4B. SUMMARIZE BY HABITAT
-# ============================================================================
+# ===== Summarise by habitat ===============
 
 # Get unique habitats from data
 habitats <- unique(trees$Habitat)
@@ -248,14 +414,9 @@ for (hab in habitats) {
       }
 
       # Add row to summary
-      hab_row <- data.frame(
-        Habitat = hab,
-        Method = method,
-        N_Trees = sum(!is.na(carbon_vals)),
-        Total_Carbon_t = round(total_carbon, 3),
-        Total_Error_t = round(total_error, 3),
-        Area_ha = hab_area,
-        Carbon_per_ha = round(carbon_per_ha, 3),
+      hab_row <- data.frame(Habitat = hab, Method = method, N_Trees = sum(!is.na(carbon_vals)),
+        Total_Carbon_t = round(total_carbon, 3),   Total_Error_t = round(total_error, 3),
+        Area_ha = hab_area,                        Carbon_per_ha = round(carbon_per_ha, 3),
         Error_per_ha = round(error_per_ha, 3)
       )
       habitat_summary <- rbind(habitat_summary, hab_row)
@@ -313,18 +474,90 @@ if (nrow(habitat_summary) > 0) {
   print(site_totals)
 }
 
-# ============================================================================
-# 5. SENSITIVITY ANALYSIS
-# ============================================================================
+# ===== Storage table for rounded values ===================
+# TLS total (from trees if not in results)
+tls_total <- if ("TLS_carbon" %in% names(trees)) {
+  tc <- trees$TLS_carbon
+  if (is.data.frame(tc)) sum(tc$AGC, na.rm = TRUE) else sum(as.numeric(tc), na.rm = TRUE)
+} else {
+  if ("TLS_C_t" %in% colnames(results)) sum(results$TLS_C_t, na.rm = TRUE) else NA
+}
+
+# Build totals row
+before_totals <- data.frame(
+  Variable = c("total_WCC", "total_BIOMASS", "total_allodb", "total_Bunce", "total_TLS",
+               "total_stand_D", "total_method_BC"),
+  Value = c(
+    sum(results$WCC_C_t, na.rm = TRUE),
+    sum(results$biomass_C_t, na.rm = TRUE),
+    sum(results$allodb_C_t, na.rm = TRUE),
+    sum(results$Bunce_C_t, na.rm = TRUE),
+    tls_total,
+    if (nrow(stand_carbon_by_hab) > 0) sum(stand_carbon_by_hab$Stand_AGC_t, na.rm = TRUE) else NA,
+    if (nrow(method_bc_by_hab) > 0) sum(method_bc_by_hab$Stand_AGC_t, na.rm = TRUE) else NA
+  ),
+  stringsAsFactors = FALSE
+)
+
+# Per-habitat: stand carbon (Method D)
+before_stand_D <- if (nrow(stand_carbon_by_hab) > 0) {
+  stand_carbon_by_hab[, c("Habitat", "Species", "Area_ha", "Stand_AGC_t", "Carbon_per_ha")]
+} else {
+  data.frame(Habitat = character(), Species = character(), Area_ha = numeric(),
+             Stand_AGC_t = numeric(), Carbon_per_ha = numeric())
+}
+
+# Per-habitat: Method B/C carbon and tariff
+before_method_BC <- if (nrow(method_bc_by_hab) > 0) {
+  method_bc_by_hab[, c("Habitat", "Method", "Species", "Area_ha", "N_trees",
+                       "Mean_tariff_raw", "Mean_tariff_floor", "Carbon_per_tree_t", "Stand_AGC_t")]
+} else {
+  data.frame(Habitat = character(), Method = character(), Species = character(),
+             Area_ha = numeric(), N_trees = integer(), Mean_tariff_raw = numeric(),
+             Mean_tariff_floor = numeric(), Carbon_per_tree_t = numeric(), Stand_AGC_t = numeric())
+}
+
+# Per-habitat per-method: carbon from habitat_summary
+before_habitat_method <- if (nrow(habitat_summary) > 0) {
+  habitat_summary[, c("Habitat", "Method", "N_Trees", "Total_Carbon_t", "Total_Error_t",
+                     "Area_ha", "Carbon_per_ha", "Error_per_ha")]
+} else {
+  data.frame(Habitat = character(), Method = character(), N_Trees = integer(),
+             Total_Carbon_t = numeric(), Total_Error_t = numeric(), Area_ha = numeric(),
+             Carbon_per_ha = numeric(), Error_per_ha = numeric())
+}
+
+# Comprehensive list of all before-protocol tables
+before_protocol_table <- list(
+  totals = before_totals,
+  stand_D_by_habitat = before_stand_D,
+  method_BC_by_habitat = before_method_BC,
+  carbon_by_habitat_method = before_habitat_method
+)
+
+cat("\n=== BEFORE PROTOCOL VALUES (for comparison after rounding changes) ===\n")
+print(before_totals)
+
+# Save to CSV for later comparison
+out_dir <- "inst/paper_scripts/Plots"
+if (dir.exists(out_dir)) {
+  write.csv(before_totals, file.path(out_dir, "before_protocol_totals.csv"), row.names = FALSE)
+  if (nrow(before_stand_D) > 0)
+    write.csv(before_stand_D, file.path(out_dir, "before_protocol_stand_D.csv"), row.names = FALSE)
+  if (nrow(before_method_BC) > 0)
+    write.csv(before_method_BC, file.path(out_dir, "before_protocol_method_BC.csv"), row.names = FALSE)
+  if (nrow(before_habitat_method) > 0)
+    write.csv(before_habitat_method, file.path(out_dir, "before_protocol_habitat_method.csv"), row.names = FALSE)
+  cat(sprintf("Saved before-protocol tables to %s/\n", out_dir))
+}
+
+# === SENSITIVITY ANALYSIS ===============
 
 # Prepare data for sensitivity analysis
-sens_data <- data.frame(
-  dbh = trees$DBH,
-  height = trees$Height,
-  genus = trees$Genus,
+sens_data <- data.frame(dbh = trees$DBH, height = trees$Height, genus = trees$Genus,
   species = trees$Species,
   name = trees$Name,
-  type = trees$type,
+  type = trees$Classification,
   stringsAsFactors = FALSE
 )
 
@@ -368,13 +601,7 @@ if (!is.null(sens_result)) {
   print(sens_result$method_summary)
 }
 
-# ============================================================================
-# 5B. TLS COMPARISON - Allometric Methods vs TLS "Ground Truth"
-# ============================================================================
-
-# ============================================================================
-# 5B. TLS COMPARISON - Allometric Methods vs TLS "Ground Truth"
-# ============================================================================
+# === TLS COMPARISON - Allometric Methods vs TLS ==============================
 
 # Compare each allometric method to TLS
 if ("TLS_C_t" %in% colnames(results) && sum(!is.na(results$TLS_C_t)) > 0) {
@@ -427,18 +654,14 @@ if ("TLS_C_t" %in% colnames(results) && sum(!is.na(results$TLS_C_t)) > 0) {
   print(tls_correlations)
 }
 
-# ============================================================================
-# 6. VISUALIZATIONS
-# ============================================================================
-
-# ============================================================================
-# 6. VISUALIZATIONS
-# ============================================================================
+# == Plots ===================================================================
 
 # Color palette matching the Shiny app (now including TLS)
 method_colors <- c("WCC" = "#E69F00", "BIOMASS" = "#56B4E9",
                    "allodb" = "#009E73", "Bunce" = "#CC79A7",
                    "TLS" = "#D55E00")  # Orange-red for TLS
+
+setwd("C:/git/TreeCarbon/inst/paper_scripts/Plots")
 
 # -----------------------------------------------------------------------------
 # Plot 1: Bar chart of total carbon by method
@@ -1520,10 +1743,6 @@ if (nrow(habitat_summary) > 0) {
 # 8. FINAL SUMMARY
 # ============================================================================
 
-# ============================================================================
-# 8. FINAL SUMMARY
-# ============================================================================
-
 # Analysis summary
 analysis_summary <- data.frame(
   Item = c("Trees analyzed", "Location", "Methods compared", "Habitats",
@@ -1563,6 +1782,5 @@ if (nrow(habitat_summary) > 0) {
   print(wcc_hab)
 }
 
-# Script completed
-
-
+save.image(file = "before_rounding_environment.RData")
+# load("full_environment.RData")

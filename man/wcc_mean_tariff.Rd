@@ -10,6 +10,7 @@ wcc_mean_tariff(
   dbh,
   type = NULL,
   height_timber = NULL,
+  timber_ratio = 0.85,
   re_h = NULL,
   re_dbh = 0.05,
   re = 0.025
@@ -25,6 +26,8 @@ wcc_mean_tariff(
 \item{type}{Tree type: "broadleaf" or "conifer"}
 
 \item{height_timber}{Timber height for broadleaves (optional)}
+
+\item{timber_ratio}{Ratio for estimating timber height when not provided (default 0.85)}
 
 \item{re_h}{Relative error of height (optional, for uncertainty)}
 

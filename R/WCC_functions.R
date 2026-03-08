@@ -287,7 +287,9 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
   }
 
   # Calculate conifer tariff number using coefficients stored in tc
-  tariff <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
+  # FC_WCC Protocol: "Round this to the nearest whole number" (Method C, Section 4.1.4)
+  tariff_raw <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
+  tariff <- round(tariff_raw)
 
   # If re_h is specified and not null, then calculate the error
   if(!is.null(re_h)){
@@ -298,7 +300,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
     if (re_dbh > 1 || re_dbh > 1 || re_h > 1 || re_h > 1)
       warning("Relative errors indicate high uncertainty to measured value")
 
-    # Propagate the error using error_product formula
+    # Propagate the error using error_product formula (sigma based on raw tariff)
     sigma <- sqrt(
       (tc$a1 * re)^2 +
         error_product(tc$a2, tc$a2 * re, height, re_h * height) +
@@ -378,7 +380,9 @@ broadleaf_tariff <- function(spcode, height_timber, dbh, re_dbh = NULL, re_h = 0
 
   # Calculate tariff number using coefficients stored in tb
   # Note: Uses timber height (height to first branch) as per WCC protocol
-  tariff <- tb$a1 + (tb$a2 * height_timber) + (tb$a3 * dbh) + (tb$a4 * dbh * height_timber)
+  # FC_WCC Protocol: "Round this to the nearest whole number" (Method B, Section 4.1.4)
+  tariff_raw <- tb$a1 + (tb$a2 * height_timber) + (tb$a3 * dbh) + (tb$a4 * dbh * height_timber)
+  tariff <- round(tariff_raw)
 
   # If re_h is specified and not null, then calculate the error
   if (!is.null(re_dbh)) {
@@ -684,23 +688,29 @@ calculate_top_height <- function(dbh, height, area_ha = NULL, re_h = NULL, n_tre
 #' @title Calculate tariff numbers for individual trees
 #' @description Calculate the tariff number using either broadleaf_tariff (Method B) or
 #'   conifer_tariff (Method C) for individual trees. Requires both DBH and height measurements.
-#'   For stand-level calculations (Method D), use \code{stand_tariff()} directly 
+#'   For stand-level calculations (Method D), use \code{stand_tariff()} directly
 #'   with top height from \code{calculate_top_height()}.
 #' @author Isabel Openshaw. I.Openshaw@kew.org, Justin Moat. J.Moat@kew.org
 #' @param spcode species code (short)
 #' @param height tree height in metres (total height for conifers, used as fallback for broadleaves)
 #' @param dbh diameter at breast height in centimetres (required)
 #' @param type conifer or broadleaf
-#' @param height_timber timber height in metres (height to first branch, for broadleaves only)
+#' @param height_timber timber height in metres (height to first branch, for broadleaves only).
+#'   Can be NULL, a scalar, or a vector (recycled to match input length). May contain NA where
+#'   estimation is needed.
+#' @param timber_ratio ratio for estimating timber height from total height when
+#'   \code{height_timber} is not provided or is NA. Can be a numeric value (0-1, default 0.85),
+#'   the string "estimate" for species-specific ratios, or NULL to use default 0.85.
 #' @param re_h relative error of height measurement (optional)
 #' @param re_dbh relative error for diameter at breast height (optional)
 #' @param re relative error of coefficients (default = 0.025)
-#' @return either tariff number or if re_h is provided, then returns a list
-#'   of the tariff number and uncertainty
+#' @return Tariff number (or data.frame with tariff, sigma, tariff_method if re_h provided).
+#'   \code{tariff_method} indicates: "conifer", "broad_timber" (inputted), "broad_ratio"
+#'   (height * ratio), "broad_estimated" (species-specific), or "mixed_*" equivalents.
 #' @details
-#'   This function calculates tariff numbers for individual trees using Methods B 
+#'   This function calculates tariff numbers for individual trees using Methods B
 #'   (broadleaves) or C (conifers) from WCC Protocol. Both DBH and height are required.
-#'   
+#'
 #'   For stand-level calculations (Method D) when DBH is not available, use:
 #'   \itemize{
 #'     \item \code{calculate_top_height()} to calculate top height from tree data
@@ -710,125 +720,135 @@ calculate_top_height <- function(dbh, height, area_ha = NULL, re_h = NULL, n_tre
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @examples
 #' # Individual trees (Method B/C)
-#' tariffs(spcode = "OK", height = 18, dbh = 45)
-#' tariffs("OK", 18, 45, re_h = 0.1, re_dbh = 0.05)
-#' 
-#' # Multiple trees
-#' tariffs(spcode = c("OK","NS", "SP"), 
-#'         height = c(18, 20, 22), 
-#'         dbh = c(45, 38, 42), 
-#'         re_h = 0.05, re_dbh = 0.05)
+#' tariffs(spcode = "OK", height = 18, dbh = 45, type = "broadleaf")
+#' tariffs("OK", 18, 45, type = "broadleaf", re_h = 0.1, re_dbh = 0.05)
+#'
+#' # Broadleaf with measured timber height
+#' tariffs(spcode = "OK", height = 20, dbh = 45, type = "broadleaf",
+#'         height_timber = 15, re_h = 0.05)
+#'
+#' # Multiple trees (returns tariff_method when re_h provided)
+#' tariffs(spcode = c("OK","NS", "SP"), height = c(18, 20, 22), dbh = c(45, 38, 42),
+#'         type = c("broadleaf", "conifer", "conifer"), re_h = 0.05)
 #' @export
 #' @aliases tariffs
 #'
 tariffs <- function(spcode, height, dbh, type = NULL,
-                    height_timber = NULL, re_h = NULL, re_dbh = 0.05, re = 0.025) {
+                    height_timber = NULL, timber_ratio = 0.85,
+                    re_h = NULL, re_dbh = 0.05, re = 0.025) {
 
-  # Validate inputs
   if (!is.character(spcode)) warning("spcode must be characters")
   if (is.null(dbh) || all(is.na(dbh))) {
     stop("dbh is required for individual tree tariff calculations. ",
          "For stand-level calculations (Method D), use stand_tariff() with top height.")
   }
-
-  # Set n as the length of height input
   n <- length(height)
-  # Check that input lengths are consistent
   if (length(spcode) != n || length(dbh) != n) {
     stop("Input vectors (spcode, height, dbh) must have the same length.")
   }
-
   if (!is.null(height_timber)) {
-    if (!is.numeric(height_timber)) {
-      stop("height_timber must be numeric")
-    }
+    if (!is.numeric(height_timber)) stop("height_timber must be numeric (may contain NA)")
+    if (length(height_timber) == 1L) height_timber <- rep(height_timber, n)
+    else if (length(height_timber) != n) stop("height_timber must be NULL, scalar, or vector of length ", n)
+  } else {
+    height_timber <- rep(NA_real_, n)
   }
 
-  # Lookup type (conifer or broadleaf classification) using lookup_df
-  lookup_index <- match(spcode, lookup_df$short)
-  lookup_type <- lookup_df$type[lookup_index]
-  use_original <- is.na(lookup_type) | lookup_type == "any"
-  type <- ifelse(use_original, type, lookup_type)
+  # Vectorized type lookup
+  lookup_type <- lookup_df$type[match(spcode, lookup_df$short)]
+  type <- ifelse(is.na(lookup_type) | lookup_type == "any", type, lookup_type)
 
-  # Initialise output data frame
-  results <- data.frame(tariff = rep(NA, n))
-  error <- !is.null(re_h)
-  if (error) results$sigma <- rep(NA, n)
-
-  # Determine which function to use
+  # Indices (vectorized)
   NA_type <- is.na(type) | type == "NA" | type == "any"
   NA_spcode <- is.na(spcode) | spcode == "NA" | spcode == "MX"
   spcode_type <- !(NA_spcode & NA_type)
   height_dbh <- !(is.na(dbh) | is.na(height))
+  conifer_idx <- type == "conifer" & height_dbh & spcode_type
+  broadleaf_idx <- type == "broadleaf" & height_dbh & spcode_type
+  mixed_idx <- ((NA_spcode & is.na(type)) | type == "any" | type == "NA") & height_dbh
 
-  conifer_indices <- type == "conifer" & height_dbh & spcode_type
-  broadleaf_indices <- type == "broadleaf" & height_dbh & spcode_type
-  mixed_indices <- ((NA_spcode & is.na(type)) | type == "any" | type == "NA") & height_dbh
+  if (any(NA_spcode)) warning("Skipping calculations for unfound spcode inputs")
 
-  if(any(NA_spcode)) warning("Skipping calculations for unfound spcode inputs")
+  # Resolve ratio: NULL or invalid -> 0.85
+  use_estimate <- is.character(timber_ratio) && length(timber_ratio) == 1L && timber_ratio == "estimate"
+  use_ratio <- is.numeric(timber_ratio) && length(timber_ratio) == 1L && timber_ratio > 0 && timber_ratio <= 1
+  ratio_val <- if (use_ratio) timber_ratio else 0.85
 
-  # Helper function to extract result from tariff function
-  process_result <- function(tariff_output, indices, results, error) {
-    if(error && "sigma" %in% names(tariff_output)) {
-      results$tariff[indices] <- tariff_output$tariff
-      results$sigma[indices]  <- tariff_output$sigma
-    } else {
-      results$tariff[indices] <- tariff_output
+  # Effective timber height and method (vectorized)
+  eff_timber <- rep(NA_real_, n)
+  tariff_method <- rep(NA_character_, n)
+
+  eff_timber[conifer_idx] <- height[conifer_idx]
+  tariff_method[conifer_idx] <- "conifer"
+
+  # Broadleaf/mixed: has_timber vs needs estimate
+  bl_timber <- broadleaf_idx & !is.na(height_timber)
+  bl_est <- broadleaf_idx & is.na(height_timber)
+  mix_timber <- mixed_idx & !is.na(height_timber)
+  mix_est <- mixed_idx & is.na(height_timber)
+
+  eff_timber[bl_timber] <- height_timber[bl_timber]
+  tariff_method[bl_timber] <- "broad_timber"
+  eff_timber[mix_timber] <- height_timber[mix_timber]
+  tariff_method[mix_timber] <- "mixed_timber"
+
+  if (use_estimate) {
+    if (any(bl_est, na.rm = TRUE)) {
+      i <- which(bl_est)
+      eff_timber[i] <- estimate_timber_height(height[i], spcode = spcode[i], type = type[i], default_ratio = 0.85)
+      tariff_method[i] <- "broad_estimated"
     }
-    return(results)
+    if (any(mix_est, na.rm = TRUE)) {
+      i <- which(mix_est)
+      eff_timber[i] <- estimate_timber_height(height[i], spcode = rep("XB", length(i)), type = rep("broadleaf", length(i)), default_ratio = 0.85)
+      tariff_method[i] <- "mixed_estimated"
+    }
+  } else {
+    eff_timber[bl_est] <- height[bl_est] * ratio_val
+    tariff_method[bl_est] <- "broad_default"
+    eff_timber[mix_est] <- height[mix_est] * ratio_val
+    tariff_method[mix_est] <- "mixed_ratio"
   }
+
+  # Notes for downstream (fc_agc flags)
+  notes_vec <- character(0L)
+  if (any(tariff_method == "broad_estimated", na.rm = TRUE)) notes_vec <- c(notes_vec, "Broadleaf_timber_height_estimated_via_species_ratios")
+  if (any(tariff_method == "broad_ratio", na.rm = TRUE)) notes_vec <- c(notes_vec, paste0("Broadleaf_timber_height_estimated_via_fixed_ratio_", ratio_val))
+
+  # Build results
+  error <- !is.null(re_h)
+  results <- data.frame(tariff = rep(NA, n), tariff_method = tariff_method, stringsAsFactors = FALSE)
+  if (error) results$sigma <- rep(NA, n)
 
   # Apply tariff functions
-  if (any(conifer_indices, na.rm = TRUE)) {
-    tariff_output <- suppressWarnings(
-      conifer_tariff(spcode[conifer_indices], height[conifer_indices],
-                     dbh[conifer_indices], re_h, re_dbh, re))
-    results <- process_result(tariff_output, conifer_indices, results, error)
+  if (any(conifer_idx, na.rm = TRUE)) {
+    out_c <- suppressWarnings(conifer_tariff(spcode[conifer_idx], height[conifer_idx], dbh[conifer_idx], re_h, re_dbh, re))
+    results$tariff[conifer_idx] <- if (error) out_c$tariff else out_c
+    if (error) results$sigma[conifer_idx] <- out_c$sigma
   }
-  
-  if (any(broadleaf_indices, na.rm = TRUE)) {
-    # For broadleaves, use height_timber if provided, otherwise use height
-    # WCC protocol requires timber height for broadleaves
-    broadleaf_height <- if (!is.null(height_timber)) {
-      height_timber[broadleaf_indices]
-    } else {
-      height[broadleaf_indices]
-    }
-    tariff_output <- suppressWarnings(
-      broadleaf_tariff(spcode[broadleaf_indices], broadleaf_height,
-                       dbh[broadleaf_indices], re_h, re_dbh, re))
-    results <- process_result(tariff_output, broadleaf_indices, results, error)
+  if (any(broadleaf_idx, na.rm = TRUE)) {
+    out_b <- suppressWarnings(broadleaf_tariff(spcode[broadleaf_idx], eff_timber[broadleaf_idx], dbh[broadleaf_idx], re_h, re_dbh, re))
+    results$tariff[broadleaf_idx] <- if (error) out_b$tariff else out_b
+    if (error) results$sigma[broadleaf_idx] <- out_b$sigma
+  }
+  if (any(mixed_idx, na.rm = TRUE)) {
+    out_bl <- broadleaf_tariff(rep("XB", sum(mixed_idx)), eff_timber[mixed_idx], dbh[mixed_idx], re_h, re_dbh, re)
+    out_cc <- conifer_tariff(rep("XC", sum(mixed_idx)), height[mixed_idx], dbh[mixed_idx], re_h, re_dbh, re)
+    bl_t <- if (error) out_bl$tariff else out_bl
+    cc_t <- if (error) out_cc$tariff else out_cc
+    results$tariff[mixed_idx] <- rowMeans(cbind(bl_t, cc_t), na.rm = TRUE)
+    if (error) results$sigma[mixed_idx] <- sqrt(out_bl$sigma^2 + out_cc$sigma^2)
   }
 
-  # Handle mixed species case
-  if (any(mixed_indices, na.rm = TRUE)) {
-    mixed_height_timber <- if (!is.null(height_timber)) {
-      height_timber[mixed_indices]
-    } else {
-      height[mixed_indices]
-    }
-    broadleaf_values <- broadleaf_tariff(rep("XB", sum(mixed_indices)), 
-                                         mixed_height_timber, dbh[mixed_indices], 
-                                         re_h, re_dbh, re)
-    conifer_values <- conifer_tariff(rep("XC", sum(mixed_indices)), 
-                                     height[mixed_indices], dbh[mixed_indices], 
-                                     re_h, re_dbh, re)
+  attr(results, "timber_height_used") <- eff_timber
+  attr(results, "notes") <- unique(notes_vec)
 
-    if (error) {
-      results$tariff[mixed_indices] <- rowMeans(cbind(broadleaf_values$tariff, 
-                                                      conifer_values$tariff), na.rm = TRUE)
-      results$sigma[mixed_indices] <- sqrt(broadleaf_values$sigma^2 + conifer_values$sigma^2)
-    } else {
-      results$tariff[mixed_indices] <- rowMeans(cbind(broadleaf_values, conifer_values), na.rm = TRUE)
-    }
-  }
-
-  # Return output
-  if (error) {
-    return(results)
-  } else {
-    return(results$tariff)
-  }
+  if (error) return(results)
+  out <- results$tariff
+  attr(out, "timber_height_used") <- eff_timber
+  attr(out, "tariff_method") <- tariff_method
+  attr(out, "notes") <- unique(notes_vec)
+  return(out)
 }
 
 ############# Tree merchantable volume (WCC Eq 5) ################
@@ -931,8 +951,9 @@ treevol <- function(mtreevol, dbh, sig_mtreevol = NULL, re = 0.025) {
     }
   }
 
-  # Round dbh values
-  dbh <- round(dbh)
+  # FC_WCC Protocol: DBH rounded down to whole cm for stem volume factor lookup
+  # (Section 4.1.5: "rounded-down centimetre dbh class")
+  dbh <- floor(dbh)
 
   # Lookup conversion factor (cf) for dbh between 7 and 33, otherwise set to 1
   cf <- ifelse(is.na(dbh), NA, ifelse(dbh >= 7 & dbh < 33,

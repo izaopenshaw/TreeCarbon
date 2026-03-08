@@ -9,7 +9,7 @@ knitr::opts_chunk$set(
 )
 
 # Install package
-#devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
+#devtools::install_github("gistin/TreeCarbon", force = TRUE)
 
 # Load package
 library(TreeCarbon)

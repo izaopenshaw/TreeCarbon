@@ -78,6 +78,19 @@ test_that("tariffs returns tariff for conifer", {
   expect_true(is.numeric(result) || (is.data.frame(result) && "tariff" %in% names(result)))
 })
 
+test_that("tariffs returns tariff_method when re_h provided", {
+  result <- tariffs(spcode = c("OK", "SP"), height = c(18, 20), dbh = c(45, 30),
+                    type = c("broadleaf", "conifer"), re_h = 0.1)
+  expect_true("tariff_method" %in% names(result))
+  expect_equal(result$tariff_method, c("broad_ratio", "conifer"))
+})
+
+test_that("tariffs tariff_method reflects broad_timber when height_timber provided", {
+  result <- tariffs(spcode = "OK", height = 20, dbh = 45, type = "broadleaf",
+                    height_timber = 15, re_h = 0.1)
+  expect_equal(result$tariff_method, "broad_timber")
+})
+
 # ==== merchtreevol (uses tariff from Methods A-D) ====
 
 test_that("merchtreevol returns numeric when sig_tariff is NULL", {

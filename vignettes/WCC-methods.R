@@ -76,9 +76,10 @@ print(tariff_stand)
 
 
 ## ----tariff-auto-----------------------------------------------------------------------
-# Automatically uses conifer or broadleaf based on species
+# Broadleaf Oak: provide height_timber or use timber_ratio (default 0.85)
 tariff_auto <- tariffs(spcode = "OK", height = 18, dbh = 45,
-                       type = "broadleaf", re_h = 0.05, re_dbh = 0.025)
+                       type = "broadleaf", height_timber = 15,
+                       re_h = 0.05, re_dbh = 0.025)
 
 print(tariff_auto)
 
@@ -182,18 +183,21 @@ cat("\n")
 
 # === Step 2: Tariff calculation ===
 dbh <- 45  # cm
-height <- 18  # m
+height <- 18  # m (total height)
+height_timber <- 15  # m (height to first branch for broadleaves)
 tariff_result <- tariffs(
   spcode = spcode,
   height = height,
   dbh = dbh,
   type = "broadleaf",
+  height_timber = height_timber,
   re_h = 0.05,
   re_dbh = 0.025
 )
 
 cat("=== Step 2: Tariff Calculation ===\n")
-cat(sprintf("Tariff: %.2f ± %.2f\n", tariff_result$tariff, tariff_result$sigma))
+cat(sprintf("Tariff: %.2f ± %.2f (method: %s)\n",
+            tariff_result$tariff, tariff_result$sigma, tariff_result$tariff_method))
 cat("\n")
 
 # === Step 3: Volume estimation ===

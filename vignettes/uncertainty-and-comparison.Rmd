@@ -27,8 +27,9 @@ This vignette explains how TreeCarbon handles uncertainty propagation and provid
 1. **Measurement uncertainty** - Error in DBH, height measurements
 2. **Parameter uncertainty** - Uncertainty in allometric equation coefficients
 3. **Model uncertainty** - Residual error from regression equations
-4. **Method comparison** - Quantifying differences between allometric methods
-5. **Sensitivity analysis** - How sensitive are estimates to method choice?
+4. **Area measurement uncertainty** - Error in plot area (GPS vs tape; see Section 2.4)
+5. **Method comparison** - Quantifying differences between allometric methods
+6. **Sensitivity analysis** - How sensitive are estimates to method choice?
 
 ```{r load-package, message=FALSE, warning=FALSE}
 library(TreeCarbon)
@@ -205,6 +206,83 @@ cat(sprintf("CV: %.1f%%\n", result_biomass$AGB_CV_pct))
 cat(sprintf("95%% CI: [%.1f, %.1f] kg\n",
             result_biomass$AGB_CI_low_kg,
             result_biomass$AGB_CI_high_kg))
+```
+
+## 2.4 Area Measurement Uncertainty
+
+When scaling carbon to per-hectare (or per-unit-area) density using `total_density()`, uncertainty in plot area must be propagated. The appropriate formula depends on **how the plot boundary was measured**.
+
+### Choosing the Right Function
+
+| Measurement method | Plot shape | Function | Key inputs |
+|--------------------|------------|----------|------------|
+| **GPS-traced boundary** | Any polygon | `sd_area()` | `perimeter` (m), `RMSE` (m). Use band method (default) or vertex method with `n_vertices` |
+| **GPS corners only** | Irregular rect, quad | `sd_area()` | `perimeter`, `RMSE`, `n_vertices` (e.g. 4) |
+| **Tape or laser** | Circular | `sd_area_measure("circle", ...)` or `sd_area_circle()` | `radius` (m), `sigma_r` (m) |
+| **Tape** | Rectangular | `sd_area_measure("rect", ...)` | `c(length, width)`, `c(sigma_L, sigma_W)` |
+| **Negligible** | Any | Use `sigma_area = 0` or `NULL` | Tape-measured plots often have negligible area error |
+
+### GPS-Mapped Boundaries: `sd_area()`
+
+For boundaries measured by GPS (handheld, drone, or satellite), use `sd_area()`. Two methods:
+
+- **Band method** (default): Conservative; for continuously traced boundaries. Formula: σ_A = 2 × RMSE × P / 10000 (output in ha).
+- **Vertex method** (`n_vertices` provided): For plots where only corner vertices were GPS'd. Typically gives a smaller estimate.
+
+```{r area-sd-gps}
+# GPS-traced boundary: perimeter 200 m, RMSE 3 m
+sigma_area_band <- sd_area(perimeter = 200, RMSE = 3)
+cat(sprintf("Band method: sigma_area = %.4f ha\n", sigma_area_band))
+
+# GPS corners only: 4 vertices, same perimeter
+sigma_area_vertex <- sd_area(perimeter = 200, RMSE = 3, n_vertices = 4)
+cat(sprintf("Vertex method: sigma_area = %.4f ha\n", sigma_area_vertex))
+```
+
+### Tape/Laser-Measured Plots: `sd_area_measure()`
+
+For plots measured directly with tape or laser rangefinder:
+
+```{r area-sd-measure}
+# Circular plot: radius 12.62 m (≈0.05 ha), tape error 0.1 m
+sigma_circle <- sd_area_measure("circle", 12.62, 0.1)
+cat(sprintf("Circular: sigma_area = %.4f ha\n", sigma_circle))
+
+# Rectangular plot: 40 m × 25 m, tape error 0.1 m per side
+sigma_rect <- sd_area_measure("rect", c(40, 25), c(0.1, 0.1))
+cat(sprintf("Rectangular: sigma_area = %.4f ha\n", sigma_rect))
+```
+
+### Full Workflow with `total_density()`
+
+```{r area-total-density}
+# Tree-level carbon with uncertainty
+carbon_vals <- c(0.45, 0.62, 0.38)
+carbon_sig <- c(0.05, 0.06, 0.04)
+
+# 1. Obtain sigma_area from your measurement method
+sigma_area_ha <- sd_area_measure("circle", sqrt(0.5 * 10000 / pi), 0.1)  # 0.5 ha circle
+
+# 2. Calculate density with propagated error
+result <- total_density(
+  input = carbon_vals,
+  sigma_input = carbon_sig,
+  area = 0.5,
+  sigma_area = sigma_area_ha
+)
+
+cat(sprintf("Carbon density: %.2f ± %.2f t C/ha\n",
+            result$total_per_area, result$error_per_area))
+```
+
+### When Area Error Is Negligible
+
+For tape-measured plots, area uncertainty is often negligible compared with tree-level error. Use `sigma_area = 0` or `NULL`:
+
+```{r area-negligible}
+result <- total_density(carbon_vals, carbon_sig, area = 0.5, sigma_area = 0)
+cat(sprintf("Density (no area error): %.2f ± %.2f t C/ha\n",
+            result$total_per_area, result$error_per_area))
 ```
 
 ---

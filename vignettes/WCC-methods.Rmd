@@ -27,7 +27,7 @@ The **Woodland Carbon Code (WCC)** is the UK standard for woodland carbon accoun
 | Method | Functions | Input requirements | Section |
 |--------|-----------|-------------------|---------|
 | **A** | `tariff_vol_area()`, `merchtreevol()`, `treevol()`, `woodbiomass()`, `crownbiomass()`, `biomass2c()` | Felled sample: vol (m³), dbh (cm). Then: NSG, species for full pipeline | 2.1, 6 |
-| **B** | `broadleaf_tariff()`, `tariffs()`, `fc_agc()`, `fc_agc_error()` | type = "broadleaf", species names, dbh (cm), height_timber (m) | 2.3, 7, 12.3 |
+| **B** | `broadleaf_tariff()`, `tariffs()`, `fc_agc()`, `fc_agc_error()` | type = "broadleaf", species names, dbh (cm), height_timber (m) or timber_ratio | 2.3, 7, 12.3 |
 | **C** | `conifer_tariff()`, `tariffs()`, `fc_agc()`, `fc_agc_error()` | type = "conifer", species names, dbh (cm), height (total, m) | 2.2, 7, 12.3 |
 | **D** | `stand_tariff()`, `calculate_top_height()`, `fc_stand_carbon()` | stand_height OR dbh + height vectors, area_ha, species/name, type | 2.4, 12.1 |
 | **E** | `wcc_process_tally()`, `wcc_dbh_class_carbon()` | dbh_class, count; optional: height, area_ha, species/name, type | 12.2 |
@@ -140,7 +140,8 @@ print(tariff_pine)
 
 ## 2.3 Method B: Broadleaf Tariff (Equation 4)
 
-For broadleaf species (WCC Method B - timber height required):
+For broadleaf species (WCC Method B - timber height required). Use
+`tariffs()` with `height_timber` (measured) or `timber_ratio` to estimate:
 
 ```{r tariff-broadleaf}
 # Oak
@@ -175,20 +176,25 @@ print(tariff_stand)
 ## 2.5 Automatic Tariff Selection (Methods B/C)
 
 The `tariffs()` function automatically selects broadleaf_tariff (Method B) or
-conifer_tariff (Method C) based on species type:
+conifer_tariff (Method C) based on species type. For broadleaves, provide
+`height_timber` (measured) or `timber_ratio` (to estimate). When `re_h` is
+provided, the result includes `tariff_method` (conifer, broad_timber, broad_ratio,
+or broad_estimated):
 
 ```{r tariff-auto}
-# Automatically uses conifer or broadleaf based on species
+# Broadleaf Oak: provide height_timber or use timber_ratio (default 0.85)
 tariff_auto <- tariffs(
   spcode = "OK",  # Oak
   height = 18,
   dbh = 45,
   type = "broadleaf",
+  height_timber = 15,  # Measured timber height, or omit to use timber_ratio
   re_h = 0.05,
   re_dbh = 0.025
 )
 
 print(tariff_auto)
+# tariff_method = "broad_timber" when height_timber provided
 ```
 
 ---
@@ -350,18 +356,21 @@ cat("\n")
 
 # === Step 2: Tariff calculation ===
 dbh <- 45  # cm
-height <- 18  # m
+height <- 18  # m (total height)
+height_timber <- 15  # m (height to first branch for broadleaves)
 tariff_result <- tariffs(
   spcode = spcode,
   height = height,
   dbh = dbh,
   type = "broadleaf",
+  height_timber = height_timber,  # Or use timber_ratio = 0.85 to estimate
   re_h = 0.05,
   re_dbh = 0.025
 )
 
 cat("=== Step 2: Tariff Calculation ===\n")
-cat(sprintf("Tariff: %.2f ± %.2f\n", tariff_result$tariff, tariff_result$sigma))
+cat(sprintf("Tariff: %.2f ± %.2f (method: %s)\n", 
+            tariff_result$tariff, tariff_result$sigma, tariff_result$tariff_method))
 cat("\n")
 
 # === Step 3: Volume estimation ===
@@ -826,9 +835,111 @@ cat(sprintf("Weighted mean: %.1f ± %.1f t C/ha\n",
 
 ---
 
-# 13: Troubleshooting
+# 13: FC Woodland Carbon Code Document Examples
 
-## 13.1 Species Not Found
+The Forestry Commission's *Carbon Assessment Protocol (v2.0)* (Jenkins et al. 2018) includes worked examples in Appendices 4–6. This section shows how to replicate these using TreeCarbon.
+
+## 13.1 Appendix 4: Stand-Level Carbon (10.2 ha Conifer Project)
+
+Appendix 4 describes a 10.2 ha conifer woodland with two compartments: Scots Pine (5.6 ha net) and Corsican Pine (3.6 ha net). The protocol uses **Method C** (plot-based, conifers) and **Method D** (stand-level tariff from top height). The key result: **654 tonnes C** total project carbon.
+
+### Stand-level carbon using `fc_stand_carbon()` (Method D)
+
+When you have DBH and height from sample trees in each stand, use `fc_stand_carbon()`:
+
+```{r fc-wcc-app4-stand}
+# Compartment 1: Scots Pine - sample tree DBH and heights from plots
+# (Representative of the 24 height sample trees used in Appendix 4)
+dbh_comp1 <- c(22, 24, 26, 28, 26, 24, 28, 30, 26, 24)  # cm
+height_comp1 <- c(14, 15, 16, 17, 15, 14, 16, 18, 15, 14)  # m
+area_comp1 <- 5.6  # ha net area
+
+stand1 <- fc_stand_carbon(name = "Scots Pine", dbh = dbh_comp1, height = height_comp1,
+                          area_ha = area_comp1, type = "conifer",
+                          re_dbh = 0.05, re_h = 0.05, output.all = TRUE)
+
+cat("=== Compartment 1: Scots Pine ===\n")
+cat(sprintf("Stand carbon: %.1f ± %.1f t C\n", stand1$stand_AGC_t, stand1$sig_stand_AGC))
+cat(sprintf("Carbon per ha: %.1f t C/ha\n\n", stand1$stand_AGC_t / area_comp1))
+
+# Compartment 2: Corsican Pine
+dbh_comp2 <- c(16, 18, 20, 18, 16, 20, 18, 19)  # cm
+height_comp2 <- c(10, 11, 12, 11, 10, 12, 11, 11)  # m
+area_comp2 <- 3.6  # ha net area
+
+stand2 <- fc_stand_carbon(name = "Corsican Pine", dbh = dbh_comp2, height = height_comp2,
+                          area_ha = area_comp2, type = "conifer",
+                          re_dbh = 0.05, re_h = 0.05, output.all = TRUE)
+
+cat("=== Compartment 2: Corsican Pine ===\n")
+cat(sprintf("Stand carbon: %.1f ± %.1f t C\n", stand2$stand_AGC_t, stand2$sig_stand_AGC))
+cat(sprintf("Carbon per ha: %.1f t C/ha\n\n", stand2$stand_AGC_t / area_comp2))
+
+# Total project carbon (as in Appendix 4)
+total_carbon <- stand1$stand_AGC_t + stand2$stand_AGC_t
+total_area <- area_comp1 + area_comp2
+cat("=== Total Project (Appendix 4 style) ===\n")
+cat(sprintf("Total carbon: %.1f t C\n", total_carbon))
+cat(sprintf("Total area: %.1f ha\n", total_area))
+cat(sprintf("Carbon per ha: %.1f t C/ha\n", total_carbon / total_area))
+cat(sprintf("tCO2e (× 44/12): %.0f tCO2e\n", total_carbon * 44/12))
+```
+
+### Individual trees by DBH class (Methods B/C)
+
+When you have trees tallied by DBH class (as in plot-based surveys), calculate carbon per class and sum:
+
+```{r fc-wcc-app4-dbh-class}
+# Compartment 1: Scots Pine - DBH class midpoints and counts
+# (Simplified from Appendix 4 plot data)
+dbh_classes <- c(22, 24, 26, 28, 30)  # cm
+counts <- c(400, 600, 800, 900, 706)  # trees per class
+heights <- c(14, 15, 16, 17, 18)  # representative heights (m)
+
+tally <- wcc_process_tally(dbh_class = dbh_classes, count = counts,
+                          height = heights, use_midpoints = TRUE)
+
+carbon_comp1 <- wcc_dbh_class_carbon(name = "Scots Pine", tally_data = tally,
+                                     type = "conifer", area_ha = 5.6,
+                                     re_dbh = 0.05, re_h = 0.05)
+
+cat("=== Compartment 1: DBH class tally (Method E style) ===\n")
+print(carbon_comp1)
+```
+
+## 13.2 Appendix 5: Small-Scale Broadleaf (Method E)
+
+Appendix 5 describes a 1.12 ha broadleaved woodland with Method E (full tree count). Use `fc_agc_error()` for each tree or `wcc_dbh_class_carbon()` for DBH class tallies:
+
+```{r fc-wcc-app5}
+# Oak and ash/birch groups - individual trees or DBH classes
+trees_oak <- data.frame(dbh = c(25, 30, 35, 40, 45), height = c(12, 15, 18, 20, 22),
+                        count = c(50, 80, 120, 150, 100))
+
+carbon_oak <- sum(
+  fc_agc_error(name = "Oak", dbh = trees_oak$dbh, height = trees_oak$height,
+               type = "broadleaf", method = "Matthews2",
+               height_timber = trees_oak$height * 0.85)$AGC_WCC_t * trees_oak$count
+)
+
+cat(sprintf("Oak carbon (example): %.1f t C\n", carbon_oak))
+```
+
+## 13.3 Method Reference Summary
+
+| FC_WCC Document | Method | TreeCarbon function |
+|-----------------|--------|---------------------|
+| Appendix 4 (conifer) | C (plot-based) / D (stand) | `fc_stand_carbon()`, `wcc_dbh_class_carbon()` |
+| Appendix 5 (broadleaf) | E (full count) | `fc_agc_error()`, `wcc_dbh_class_carbon()` |
+| Appendix 6 (large-scale) | E (full count) | `fc_agc_error()`, `wcc_stratify()` |
+
+For full runnable scripts, see `inst/examples/7_WCC_document_examples.R`.
+
+---
+
+# 14: Troubleshooting
+
+## 14.1 Species Not Found
 
 If a species isn't in the WCC database:
 
@@ -841,7 +952,7 @@ cat("Using type-based defaults for unknown species\n")
 print(result_unknown)
 ```
 
-## 13.2 Invalid DBH/Height Ranges
+## 14.2 Invalid DBH/Height Ranges
 
 ```{r troubleshooting-range}
 # Very small tree - may trigger warnings
@@ -852,7 +963,7 @@ result_small <- fc_agc(name = "Oak", dbh = 5, height = 3,
 cat("Small tree calculation (may have validity warnings)\n")
 ```
 
-## 13.3 Missing Height
+## 14.3 Missing Height
 
 For WCC, height is required. If you don't have height:
 
@@ -866,7 +977,7 @@ bunce_result <- Bunce(name = "Oak", dbh = 45)
 
 ---
 
-# 14: Best Practices
+# 15: Best Practices
 
 1. **Always specify type** for ambiguous species names
 2. **Use measured height** - WCC requires actual height measurements
@@ -877,13 +988,13 @@ bunce_result <- Bunce(name = "Oak", dbh = 45)
 
 ---
 
-# References
+# 16: References
 
 1. **Woodland Carbon Code**: Jenkins, T.A.R., Mackie, E.D., Matthews, R.W., Miller, G., Randle, T.J., & White, M.E. (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). Forestry Commission, Edinburgh. https://www.woodlandcarboncode.org.uk/
 
 ---
 
-# Session Info
+# 17: Session Info
 
 ```{r session-info}
 sessionInfo()

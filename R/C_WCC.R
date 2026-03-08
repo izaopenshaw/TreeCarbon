@@ -180,9 +180,9 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @export
 #' @aliases fc_agc
 #'
-fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
-                     "temperate", output.all = TRUE, nsg = NULL,
-                   height_timber = NULL, timber_ratio = 0.85, rich_output = FALSE){
+fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
+                   type = NULL, method = "Matthews2", biome = "temperate",
+                   output.all = TRUE, nsg = NULL, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
@@ -213,85 +213,13 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
   rec <- lookup_df[match(spcodes$code, lookup_df$short), ]
   type <- ifelse(is.na(rec$type) | rec$type == "MX", type, rec$type)
 
-  # Handle height_timber for all trees
-  # WCC protocol requires timber height for broadleaves
-  # For conifers, timber height = total height (ratio = 1.0)
   n <- length(height)
-
-  # Initialize height_timber as a vector of length n
-  # For conifers, timber height = total height
-  if (is.null(height_timber)) {
-    height_timber <- rep(NA_real_, n)
-    # For conifers, timber height equals total height
-    conifer_idx <- type == "conifer" & !is.na(type)
-    if (any(conifer_idx, na.rm = TRUE)) {
-      height_timber[conifer_idx] <- height[conifer_idx]
-    }
-  } else {
-    # Ensure height_timber is a vector of length n
-    if (length(height_timber) == 1) {
-      height_timber <- rep(height_timber, n)
-    } else if (length(height_timber) != n) {
-      stop("height_timber must be NULL, a single value, or a vector of length equal to the number of trees")
-    }
-    # For conifers, ensure timber height = total height
-    conifer_idx <- type == "conifer" & !is.na(type)
-    if (any(conifer_idx, na.rm = TRUE)) {
-      height_timber[conifer_idx] <- height[conifer_idx]
-    }
-  }
-
-  # Handle broadleaves
-  if (any(type == "broadleaf", na.rm = TRUE)) {
-    broadleaf_idx <- type == "broadleaf" & !is.na(type)
-    broadleaf_missing <- broadleaf_idx & is.na(height_timber)
-
-    if (any(broadleaf_missing, na.rm = TRUE)) {
-      # Need to estimate timber height for broadleaves
-      mature_tall <- broadleaf_missing & !is.na(height) & height > 20
-      if (is.character(timber_ratio) && timber_ratio == "estimate") {
-        # Use estimate_timber_height function with species-specific ratios
-        estimated_timber <- estimate_timber_height(
-          height = height[broadleaf_missing],
-          spcode = spcodes$code[broadleaf_missing],
-          type = type[broadleaf_missing],
-          default_ratio = 0.85
-        )
-        height_timber[broadleaf_missing] <- estimated_timber
-        flags <- c(flags, "Broadleaf_timber_height_estimated_via_species_ratios")
-        warnings_list <- c(warnings_list,
-          "For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using species-specific ratios (or default 0.85 if not available). Timber height estimation is crude; measured values are required for WCC certification.")
-        if (any(mature_tall, na.rm = TRUE)) {
-          flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
-          warnings_list <- c(warnings_list,
-            "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
-          warning("Timber height was estimated for mature trees (>20 m). Estimated timber height may be less accurate for large, old trees. Measured values are required for WCC certification.")
-        }
-      } else if (is.numeric(timber_ratio) && timber_ratio > 0 && timber_ratio <= 1) {
-        # Use provided numeric ratio
-        height_timber[broadleaf_missing] <- height[broadleaf_missing] * timber_ratio
-        flags <- c(flags, paste0("Broadleaf_timber_height_estimated_via_fixed_ratio_", timber_ratio))
-        warnings_list <- c(warnings_list,
-          paste0("For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using ratio of ", timber_ratio, ". Timber height estimation is crude; measured values are required for WCC certification."))
-        if (any(mature_tall, na.rm = TRUE)) {
-          flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
-          warnings_list <- c(warnings_list,
-            "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
-          warning("Timber height was estimated for mature trees (>20 m). Estimated timber height may be less accurate for large, old trees. Measured values are required for WCC certification.")
-        }
-      } else {
-        stop("timber_ratio must be either a numeric value between 0 and 1, or the string 'estimate'")
-      }
-    } else {
-      flags <- c(flags, "Broadleaf_timber_height_provided")
-    }
-  }
 
   # ==== Create results table ====
   if(output.all){
     r <- data.frame(name=name, type=type, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, dbh=dbh, height=height,
-                    height_timber = height_timber,
+                    height_timber = NA_real_,
                     NSG=rec$NSG, tariff=NA, mercvol_m.3=NA, stemvol_m.3=NA,
                     stembiomass_t=NA, crownbiomass_t=NA, rootbiomass_t=NA,
                     AGC_WCC_t=NA, stringsAsFactors=FALSE)
@@ -319,12 +247,36 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
   # Get indices for trees with dbh >= 7 (same logic as fc_agc_error)
   tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
 
+  # Call tariffs for all trees to resolve timber height (handled inside tariffs)
+  tariff_full <- tariffs(spcodes$code, height, dbh, type,
+                         height_timber = height_timber, timber_ratio = timber_ratio)
+  if (output.all) {
+    r$height_timber <- attr(tariff_full, "timber_height_used")
+    notes <- attr(tariff_full, "notes")
+    if (length(notes) > 0L) {
+      flags <- c(flags, notes)
+      if (any(grepl("species_ratios", notes))) {
+        warnings_list <- c(warnings_list,
+          "For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using species-specific ratios (or default 0.85 if not available). Timber height estimation is crude; measured values are required for WCC certification.")
+      }
+      if (any(grepl("fixed_ratio", notes))) {
+        rat <- regmatches(notes, regexpr("fixed_ratio_[0-9.]+", notes))
+        if (length(rat) > 0L) {
+          rr <- sub("fixed_ratio_", "", rat[1L])
+          warnings_list <- c(warnings_list,
+            paste0("For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using ratio of ", rr, ". Timber height estimation is crude; measured values are required for WCC certification."))
+        }
+      }
+      if (any(type == "broadleaf" & !is.na(height) & height > 20, na.rm = TRUE)) {
+        flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
+        warnings_list <- c(warnings_list,
+          "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
+      }
+    }
+  }
+  tariff <- tariff_full[tall_id]
+
   if (any(tall_id, na.rm = TRUE)) {
-    # Tariff number (without error params, returns vector)
-    # For broadleaves, use height_timber if provided
-    height_timber_tall <- if (!is.null(height_timber)) height_timber[tall_id] else NULL
-    tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
-                      dbh[tall_id], type[tall_id], height_timber = height_timber_tall)
 
     # Volume & Biomass (without error params, returns vectors)
     mercvol <- merchtreevol(dbh[tall_id], tariff)
@@ -372,7 +324,8 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
         measure = "AGC",             unit = "t",             uncertainty = NULL,
         validity_warnings = warnings_list,                   flags = flags,
         inputs = list(name = name,   dbh = dbh,              height = height,
-                      height_timber = height_timber, timber_ratio = timber_ratio,
+                      height_timber = attr(tariff_full, "timber_height_used"),
+                      timber_ratio = timber_ratio,
                       type = type,   biome = biome)
       ))
     }
@@ -520,10 +473,10 @@ fc_agc <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
 #' @export
 #' @aliases fc_agc_error
 #'
-fc_agc_error <- function(name, dbh, height, type = NULL, method = "Matthews2", biome =
-                           "temperate", output.all = TRUE, re_dbh = 0.05, re_h =
-                           0.1, re = 0.025, nsg = NULL, sig_nsg = 0.09413391,
-                         height_timber = NULL, timber_ratio = NULL, rich_output = FALSE){
+fc_agc_error <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
+                         type = NULL, method = "Matthews2", biome = "temperate",
+                        output.all = TRUE, re_dbh = 0.05, re_h = 0.1, re = 0.025,
+                        nsg = NULL, sig_nsg = 0.09413391, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
@@ -559,85 +512,13 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "Matthews2", b
   rec <- lookup_df[match(spcodes$code, lookup_df$short), ]
   type <- ifelse(is.na(rec$type) | rec$type == "MX", type, rec$type)
 
-  # Handle height_timber for all trees
-  # WCC protocol requires timber height for broadleaves
-  # For conifers, timber height = total height (ratio = 1.0)
   n <- length(height)
-
-  # Initialize height_timber as a vector of length n
-  # For conifers, timber height = total height
-  if (is.null(height_timber)) {
-    height_timber <- rep(NA_real_, n)
-    # For conifers, timber height equals total height
-    conifer_idx <- type == "conifer" & !is.na(type)
-    if (any(conifer_idx, na.rm = TRUE)) {
-      height_timber[conifer_idx] <- height[conifer_idx]
-    }
-  } else {
-    # Ensure height_timber is a vector of length n
-    if (length(height_timber) == 1) {
-      height_timber <- rep(height_timber, n)
-    } else if (length(height_timber) != n) {
-      stop("height_timber must be NULL, a single value, or a vector of length equal to the number of trees")
-    }
-    # For conifers, ensure timber height = total height
-    conifer_idx <- type == "conifer" & !is.na(type)
-    if (any(conifer_idx, na.rm = TRUE)) {
-      height_timber[conifer_idx] <- height[conifer_idx]
-    }
-  }
-
-  # Handle broadleaves
-  if (any(type == "broadleaf", na.rm = TRUE)) {
-    broadleaf_idx <- type == "broadleaf" & !is.na(type)
-    broadleaf_missing <- broadleaf_idx & is.na(height_timber)
-
-    if (any(broadleaf_missing, na.rm = TRUE)) {
-      # Need to estimate timber height for broadleaves
-      mature_tall <- broadleaf_missing & !is.na(height) & height > 20
-      if (is.character(timber_ratio) && timber_ratio == "estimate") {
-        # Use estimate_timber_height function with species-specific ratios
-        estimated_timber <- estimate_timber_height(
-          height = height[broadleaf_missing],
-          spcode = spcodes$code[broadleaf_missing],
-          type = type[broadleaf_missing],
-          default_ratio = 0.85
-        )
-        height_timber[broadleaf_missing] <- estimated_timber
-        flags <- c(flags, "Broadleaf_timber_height_estimated_via_species_ratios")
-        warnings_list <- c(warnings_list,
-          "For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using species-specific ratios (or default 0.85 if not available). Timber height estimation is crude; measured values are required for WCC certification.")
-        if (any(mature_tall, na.rm = TRUE)) {
-          flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
-          warnings_list <- c(warnings_list,
-            "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
-          warning("Timber height was estimated for mature trees (>20 m). Estimated timber height may be less accurate for large, old trees. Measured values are required for WCC certification.")
-        }
-      } else if (is.numeric(timber_ratio) && timber_ratio > 0 && timber_ratio <= 1) {
-        # Use provided numeric ratio
-        height_timber[broadleaf_missing] <- height[broadleaf_missing] * timber_ratio
-        flags <- c(flags, paste0("Broadleaf_timber_height_estimated_via_fixed_ratio_", timber_ratio))
-        warnings_list <- c(warnings_list,
-          paste0("For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using ratio of ", timber_ratio, ". Timber height estimation is crude; measured values are required for WCC certification."))
-        if (any(mature_tall, na.rm = TRUE)) {
-          flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
-          warnings_list <- c(warnings_list,
-            "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
-          warning("Timber height was estimated for mature trees (>20 m). Estimated timber height may be less accurate for large, old trees. Measured values are required for WCC certification.")
-        }
-      } else {
-        stop("timber_ratio must be either a numeric value between 0 and 1, or the string 'estimate'")
-      }
-    } else {
-      flags <- c(flags, "Broadleaf_timber_height_provided")
-    }
-  }
 
   # Create results table
   if(output.all){
     r <- data.frame(name=name, type=type, spcode=spcodes$code,
                     matchtype=spcodes$matchtype, dbh=dbh, height=height,
-                    height_timber = height_timber,
+                    height_timber = NA_real_,
                     NSG=rec$NSG, tariff=NA, sig_tariff=NA, mercvol_m.3=NA,
                     sig_mercvol=NA, stemvol_m.3=NA, sig_stemvol=NA,
                     stembiomass_t=NA, sig_stembiomass=NA, crownbiomass_t=NA,
@@ -661,12 +542,37 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "Matthews2", b
   # Trees with dbh >= 7 m
   tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
 
+  # Call tariffs for all trees (timber height resolution handled inside tariffs)
+  tariff_full <- tariffs(spcodes$code, height, dbh, type,
+                         height_timber = height_timber, timber_ratio = timber_ratio,
+                         re_h = re_h, re_dbh = re_dbh, re = re)
+  if (output.all) {
+    r$height_timber <- attr(tariff_full, "timber_height_used")
+    notes <- attr(tariff_full, "notes")
+    if (length(notes) > 0L) {
+      flags <- c(flags, notes)
+      if (any(grepl("species_ratios", notes))) {
+        warnings_list <- c(warnings_list,
+          "For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using species-specific ratios (or default 0.85 if not available). Timber height estimation is crude; measured values are required for WCC certification.")
+      }
+      if (any(grepl("fixed_ratio", notes))) {
+        rat <- regmatches(notes, regexpr("fixed_ratio_[0-9.]+", notes))
+        if (length(rat) > 0L) {
+          rr <- sub("fixed_ratio_", "", rat[1L])
+          warnings_list <- c(warnings_list,
+            paste0("For broadleaf species, WCC protocol requires timber height (height to first branch). Timber height was estimated from total height using ratio of ", rr, ". Timber height estimation is crude; measured values are required for WCC certification."))
+        }
+      }
+      if (any(type == "broadleaf" & !is.na(height) & height > 20, na.rm = TRUE)) {
+        flags <- c(flags, "Timber_height_estimated_for_mature_trees_over_20m")
+        warnings_list <- c(warnings_list,
+          "Estimated timber height may be less accurate for large, old trees (>20 m height). Measured timber height is strongly recommended for WCC certification.")
+      }
+    }
+  }
+  tariff <- tariff_full[tall_id, , drop = FALSE]
+
   if (any(tall_id, na.rm = TRUE)) {
-    # For broadleaves, use height_timber if provided
-    height_timber_tall <- height_timber[tall_id]
-    tariff <- tariffs(spcodes$code[tall_id], height[tall_id],
-                      dbh[tall_id], type[tall_id], height_timber = height_timber_tall,
-                      re_h, re_dbh, re = re)
 
     # Volume & Biomass
     mercvol <- merchtreevol(dbh[tall_id], tariff$tariff,
@@ -729,7 +635,7 @@ fc_agc_error <- function(name, dbh, height, type = NULL, method = "Matthews2", b
           name = name,
           dbh = dbh,
           height = height,
-          height_timber = height_timber,
+          height_timber = attr(tariff_full, "timber_height_used"),
           timber_ratio = timber_ratio,
           type = type,
           biome = biome,
@@ -1219,10 +1125,12 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
   top_h_re_h <- if (is.data.frame(top_h_result) && "re_h" %in% names(top_h_result))
     top_h_result$re_h else re_h
 
-  # ==== Calculate mean DBH ====
+  # ==== Calculate quadratic mean DBH (FC_WCC Section 4.1.5) ====
+  # "the quadratic mean dbh must be estimated... Round this number to the nearest 0.1 centimetres"
   valid_dbh <- dbh[!is.na(dbh) & dbh > 0]
   if (length(valid_dbh) == 0) stop("No valid DBH measurements found")
-  mean_dbh <- mean(valid_dbh, na.rm = TRUE)
+  qmd <- sqrt(mean(valid_dbh^2, na.rm = TRUE))
+  mean_dbh <- round(qmd, 1)
   mean_dbh_sigma <- if (!is.null(re_dbh)) (re_dbh * mean_dbh) / sqrt(length(valid_dbh)) else NULL
 
   # ==== Calculate stand tariff from top height ====
@@ -1392,6 +1300,7 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
 #' @param dbh Diameter at breast height in cm
 #' @param type Tree type: "broadleaf" or "conifer"
 #' @param height_timber Timber height for broadleaves (optional)
+#' @param timber_ratio Ratio for estimating timber height when not provided (default 0.85)
 #' @param re_h Relative error of height (optional, for uncertainty)
 #' @param re_dbh Relative error of DBH (optional, for uncertainty)
 #' @param re Relative error of coefficients (default 0.025)
@@ -1401,15 +1310,18 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
 #' Carbon Assessment Protocol (v2. 0)." (2018).
 #' @export
 wcc_mean_tariff <- function(spcode, height, dbh, type = NULL,
-                            height_timber = NULL, re_h = NULL, re_dbh = 0.05,
-                            re = 0.025) {
+                            height_timber = NULL, timber_ratio = 0.85,
+                            re_h = NULL, re_dbh = 0.05, re = 0.025) {
   tariff_out <- tariffs(spcode, height, dbh, type = type,
-                        height_timber = height_timber,
+                        height_timber = height_timber, timber_ratio = timber_ratio,
                         re_h = re_h, re_dbh = re_dbh, re = re)
   if (is.data.frame(tariff_out)) {
     valid <- !is.na(tariff_out$tariff)
     if (!any(valid)) stop("No valid tariff values")
-    mean_tariff <- mean(tariff_out$tariff[valid])
+    mean_raw <- mean(tariff_out$tariff[valid])
+    # FC_WCC Protocol: "If this is not a whole number it should be rounded down"
+    # (Methods B/C, Section 4.1.4) - only when multiple sample trees
+    mean_tariff <- if (sum(valid) > 1L) floor(mean_raw) else mean_raw
     sigma <- if ("sigma" %in% names(tariff_out) && any(!is.na(tariff_out$sigma[valid])))
       sqrt(sum(tariff_out$sigma[valid]^2, na.rm = TRUE)) / sum(valid) else NULL
     if (!is.null(sigma)) {
@@ -1419,7 +1331,8 @@ wcc_mean_tariff <- function(spcode, height, dbh, type = NULL,
   }
   valid <- !is.na(tariff_out)
   if (!any(valid)) stop("No valid tariff values")
-  mean(tariff_out[valid], na.rm = TRUE)
+  mean_raw <- mean(tariff_out[valid], na.rm = TRUE)
+  if (sum(valid) > 1L) floor(mean_raw) else mean_raw
 }
 
 #'

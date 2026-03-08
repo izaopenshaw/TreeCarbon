@@ -54,10 +54,11 @@ library(ggplot2)
 ## 1.1 Using the Woodland Carbon Code (WCC)
 
 The WCC method is the standard for UK woodland carbon accounting. It requires 
-species, DBH, and height.
+species, DBH, and height. For broadleaves, provide `height_timber` (measured) 
+or use `timber_ratio` (default 0.85) to estimate.
 
 ```{r single-wcc}
-# A single oak tree
+# A single oak tree (timber height estimated via timber_ratio = 0.85)
 result_wcc <- fc_agc(name = "Oak", dbh = 45, height = 18, type = "broadleaf")
 
 print(result_wcc)

@@ -8,13 +8,13 @@ fc_agc(
   name,
   dbh,
   height,
+  height_timber = NULL,
+  timber_ratio = 0.85,
   type = NULL,
   method = "Matthews2",
   biome = "temperate",
   output.all = TRUE,
   nsg = NULL,
-  height_timber = NULL,
-  timber_ratio = 0.85,
   rich_output = FALSE
 )
 }
@@ -25,6 +25,13 @@ fc_agc(
 
 \item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
 for WCC protocol compliance.}
+
+\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
+for broadleaf species. If not provided, will be estimated using \code{timber_ratio}.}
+
+\item{timber_ratio}{ratio for estimating timber height from total height when \code{height_timber}
+is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
@@ -37,13 +44,6 @@ for WCC protocol compliance.}
 
 \item{nsg}{nominal specific gravity. Optionally specified, else will use that
 given by the WCC}
-
-\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
-for broadleaf species. If not provided, will be estimated using \code{timber_ratio}.}
-
-\item{timber_ratio}{ratio for estimating timber height from total height when \code{height_timber}
-is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
-to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,

@@ -8,6 +8,8 @@ fc_agc_error(
   name,
   dbh,
   height,
+  height_timber = NULL,
+  timber_ratio = 0.85,
   type = NULL,
   method = "Matthews2",
   biome = "temperate",
@@ -17,8 +19,6 @@ fc_agc_error(
   re = 0.025,
   nsg = NULL,
   sig_nsg = 0.09413391,
-  height_timber = NULL,
-  timber_ratio = NULL,
   rich_output = FALSE
 )
 }
@@ -29,6 +29,9 @@ fc_agc_error(
 
 \item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
 for WCC protocol compliance.}
+
+\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
+for broadleaf species. If not provided, total height will be used with a warning.}
 
 \item{type}{either 'broadleaf' or 'conifer'}
 
@@ -50,9 +53,6 @@ for full uncertainty propagation through carbon conversion.}
 given by the WCC}
 
 \item{sig_nsg}{sigma for nominal specific gravity (NSG) or wood density}
-
-\item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
-for broadleaf species. If not provided, total height will be used with a warning.}
 
 \item{rich_output}{Logical. If TRUE, returns a rich result object with
 metadata including: value, method, reference, assumptions, validity_warning,

@@ -100,21 +100,25 @@ print(species_summary)
 carbon_values <- results_wcc_error$AGC_WCC_t
 carbon_uncertainty <- results_wcc_error$sig_AGC
 
-# Define plot area (e.g., 0.5 hectares) with measurement uncertainty
+# Define plot area (e.g., 0.5 hectares)
 plot_area_ha <- 0.5
-area_uncertainty_ha <- 0.05  # 10% uncertainty in area measurement
 
-# Calculate carbon density per hectare
+# Obtain sigma_area from measurement method (see ?sd_area, ?sd_area_measure):
+# - Circular plot (radius 39.9 m for 0.5 ha, tape error 0.1 m):
+sigma_area_ha <- sd_area_measure("circle", sqrt(plot_area_ha * 10000 / pi), 0.1)
+# - Or GPS boundary (perimeter 283 m, RMSE 3 m): sd_area(283, 3)
+# - Or negligible (tape-measured rect): sigma_area_ha <- 0
+
 carbon_density <- total_density(
   input = carbon_values,
   sigma_input = carbon_uncertainty,
   area = plot_area_ha,
-  sigma_area = area_uncertainty_ha,
+  sigma_area = sigma_area_ha,
   returnv = "sigma"
 )
 
 cat(sprintf("Total carbon: %.2f t C\n", sum(carbon_values, na.rm = TRUE)))
-cat(sprintf("Plot area: %.2f ± %.2f ha\n", plot_area_ha, area_uncertainty_ha))
+cat(sprintf("Plot area: %.2f ± %.2f ha\n", plot_area_ha, sigma_area_ha))
 cat(sprintf("Carbon density: %.2f ± %.2f t C/ha\n",
             carbon_density$total_per_area, carbon_density$error_per_area))
 cat(sprintf("95%% CI: [%.2f, %.2f] t C/ha\n",

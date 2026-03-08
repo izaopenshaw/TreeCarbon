@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 ```{r install, eval = FALSE}
 # Install package from GitHub
-devtools::install_github("izaopenshaw/TreeCarbon", force = TRUE)
+devtools::install_github("gistin/TreeCarbon", force = TRUE)
 ```
 
 # Quick Start

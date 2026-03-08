@@ -22,7 +22,7 @@
 #        |               | woodbiomass(), crownbiomass(), | Then: NSG, species for      |          |
 #        |               | biomass2c()                    | full pipeline*              |          |
 # -------+---------------+--------------------------------+-----------------------------+----------+--------
-#  B     | Timber height | broadleaf_tariff(), tariffs()  | type="broadleaf", species,  |   1      | 2.3, 7, 12.3
+#  B     | Timber height | broadleaf_tariff(), tariffs()  | type="broadleaf", height_timber or timber_ratio | 1 | 2.3, 7, 12.3
 #        | (broadleaves) | fc_agc(), fc_agc_error()       | dbh (cm), height_timber (m) |          |
 # -------+---------------+--------------------------------+-----------------------------+----------+--------
 #  C     | Total height  | conifer_tariff(), tariffs()    | type="conifer", species,    |   1      | 2.2, 7, 12.3

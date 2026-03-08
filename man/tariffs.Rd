@@ -10,6 +10,7 @@ tariffs(
   dbh,
   type = NULL,
   height_timber = NULL,
+  timber_ratio = 0.85,
   re_h = NULL,
   re_dbh = 0.05,
   re = 0.025
@@ -24,7 +25,13 @@ tariffs(
 
 \item{type}{conifer or broadleaf}
 
-\item{height_timber}{timber height in metres (height to first branch, for broadleaves only)}
+\item{height_timber}{timber height in metres (height to first branch, for broadleaves only).
+Can be NULL, a scalar, or a vector (recycled to match input length). May contain NA where
+estimation is needed.}
+
+\item{timber_ratio}{ratio for estimating timber height from total height when
+\code{height_timber} is not provided or is NA. Can be a numeric value (0-1, default 0.85),
+the string "estimate" for species-specific ratios, or NULL to use default 0.85.}
 
 \item{re_h}{relative error of height measurement (optional)}
 
@@ -33,8 +40,9 @@ tariffs(
 \item{re}{relative error of coefficients (default = 0.025)}
 }
 \value{
-either tariff number or if re_h is provided, then returns a list
-of the tariff number and uncertainty
+Tariff number (or data.frame with tariff, sigma, tariff_method if re_h provided).
+\code{tariff_method} indicates: "conifer", "broad_timber" (inputted), "broad_ratio"
+(height * ratio), "broad_estimated" (species-specific), or "mixed_*" equivalents.
 }
 \description{
 Calculate the tariff number using either broadleaf_tariff (Method B) or
@@ -54,14 +62,16 @@ For stand-level calculations (Method D) when DBH is not available, use:
 }
 \examples{
 # Individual trees (Method B/C)
-tariffs(spcode = "OK", height = 18, dbh = 45)
-tariffs("OK", 18, 45, re_h = 0.1, re_dbh = 0.05)
+tariffs(spcode = "OK", height = 18, dbh = 45, type = "broadleaf")
+tariffs("OK", 18, 45, type = "broadleaf", re_h = 0.1, re_dbh = 0.05)
 
-# Multiple trees
-tariffs(spcode = c("OK","NS", "SP"), 
-        height = c(18, 20, 22), 
-        dbh = c(45, 38, 42), 
-        re_h = 0.05, re_dbh = 0.05)
+# Broadleaf with measured timber height
+tariffs(spcode = "OK", height = 20, dbh = 45, type = "broadleaf",
+        height_timber = 15, re_h = 0.05)
+
+# Multiple trees (returns tariff_method when re_h provided)
+tariffs(spcode = c("OK","NS", "SP"), height = c(18, 20, 22), dbh = c(45, 38, 42),
+        type = c("broadleaf", "conifer", "conifer"), re_h = 0.05)
 }
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
