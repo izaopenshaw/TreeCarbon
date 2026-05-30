@@ -1,0 +1,273 @@
+print(habitat_areas)
+    Habitat   area_ha perimeter_m    sd_area
+1 broadleaf 0.7946094   1068.1434 0.00891294
+2   conifer 0.4441845    290.0778 0.02900778
+3   coppice 5.1681765   1169.5383 0.11695383
+> if (nrow(stand_carbon_by_hab) > 0) {
++   cat("=== Stand-level carbon (Method D) by habitat ===\n")
++   print(stand_carbon_by_hab)
++   cat(sprintf("Total stand carbon: %.2f t C\n", sum(stand_carbon_by_hab$Stand_AGC_t)))
++ }
+=== Stand-level carbon (Method D) by habitat ===
+    Habitat          Species   Area_ha Stand_AGC_t sig_Stand_AGC Carbon_per_ha
+1 broadleaf Corylus avellana 0.7946094   111.22038            NA      139.9686
+2   conifer      Picea abies 0.4441845    73.36037            NA      165.1574
+3   coppice Corylus avellana 5.1681765   355.58812            NA       68.8034
+Total stand carbon: 540.17 t C
+> # By habitat if available
+> if (exists("trees") && "Habitat" %in% names(trees)) {
++   hab <- trees$Habitat[!is.na(dbh) & dbh > 0]
++   dbh_by_hab <- split(dbh_valid, hab)
++   cat("\n=== DBH by habitat ===\n")
++   out <- data.frame(
++     Habitat = names(dbh_by_hab),
++     N = sapply(dbh_by_hab, length),
++     Arithmetic_mean_cm = sapply(dbh_by_hab, mean),
++     QMD_cm = sapply(dbh_by_hab, function(x) sqrt(mean(x^2))),
++     stringsAsFactors = FALSE
++   )
++   out$QMD_over_arith <- round(out$QMD_cm / out$Arithmetic_mean_cm, 4)
++   print(out)
++ }
+
+=== DBH by habitat ===
+            Habitat    N Arithmetic_mean_cm   QMD_cm QMD_over_arith
+broadleaf broadleaf  362           24.81921 33.36048         1.3441
+conifer     conifer  432           31.38084 33.47654         1.0668
+coppice     coppice 1379           24.65518 33.34059         1.3523
+> if (nrow(method_bc_by_hab) > 0) {
++   cat("\n=== Method B/C carbon by habitat (sample-level tariff, FC_WCC protocol) ===\n")
++   print(method_bc_by_hab)
++   cat(sprintf("Total (Methods B/C): %.2f t C\n", sum(method_bc_by_hab$Stand_AGC_t)))
++ }
+
+=== Method B/C carbon by habitat (sample-level tariff, FC_WCC protocol) ===
+    Habitat Method          Species   Area_ha N_trees Mean_tariff_raw Mean_tariff_floor
+1 broadleaf      B Corylus avellana 0.7946094     536           15.47                15
+2   conifer      C      Picea abies 0.4441845     451           18.02                18
+3   coppice      B Corylus avellana 5.1681765    2020           12.27                12
+  Carbon_per_tree_t Stand_AGC_t
+1         0.1013030    54.29840
+2         0.1131841    51.04603
+3         0.0903801   182.56780
+Total (Methods B/C): 287.91 t C
+> if (nrow(sens_bc) > 0) {
++   cat("\n=== Sensitivity: Method B/C carbon vs measurement error scenario ===\n")
++   sens_wide <- reshape(sens_bc[, c("Habitat", "Scenario", "Stand_AGC_t")],
++                        idvar = "Habitat", timevar = "Scenario", direction = "wide")
++   print(sens_wide)
++ }
+
+=== Sensitivity: Method B/C carbon vs measurement error scenario ===
+    Habitat Stand_AGC_t.Low (2.5%, 5%) Stand_AGC_t.Typical (5%, 10%)
+1 broadleaf                   54.29840                      54.29840
+4   conifer                   51.04603                      51.04603
+7   coppice                  182.56780                     182.56780
+  Stand_AGC_t.High (10%, 15%)
+1                    54.29840
+4                    51.04603
+7                   182.56780
+> cat("\n=== Carbon from DBH class tally (Method E style) ===\n")
+
+=== Carbon from DBH class tally (Method E style) ===
+> print(carbon_from_tally[, c("dbh_midpoint", "count", "carbon_per_tree_t", "class_carbon_t", "total_carbon_t")])
+  dbh_midpoint count carbon_per_tree_t class_carbon_t total_carbon_t
+1           10  1093        0.01100639       12.02998       609.3706
+2           30   653        0.18520217      120.93702       609.3706
+3           50   235        0.63542953      149.32594       609.3706
+4           70   140        1.39234686      194.92856       609.3706
+5           90    34        2.21234434       75.21971       609.3706
+6          110    18        3.16274443       56.92940       609.3706
+> # ---- (4) VOLUME: Measured stem volume (e.g. TLS, felled trees) ----
+> # When you have measured volume per tree:
+> # Carbon = volume × wood_density × carbon_fraction
+> # Use: woodbiomass() for stem, crownbiomass() for crown, biomass2c() for carbon
+> # Or directly: biomass2c(volume * wood_density, method, type)
+> # Example (TLS - already in trees):
+> #   trees$TLS_carbon <- biomass2c(trees$TotalVolume_opt_100 * trees$wd, method, type)
+> # For stem-only volume (no crown): biomass2c(vol * NSG, method, type) then add crown
+> # if you have DBH for crown estimation:
+> if ("TotalVolume_opt_100" %in% names(trees) && "wd" %in% names(trees)) {
++   # Volume-based carbon (stem only from TLS volume)
++   stem_biomass_tls <- trees$TotalVolume_opt_100 * trees$wd  # t
++   carbon_from_volume <- biomass2c(stem_biomass_tls, method = method, type = type)
++   # biomass2c returns vector or data.frame depending on sig_biomass
++   total_vol_c <- if (is.data.frame(carbon_from_volume)) sum(carbon_from_volume$AGC, na.rm = TRUE) else sum(carbon_from_volume, na.rm = TRUE)
++   cat("\n=== Volume-based carbon (TLS stem volume × WD × CF) ===\n")
++   cat(sprintf("Total carbon (stem only): %.2f t C\n", total_vol_c))
++ }
+Error in biomass2c(stem_biomass_tls, method = method, type = type) : 
+  Invalid method. Choose from: Matthews1, Matthews2, IPCC1, IPCC2, Thomas
+
+> method = "IPCC2"
+> # ---- (4) VOLUME: Measured stem volume (e.g. TLS, felled trees) ----
+> # When you have measured volume per tree:
+> # Carbon = volume × wood_density × carbon_fraction
+> # Use: woodbiomass() for stem, crownbiomass() for crown, biomass2c() for carbon
+> # Or directly: biomass2c(volume * wood_density, method, type)
+> # Example (TLS - already in trees):
+> #   trees$TLS_carbon <- biomass2c(trees$TotalVolume_opt_100 * trees$wd, method, type)
+> # For stem-only volume (no crown): biomass2c(vol * NSG, method, type) then add crown
+> # if you have DBH for crown estimation:
+> if ("TotalVolume_opt_100" %in% names(trees) && "wd" %in% names(trees)) {
++   # Volume-based carbon (stem only from TLS volume)
++   stem_biomass_tls <- trees$TotalVolume_opt_100 * trees$wd  # t
++   carbon_from_volume <- biomass2c(stem_biomass_tls, method = method, type = type)
++   # biomass2c returns vector or data.frame depending on sig_biomass
++   total_vol_c <- if (is.data.frame(carbon_from_volume)) sum(carbon_from_volume$AGC, na.rm = TRUE) else sum(carbon_from_volume, na.rm = TRUE)
++   cat("\n=== Volume-based carbon (TLS stem volume × WD × CF) ===\n")
++   cat(sprintf("Total carbon (stem only): %.2f t C\n", total_vol_c))
++ }
+
+=== Volume-based carbon (TLS stem volume × WD × CF) ===
+Total carbon (stem only): 1200208.30 t C
+> cat(sprintf("\n=== Stand volume example: %.0f m³/ha → %.1f t C/ha\n", vol_per_ha, stand_carbon_per_ha))
+
+=== Stand volume example: 200 m³/ha → 0.1 t C/ha
+> # Total Carbon by Method
+> print(method_summary)
+             Method Total_Carbon_t Mean_per_Tree_t SD_per_Tree N_Valid Total_Error_t CV_pct
+WCC_C_t         WCC        1671.56          0.5579      1.0878    2996         16.27  195.0
+biomass_C_t BIOMASS         561.67          0.2585      0.5818    2173         29.67  225.1
+allodb_C_t   allodb         778.34          0.3582      0.8044    2173         13.51  224.6
+Bunce_C_t     Bunce         677.01          0.3116      0.6681    2173          1.20  214.4
+TLS_C_t         TLS             NA              NA          NA       0            NA     NA
+>   print(cross_method_stats)
+       Metric          Value
+1  Mean total  922.14 tonnes
+2          SD  507.39 tonnes
+3          CV          55.0%
+4   Range min  561.67 tonnes
+5   Range max 1671.56 tonnes
+6      Spread 1109.89 tonnes
+7 Range ratio          2.98x
+> # Print habitat summary
+> print(habitat_summary)
+     Habitat  Method N_Trees Total_Carbon_t Total_Error_t   Area_ha Carbon_per_ha Error_per_ha
+1  broadleaf     WCC     529        355.920         8.480 0.7946094       447.918       10.672
+2  broadleaf BIOMASS     362        111.865        16.344 0.7946094       140.779       20.568
+3  broadleaf  allodb     362        148.006         3.746 0.7946094       186.262        4.714
+4  broadleaf   Bunce     362        119.969         0.488 0.7946094       150.979        0.614
+5    coppice     WCC    2017       1234.670        13.717 5.1681765       238.899        2.654
+6    coppice BIOMASS    1379        370.345        24.224 5.1681765        71.659        4.687
+7    coppice  allodb    1379        540.029         7.022 5.1681765       104.491        1.359
+8    coppice   Bunce    1379        439.051         1.063 5.1681765        84.953        0.206
+9    conifer     WCC     450         80.967         2.191 0.4441845       182.282        4.933
+10   conifer BIOMASS     432         79.461         5.134 0.4441845       178.891       11.559
+11   conifer  allodb     432         90.304        10.918 0.4441845       203.302       24.579
+12   conifer   Bunce     432        117.995         0.267 0.4441845       265.644        0.601
+>   print(wide_table)
+    Habitat     WCC BIOMASS  allodb   Bunce
+1 broadleaf 447.918 140.779 186.262 150.979
+5   coppice 238.899  71.659 104.491  84.953
+9   conifer 182.282 178.891 203.302 265.644
+>   print(site_totals)
+   Method Total_Carbon_t Total_Error_t
+1  allodb        778.339        13.511
+2 BIOMASS        561.671        29.670
+3   Bunce        677.015         1.200
+4     WCC       1671.557        16.275
+> cat("\n=== BEFORE PROTOCOL VALUES (for comparison after rounding changes) ===\n")
+
+=== BEFORE PROTOCOL VALUES (for comparison after rounding changes) ===
+> print(before_totals)
+         Variable        Value
+1       total_WCC    1671.5566
+2   total_BIOMASS     561.6699
+3    total_allodb     778.3386
+4     total_Bunce     677.0150
+5       total_TLS 1200208.3012
+6   total_stand_D     540.1689
+7 total_method_BC     287.9122
+> cat("\n=== AFTER PROTOCOL VALUES (for comparison after rounding changes) ===\n")
+
+=== AFTER PROTOCOL VALUES (for comparison after rounding changes) ===
+> print(before_totals)
+         Variable        Value
+1       total_WCC    1671.5566
+2   total_BIOMASS     561.6699
+3    total_allodb     778.3386
+4     total_Bunce     677.0150
+5       total_TLS 1200208.3012
+6   total_stand_D     540.1689
+7 total_method_BC     287.9122
+>   # Sensitivity Analysis Results
+>   print(paste("INTERPRETATION:", sens_result$interpretation))
+Error: object 'sens_result' not found
+
+> # Prepare data for sensitivity analysis
+> sens_data <- data.frame(dbh = trees$DBH, height = trees$Height, genus = trees$Genus,
++   species = trees$Species,
++   name = trees$Name,
++   type = trees$Classification,
++   stringsAsFactors = FALSE
++ )
+> # Run sensitivity analysis (note: TLS is not included as it's measured, not modeled)
+> sens_result <- tryCatch({
++   sensitivity_analysis(
++     data = sens_data,
++     methods = c("WCC", "BIOMASS", "allodb", "Bunce"),  # Allometric methods only
++     coords = wakehurst_coords,
++     type = "broadleaf",  # Default for mixed data
++     carbon_fraction = 0.5,
++     aggregate = TRUE,
++     reference = "WCC"
++   )
++ }, error = function(e) {
++   warning("Sensitivity analysis error: ", e$message)
++   NULL
++ })
+Warning message:
+In value[[3L]](cond) :
+  Sensitivity analysis error: unused argument (carbon_fraction = 0.5)
+
+
+ print(dbh_summary[, c("DBH_Class", "Tree_Count", "Pct_Trees", "Total_Carbon", "Pct_Carbon")])
++ }
+                       Finding                         Value
+1 Top 10% of trees (217 trees) contain 27.6% of total carbon
+2 Top 20% of trees (434 trees) contain 34.7% of total carbon
+3  Trees needed for 50% carbon            87.6% (1900 trees)
+  DBH_Class Tree_Count Pct_Trees Total_Carbon Pct_Carbon
+1      0-10        469      21.6    596.65986       57.0
+2     10-20        620      28.6     14.15036        1.4
+3     20-30        372      17.2     30.35386        2.9
+4     30-40        281      13.0     44.24515        4.2
+5     40-50        151       7.0     44.31791        4.2
+6     50-75        200       9.2    178.44243       17.0
+7    75-100         58       2.7     99.07550        9.5
+8      >100         18       0.8     40.42526        3.9
+
+ cat("=== Monte Carlo vs Analytical Error Propagation (Bunce) ===\n")
+=== Monte Carlo vs Analytical Error Propagation (Bunce) ===
+> print(mc_vs_analytical)
+       Method  Mean_kg     SD_kg    CV_pct CI_low_kg CI_high_kg
+1  Analytical 1134.940  62.53788  5.510235  582.1406   2163.603
+2 Monte Carlo 1185.727 412.94267 34.826115  582.1406   2163.603
+
+
+cat(sprintf("\nAnalytical CV: %.2f%%\n", analytical_cv))
+
+Analytical CV: 5.51%
+> cat(sprintf("Monte Carlo CV: %.2f%%\n", mc_cv))
+Monte Carlo CV: 34.83%
+> cat(sprintf("Difference: %.2f%%\n", abs(analytical_cv - mc_cv)))
+Difference: 29.32%
+
+cat(sprintf("Mean CV: %.2f%%\n", mean(wcc_error_by_size$cv_pct, na.rm = TRUE)))
+Mean CV: 20.59%
+> cat(sprintf("CV range: %.2f%% - %.2f%%\n",
++             min(wcc_error_by_size$cv_pct, na.rm = TRUE),
++             max(wcc_error_by_size$cv_pct, na.rm = TRUE)))
+CV range: 17.01% - 57.02%
+> cat(sprintf("Absolute error range: %.3f - %.3f t C\n",
++             min(wcc_error_by_size$sigma_t, na.rm = TRUE),
++             max(wcc_error_by_size$sigma_t, na.rm = TRUE)))
+Absolute error range: 0.005 - 0.765 t C
+
+print(wcc_hab)
++ }
+    Habitat Carbon_per_ha Error_per_ha Total_Carbon_t
+1 broadleaf       447.918       10.672        355.920
+5   coppice       238.899        2.654       1234.670
+9   conifer       182.282        4.933         80.967

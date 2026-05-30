@@ -238,11 +238,20 @@ biomass2c <- function(biomass, method, type = NULL, biome = 'temperate',
 
   # Propagate error if sig_biomass is provided
   sigma_AGC <- NULL
-  if (!is.null(sig_biomass) && method %in% c("Thomas", "IPCC2")) {
-    if (length(sig_biomass) != length(biomass)){
+  if (!is.null(sig_biomass)) {
+    if (length(sig_biomass) != length(biomass)) {
       stop("Length of sig_biomass must match biomass length.")
     }
-    sigma_AGC <- error_product(biomass, sig_biomass, CF, sig_CF, returnv = "sigma")
+    if (method %in% c("Thomas", "IPCC2")) {
+      sigma_AGC <- error_product(biomass, sig_biomass, CF, sig_CF, returnv = "sigma")
+    } else {
+      # Matthews1, Matthews2, IPCC1: carbon fraction treated as known (no tabulated CF SE)
+      n <- length(biomass)
+      sigma_AGC <- error_product(
+        biomass, sig_biomass, CF, rep(0, n),
+        returnv = "sigma"
+      )
+    }
   }
 
   # ==== Return rich output if requested ====

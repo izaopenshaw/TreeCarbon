@@ -141,16 +141,23 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #'   - making limitations and assumptions "impossible to miss".
 #'
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
-#' @param name species name, either binomial or common
-#' @param type either 'broadleaf' or 'conifer'
+#' @param name species name, either binomial or common. A single value is recycled when
+#'   \code{dbh} and \code{height} are vectors (same species, one row per tree).
+#' @param type either 'broadleaf' or 'conifer'. A single value is recycled when
+#'   \code{dbh} and \code{height} are vectors.
 #' @param dbh diameter at breast height in centimetres
 #' @param height tree height in metres (total height). For broadleaves, provide \code{height_timber}
-#'   for WCC protocol compliance.
+#'   for WCC protocol compliance. Not required when \code{tariff} is provided (e.g. for QMD + mean
+#'   tariff stand-level use).
 #' @param height_timber timber height in metres (height to first branch). Required for WCC protocol
 #'   for broadleaf species. If not provided, will be estimated using \code{timber_ratio}.
 #' @param timber_ratio ratio for estimating timber height from total height when \code{height_timber}
 #'   is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
 #'   to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.
+#' @param tariff optional pre-computed tariff number. When provided, skips internal tariff
+#'   calculation from height. Use for stand-level estimates with QMD + mean tariff from height
+#'   sample trees. Scalar or same length as \code{dbh}. When provided, \code{height} is not
+#'   required for trees with dbh >= 7 cm.
 #' @param method method of converting biomass to carbon. Default \code{"Matthews2"}
 #'   (recommended for WCC; Matthews 1993). Also: \code{"Thomas"}, \code{"IPCC2"}.
 #' @param biome temperate, boreal, mediterranean, tropical, subtropical or all
@@ -167,12 +174,33 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #'   trees) or a list of such objects (for multiple trees).
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
+#' @details
+#'   **When to use \code{fc_agc}:**
+#'   - Individual tree carbon estimates (one or more DBH/height pairs)
+#'   - Full tree inventory with per-tree carbon
+#'   - QMD + mean tariff from height sample trees (provide \code{tariff})
+#'
+#'   **When NOT to use \code{fc_agc}:**
+#'   - Stand-level carbon from plot/stand DBH and height samples without
+#'     pre-computed tariff \eqn{\rightarrow} use \code{\link{fc_stand_carbon}} or
+#'     \code{\link{fc_method_e_carbon}}
+#'   - You have top height and mean DBH and want Method D workflow \eqn{\rightarrow}
+#'     use \code{\link{fc_stand_carbon}}
+#'
+#' @seealso \code{\link{fc_stand_carbon}} (Methods A-D), \code{\link{fc_method_e_carbon}} (Method E),
+#'   \code{\link{fc_agc_error}} (with uncertainty propagation).
 #' @import remotes
 #' @examples
+#' # Single tree
+#' fc_agc("Oak", dbh = 45, height = 18, type = "broadleaf", output.all = FALSE)
+#'
 #' fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc('beech', 72, 24, nsg = wd$meanWD)
+#'
+#' # QMD + mean tariff (stand-level approximation)
+#' fc_agc("Sitka Spruce", dbh = 28, tariff = 22, type = "conifer", output.all = FALSE)
 #'
 #' # Rich output with metadata
 #' result <- fc_agc('Oak', dbh=50, height=20, rich_output = TRUE)
@@ -181,11 +209,19 @@ lookupcode <- function(name, type = NULL, code = "short", returnv = "all") {
 #' @aliases fc_agc
 #'
 fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
-                   type = NULL, method = "Matthews2", biome = "temperate",
+                   tariff = NULL, type = NULL, method = "Matthews2", biome = "temperate",
                    output.all = TRUE, nsg = NULL, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
+  if (!is.null(tariff)) {
+    if (!is.numeric(tariff) || any(tariff < 0, na.rm = TRUE)) {
+      stop("tariff must be numeric and non-negative when provided")
+    }
+    if (length(tariff) != 1L && length(tariff) != length(dbh)) {
+      stop("tariff must be scalar or same length as dbh")
+    }
+  }
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
   }
@@ -202,6 +238,32 @@ fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
   }
   if (any(dbh < 0, na.rm = TRUE) || !is.numeric(dbh) || anyNA(dbh)) {
     warning("dbh must be numeric and positive")}
+  dbh <- floor(dbh)
+
+  n <- length(dbh)
+  if (length(height) != n) {
+    stop("'dbh' and 'height' must have the same length (one row per tree).")
+  }
+  if (length(name) == 1L && n > 1L) {
+    name <- rep(name, n)
+  } else if (length(name) != n) {
+    stop("'name' must have length 1 or the same length as 'dbh' and 'height'.")
+  }
+  if (!is.null(type)) {
+    if (length(type) == 1L && n > 1L) {
+      type <- rep(type, n)
+    } else if (length(type) != n) {
+      stop("'type' must have length 1, be NULL, or the same length as 'dbh' and 'height'.")
+    }
+  }
+
+  # ==== QMD-like usage warning (single dbh/height in typical stand range) ====
+  if (length(dbh) == 1L && length(height) == 1L && is.null(tariff) &&
+      !is.na(dbh) && !is.na(height) && dbh >= 20 && dbh <= 80 &&
+      height >= 12 && height <= 35) {
+    warning("Single DBH and height in typical stand range (QMD/top height). ",
+            "For stand-level estimates, consider fc_stand_carbon() or fc_method_e_carbon().")
+  }
 
   # ==== Validate against WCC method ranges ====
   validation <- validate_inputs_for_method("WCC", dbh = dbh, height = height)
@@ -244,15 +306,23 @@ fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
   }
 
   # ==== Tall Trees ====
-  # Get indices for trees with dbh >= 7 (same logic as fc_agc_error)
-  tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
+  # Get indices for trees with dbh >= 7; height or tariff required
+  use_provided_tariff <- !is.null(tariff)
+  tall_id <- dbh >= 7 & !is.na(dbh) & (use_provided_tariff | !is.na(height))
 
-  # Call tariffs for all trees to resolve timber height (handled inside tariffs)
-  tariff_full <- tariffs(spcodes$code, height, dbh, type,
-                         height_timber = height_timber, timber_ratio = timber_ratio)
+  # Resolve tariff: use provided value or compute from height
+  if (use_provided_tariff) {
+    tariff_full <- rep_len(tariff, n)
+    attr(tariff_full, "timber_height_used") <- rep(NA_real_, n)
+    attr(tariff_full, "notes") <- character()
+  } else {
+    tariff_full <- tariffs(spcodes$code, height, dbh, type,
+                           height_timber = height_timber, timber_ratio = timber_ratio)
+  }
+  tariff <- tariff_full[tall_id]
   if (output.all) {
-    r$height_timber <- attr(tariff_full, "timber_height_used")
-    notes <- attr(tariff_full, "notes")
+    r$height_timber <- attr(tariff_full, "timber_height_used") %||% rep(NA_real_, n)
+    notes <- attr(tariff_full, "notes") %||% character()
     if (length(notes) > 0L) {
       flags <- c(flags, notes)
       if (any(grepl("species_ratios", notes))) {
@@ -430,13 +500,26 @@ fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
 #'   including method metadata, assumptions, validity warnings, and uncertainty
 #'
 #' @author Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org
-#' @param name species name, either binomial or common
-#' @param type either 'broadleaf' or 'conifer'
+#' @param name species name, either binomial or common. A single value is recycled when
+#'   \code{dbh} and \code{height} are vectors (same species, one row per tree).
+#' @param type either 'broadleaf' or 'conifer'. A single value is recycled when
+#'   \code{dbh} and \code{height} are vectors.
 #' @param dbh diameter at breast height in centimetres
 #' @param height tree height in metres (total height). For broadleaves, provide \code{height_timber}
-#'   for WCC protocol compliance.
+#'   for WCC protocol compliance. Not required when \code{tariff} is provided (e.g. for QMD + mean
+#'   tariff stand-level use).
 #' @param height_timber timber height in metres (height to first branch). Required for WCC protocol
 #'   for broadleaf species. If not provided, total height will be used with a warning.
+#' @param timber_ratio ratio for estimating timber height from total height when \code{height_timber}
+#'   is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+#'   to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.
+#' @param tariff optional pre-computed tariff number. When provided, skips internal tariff
+#'   calculation from height. Use for stand-level estimates with QMD + mean tariff from height
+#'   sample trees. Scalar or same length as \code{dbh}. When provided, \code{height} is not
+#'   required for trees with dbh >= 7 cm.
+#' @param sig_tariff optional sigma for \code{tariff} when \code{tariff} is provided. Used for
+#'   uncertainty propagation. Scalar or same length as \code{tariff}. If \code{tariff} provided
+#'   without \code{sig_tariff}, tariff uncertainty is assumed zero.
 #' @param method method of converting biomass to carbon. Default \code{"Matthews2"}
 #'   (recommended for WCC; Matthews 1993). Use \code{"IPCC2"} or \code{"Thomas"}
 #'   for full uncertainty propagation through carbon conversion.
@@ -457,15 +540,37 @@ fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
 #'   If \code{rich_output = TRUE}: an \code{allometry_result} object with metadata.
 #' @references Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 #' Carbon Assessment Protocol (v2. 0)." (2018).
-#' @seealso \code{\link{wcc_per_hectare}}, \code{\link{wcc_stratify}}, \code{\link{error_product}};
+#' @details
+#'   **When to use \code{fc_agc_error}:**
+#'   - Individual tree carbon estimates with uncertainty (one or more DBH/height pairs)
+#'   - Full tree inventory with per-tree carbon and propagated uncertainty
+#'   - QMD + mean tariff from height sample trees (provide \code{tariff})
+#'
+#'   **When NOT to use \code{fc_agc_error}:**
+#'   - Stand-level carbon from plot/stand DBH and height samples without
+#'     pre-computed tariff \eqn{\rightarrow} use \code{\link{fc_stand_carbon}} or
+#'     \code{\link{fc_method_e_carbon}}
+#'   - You have top height and mean DBH and want Method D workflow \eqn{\rightarrow}
+#'     use \code{\link{fc_stand_carbon}}
+#'
+#' @seealso \code{\link{fc_agc}}, \code{\link{fc_stand_carbon}} (Methods A-D),
+#'   \code{\link{fc_method_e_carbon}} (Method E), \code{\link{wcc_per_hectare}},
+#'   \code{\link{wcc_stratify}}, \code{\link{error_product}};
 #'   vignette("uncertainty-and-comparison", package = "TreeCarbon") for error propagation rules.
 #' @examples
+#' # Single tree
+#' fc_agc_error("Oak", dbh = 45, height = 18, type = "broadleaf", output.all = FALSE)
+#'
 #' fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 #' fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
 #' biome="temperate", output.all = FALSE, re_dbh=1, re_h=1)
 #' # Input wood density and sd from BIOMASS package
 #' wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 #' fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+#'
+#' # QMD + mean tariff with uncertainty
+#' fc_agc_error("Sitka Spruce", dbh = 28, tariff = 22, sig_tariff = 1.5,
+#'   type = "conifer", output.all = FALSE)
 #'
 #' # Rich output with metadata
 #' result <- fc_agc_error('Oak', 50, 20, rich_output = TRUE)
@@ -474,14 +579,28 @@ fc_agc <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
 #' @aliases fc_agc_error
 #'
 fc_agc_error <- function(name, dbh, height, height_timber = NULL, timber_ratio = 0.85,
-                         type = NULL, method = "Matthews2", biome = "temperate",
-                        output.all = TRUE, re_dbh = 0.05, re_h = 0.1, re = 0.025,
-                        nsg = NULL, sig_nsg = 0.09413391, rich_output = FALSE){
+                         tariff = NULL, sig_tariff = NULL, type = NULL, method = "Matthews2",
+                         biome = "temperate", output.all = TRUE, re_dbh = 0.05, re_h = 0.1,
+                         re = 0.025, nsg = NULL, sig_nsg = 0.09413391, rich_output = FALSE){
 
   # ==== Check arguments ====
   if(!is.character(name)) stop ("name must be a character")
   if (!is.logical(output.all) || length(output.all) != 1) {
     stop("'output.all' must be a single logical value (TRUE or FALSE).")
+  }
+  if (!is.null(tariff)) {
+    if (!is.numeric(tariff) || any(tariff < 0, na.rm = TRUE)) {
+      stop("tariff must be numeric and non-negative when provided")
+    }
+    if (length(tariff) != 1L && length(tariff) != length(dbh)) {
+      stop("tariff must be scalar or same length as dbh")
+    }
+    if (!is.null(sig_tariff) && length(sig_tariff) != 1L && length(sig_tariff) != length(tariff)) {
+      stop("sig_tariff must be scalar or same length as tariff when provided")
+    }
+  }
+  if (!is.null(sig_tariff) && is.null(tariff)) {
+    stop("sig_tariff requires tariff to be provided")
   }
   class <- c("broadleaf", "conifer")
   if(any(!type %in% c(class, NA, "NA"))){
@@ -501,6 +620,32 @@ fc_agc_error <- function(name, dbh, height, height_timber = NULL, timber_ratio =
   }
   if (any(dbh < 0, na.rm = TRUE) || !is.numeric(dbh) || anyNA(dbh)) {
     warning("dbh must be numeric and positive")}
+  dbh <- floor(dbh)
+
+  n <- length(dbh)
+  if (length(height) != n) {
+    stop("'dbh' and 'height' must have the same length (one row per tree).")
+  }
+  if (length(name) == 1L && n > 1L) {
+    name <- rep(name, n)
+  } else if (length(name) != n) {
+    stop("'name' must have length 1 or the same length as 'dbh' and 'height'.")
+  }
+  if (!is.null(type)) {
+    if (length(type) == 1L && n > 1L) {
+      type <- rep(type, n)
+    } else if (length(type) != n) {
+      stop("'type' must have length 1, be NULL, or the same length as 'dbh' and 'height'.")
+    }
+  }
+
+  # ==== QMD-like usage warning (single dbh/height in typical stand range) ====
+  if (length(dbh) == 1L && length(height) == 1L && is.null(tariff) &&
+      !is.na(dbh) && !is.na(height) && dbh >= 20 && dbh <= 80 &&
+      height >= 12 && height <= 35) {
+    warning("Single DBH and height in typical stand range (QMD/top height). ",
+            "For stand-level estimates, consider fc_stand_carbon() or fc_method_e_carbon().")
+  }
 
   # ==== Validate against WCC method ranges ====
   validation <- validate_inputs_for_method("WCC", dbh = dbh, height = height)
@@ -539,16 +684,29 @@ fc_agc_error <- function(name, dbh, height, height_timber = NULL, timber_ratio =
     r$sig_AGC[small_id] <- carbon$sd
   }
 
-  # Trees with dbh >= 7 m
-  tall_id <- dbh >= 7 & !is.na(dbh) & !is.na(height)
+  # Trees with dbh >= 7 m; height or tariff required
+  use_provided_tariff <- !is.null(tariff)
+  tall_id <- dbh >= 7 & !is.na(dbh) & (use_provided_tariff | !is.na(height))
 
-  # Call tariffs for all trees (timber height resolution handled inside tariffs)
-  tariff_full <- tariffs(spcodes$code, height, dbh, type,
-                         height_timber = height_timber, timber_ratio = timber_ratio,
-                         re_h = re_h, re_dbh = re_dbh, re = re)
+  # Resolve tariff: use provided value or compute from height
+  if (use_provided_tariff) {
+    n_tariff <- length(dbh)
+    tariff_full <- data.frame(
+      tariff = rep_len(tariff, n_tariff),
+      sigma = if (!is.null(sig_tariff)) rep_len(sig_tariff, n_tariff) else rep(0, n_tariff),
+      stringsAsFactors = FALSE
+    )
+    attr(tariff_full, "timber_height_used") <- rep(NA_real_, n_tariff)
+    attr(tariff_full, "notes") <- character()
+  } else {
+    tariff_full <- tariffs(spcodes$code, height, dbh, type,
+                           height_timber = height_timber, timber_ratio = timber_ratio,
+                           re_h = re_h, re_dbh = re_dbh, re = re)
+  }
+  tariff <- tariff_full[tall_id, , drop = FALSE]
   if (output.all) {
-    r$height_timber <- attr(tariff_full, "timber_height_used")
-    notes <- attr(tariff_full, "notes")
+    r$height_timber <- attr(tariff_full, "timber_height_used") %||% rep(NA_real_, n)
+    notes <- attr(tariff_full, "notes") %||% character()
     if (length(notes) > 0L) {
       flags <- c(flags, notes)
       if (any(grepl("species_ratios", notes))) {
@@ -1086,6 +1244,7 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
   if (!is.numeric(n_trees) || n_trees <= 0) {
     stop("n_trees must be numeric and positive")
   }
+  dbh <- floor(dbh)
 
   # ==== Validate against WCC method ranges ====
   validation <- validate_inputs_for_method("WCC", dbh = dbh, height = height)
@@ -1126,7 +1285,6 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
     top_h_result$re_h else re_h
 
   # ==== Calculate quadratic mean DBH (FC_WCC Section 4.1.5) ====
-  # "the quadratic mean dbh must be estimated... Round this number to the nearest 0.1 centimetres"
   valid_dbh <- dbh[!is.na(dbh) & dbh > 0]
   if (length(valid_dbh) == 0) stop("No valid DBH measurements found")
   qmd <- sqrt(mean(valid_dbh^2, na.rm = TRUE))
@@ -1290,12 +1448,480 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
 }
 
 
+############# FC Method E: Full tree count (FC_WCC Section 4.2) ################
+#'
+#' @title Carbon from full tree count (WCC Method E)
+#' @description Estimate above-ground carbon using FC Woodland Carbon Code Method E
+#'   (full tree count and DBH assessment). Applicable for woodlands up to 1.25 ha
+#'   or up to 3000 tree stems (FC_WCC 4.2.1).
+#'
+#'   Method E uses a 100\% DBH census and systematic height sampling per Table 4.2.2.
+#'   For conifers: total height and Equation 3 (conifer_tariff). For broadleaves:
+#'   timber height and Equation 2 (broadleaf_tariff).
+#'
+#' @param name Species name(s), vector matching \code{dbh} and \code{height}.
+#'   For mixed stands, provide one name per tree.
+#' @param dbh Diameter at breast height in cm (vector). All trees measured (census).
+#' @param height Tree height in metres (vector). For conifers: total height.
+#'   For broadleaves: provide \code{height_timber} or it is estimated from height.
+#' @param area_ha Net stratum area in hectares.
+#' @param type \code{"conifer"} or \code{"broadleaf"}. Stratum type; used when
+#'   \code{classification} is not provided. For mixed stands, provide
+#'   \code{classification} per tree.
+#' @param classification Optional vector of \code{"conifer"} or \code{"broadleaf"}
+#'   per tree (same length as \code{name}). If provided, overrides \code{type}
+#'   for tariff and biomass lookup per species. FC_WCC: minor species (<10\%)
+#'   are grouped with the dominant species of the same type.
+#' @param height_timber Timber height for broadleaves (optional). If NULL, estimated
+#'   from \code{height} using \code{timber_ratio}.
+#' @param timber_ratio Ratio for estimating timber height when not provided (default 0.85).
+#' @param method Carbon conversion: \code{"Matthews2"} (default), \code{"IPCC2"}, \code{"Thomas"}.
+#' @param biome \code{"temperate"} (default), \code{"boreal"}, etc.
+#' @param re_dbh Relative error for DBH (optional, for uncertainty propagation).
+#' @param re_h Relative error for height (optional).
+#' @param re Relative error of coefficients (default 0.025).
+#' @param output.all If TRUE (default), return data.frame with by-species breakdown.
+#'
+#' @return If \code{output.all = FALSE}: stand AGC in tonnes. If \code{output.all = TRUE}:
+#'   data.frame with \code{stand_AGC_t}, \code{by_species} (list), \code{n_trees}.
+#'
+#' @references Jenkins, T.A.R., et al. (2018). FC Woodland Carbon Code: Carbon
+#'   Assessment Protocol (v2.0). Forestry Commission, Edinburgh. Section 4.2.
+#'   \url{https://www.woodlandcarboncode.org.uk/}
+#'
+#' @seealso \code{\link{fc_stand_carbon}} (Methods A-D), \code{\link{fc_agc_error}},
+#'   \code{\link{conifer_tariff}}, \code{\link{broadleaf_tariff}}.
+#'
+#' @examples
+#' # Conifer stratum, 25 trees (height sample 1:2 per Table 4.2.2)
+#' dbh <- c(12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 15, 17, 19, 21, 23,
+#'          25, 27, 29, 31, 13, 15, 17, 19, 21)
+#' height <- c(8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 9, 11, 13, 15, 17,
+#'             19, 21, 23, 25, 8.5, 10.5, 12.5, 14.5, 16.5)
+#' fc_method_e(name = "Norway spruce", dbh = dbh, height = height,
+#'                   area_ha = 0.4, type = "conifer")
+#'
+#' @export
+#'
+fc_method_e <- function(name, dbh, height, area_ha, type = "conifer",
+                               classification = NULL, height_timber = NULL,
+                               timber_ratio = 0.85, method = "Matthews2",
+                               biome = "temperate", re_dbh = NULL, re_h = NULL,
+                               re = 0.025, output.all = TRUE) {
+
+  # ==== Check arguments ====
+  if (!is.character(name) && !is.factor(name)) stop("name must be character or factor")
+  name <- as.character(name)
+  if (length(name) != length(dbh) || length(name) != length(height)) {
+    stop("name, dbh and height must have the same length")
+  }
+  if (!is.null(classification) && length(classification) != length(name)) {
+    stop("classification must have the same length as name")
+  }
+  if (!is.numeric(area_ha) || length(area_ha) != 1 || area_ha <= 0) {
+    stop("area_ha must be a single positive numeric value")
+  }
+  if (!(type %in% c("conifer", "broadleaf"))) {
+    stop("type must be 'conifer' or 'broadleaf'")
+  }
+  if (!(method %in% c("Matthews2", "IPCC2", "Thomas"))) {
+    stop("method must be 'Matthews2', 'IPCC2', or 'Thomas'")
+  }
+
+  # FC_WCC 4.2.1: Method E for area <= 1.25 ha or <= 3000 trees
+  n_total <- sum(!is.na(dbh) & dbh >= 7)
+  if (n_total < 1) stop("No trees with DBH >= 7 cm")
+  if (area_ha > 1.25 || n_total > 3000) {
+    warning("Method E applies to area <= 1.25 ha and <= 3000 trees (FC_WCC 4.2.1). ",
+            "Consider Methods A-D for larger stands.")
+  }
+
+  # FC_WCC Appendix 1 A1.2: DBH rounded down to nearest whole cm
+  dbh_floor <- floor(dbh)
+  valid <- !is.na(dbh_floor) & dbh_floor >= 7 & !is.na(name) & name != ""
+  if (!any(valid)) stop("No valid trees (DBH >= 7 cm, non-NA name)")
+
+  name <- name[valid]
+  dbh_floor <- dbh_floor[valid]
+  height <- height[valid]
+  if (!is.null(height_timber)) height_timber <- height_timber[valid]
+
+  # FC_WCC Table 4.2.2: height sampling fraction (1:n = measure every nth tree)
+  height_frac <- function(n) {
+    if (n <= 20) 1L else if (n <= 30) 2L else if (n <= 40) 3L else if (n <= 50) 4L else
+    if (n <= 60) 5L else if (n <= 70) 6L else if (n <= 80) 7L else if (n <= 90) 8L else
+    if (n <= 100) 9L else if (n <= 200) 10L else if (n <= 400) 10L else if (n <= 600) 10L else
+    if (n <= 800) 10L else if (n <= 1000) 10L else if (n <= 1200) 10L else if (n <= 1500) 10L else
+    if (n <= 2000) 10L else if (n <= 2500) 10L else if (n <= 3000) 10L else 10L
+  }
+
+  # Per-species type: from classification if provided, else from lookup
+  n_total_valid <- length(name)
+  sp_to_type <- character(0)
+  sp_to_spcode <- character(0)
+
+  for (sp in unique(name)) {
+    lk <- suppressWarnings(lookupcode(sp, type = NULL, code = "short", returnv = "all"))
+    sc <- if (is.data.frame(lk)) lk$code[1] else lk[1]
+    if (is.na(sc)) {
+      lk <- suppressWarnings(lookupcode(sp, type = type, code = "short", returnv = "all"))
+      sc <- if (is.data.frame(lk)) lk$code[1] else lk[1]
+    }
+    if (is.na(sc)) next
+    sp_type <- lookup_df$type[match(sc, lookup_df$short)]
+    if (is.na(sp_type) || sp_type == "any" || sp_type == "NA") {
+      if (!is.null(classification)) {
+        sp_type <- classification[which(name == sp)[1]]
+      } else {
+        sp_type <- type
+      }
+    }
+    sp_to_type[sp] <- sp_type
+    sp_to_spcode[sp] <- sc
+  }
+
+  # FC_WCC: minor species (<10%) grouped with dominant of same type
+  sp_counts <- table(name)
+  for (sp in names(sp_counts)) {
+    if (sp_counts[sp] < 0.1 * n_total_valid && sp %in% names(sp_to_spcode)) {
+      st <- sp_to_type[sp]
+      same_type <- names(sp_counts)[!is.na(sp_to_type[names(sp_counts)]) &
+                                    sp_to_type[names(sp_counts)] == st]
+      if (length(same_type) > 1) {
+        dominant <- same_type[which.max(sp_counts[same_type])]
+        if (dominant != sp && dominant %in% names(sp_to_spcode)) {
+          sp_to_spcode[sp] <- sp_to_spcode[dominant]
+        }
+      }
+    }
+  }
+
+  sp_groups <- unique(name)
+  carbon_total <- 0
+  by_species_list <- list()
+
+  for (sp in sp_groups) {
+    idx_sp <- which(name == sp)
+    n_sp <- length(idx_sp)
+    if (n_sp < 1) next
+
+    spcode <- sp_to_spcode[sp]
+    sp_type <- if (sp %in% names(sp_to_type)) sp_to_type[sp] else type
+    if (is.na(spcode) || spcode == "") {
+      warning("Species '", sp, "' not found in lookup; skipping.")
+      next
+    }
+
+    dbh_sp <- dbh_floor[idx_sp]
+    height_sp <- height[idx_sp]
+    h_timber_sp <- if (!is.null(height_timber)) height_timber[idx_sp] else NULL
+
+    # FC_WCC 4.2.3 c: QMD from all trees (rounded-down DBH)
+    qmd <- sqrt(mean(dbh_sp^2, na.rm = TRUE))
+    if (is.na(qmd) || qmd <= 0) next
+
+    # FC_WCC 4.2.2, Table 4.2.2: tariff from height sample trees (every nth)
+    frac <- height_frac(n_sp)
+    idx_h <- seq(1, n_sp, by = frac)
+    idx_h <- idx_h[!is.na(height_sp[idx_h]) & height_sp[idx_h] > 0]
+    if (length(idx_h) < 1) {
+      idx_h <- which(!is.na(height_sp) & height_sp > 0)
+      if (length(idx_h) < 1) {
+        warning("No valid height for species '", sp, "'; skipping.")
+        next
+      }
+    }
+
+    h_sample <- height_sp[idx_h]
+    dbh_sample <- dbh_sp[idx_h]
+
+    # Use tariff by actual species type (conifer vs broadleaf)
+    if (sp_type == "conifer") {
+      t_out <- suppressWarnings(conifer_tariff(rep(spcode, length(idx_h)), h_sample, dbh_sample,
+                              re_h = re_h, re_dbh = re_dbh, re = re))
+    } else {
+      h_t <- if (!is.null(h_timber_sp)) h_timber_sp[idx_h] else h_sample * timber_ratio
+      h_t[is.na(h_t)] <- h_sample[is.na(h_t)] * timber_ratio
+      t_out <- suppressWarnings(broadleaf_tariff(rep(spcode, length(idx_h)), height_timber = h_t,
+                                dbh = dbh_sample, re_h = re_h, re_dbh = re_dbh, re = re))
+    }
+    tariff_vals <- if (is.data.frame(t_out)) t_out$tariff else t_out
+    mean_tariff <- floor(mean(tariff_vals, na.rm = TRUE))
+
+    # FC_WCC 4.2.3 d-g: volume, biomass, carbon; N = actual count (census)
+    mercvol <- merchtreevol(dbh = qmd, tariff = mean_tariff, re_dbh = re_dbh, re = re)
+    mercvol_val <- if (is.list(mercvol)) mercvol$volume else mercvol
+    stemvol <- treevol(mtreevol = mercvol_val, dbh = qmd, re = re)
+    stemvol_val <- if (is.data.frame(stemvol)) stemvol$stemvolume else stemvol
+
+    # Use spcode (may be grouped for minor species) for NSG and Crown
+    rec <- lookup_df[match(spcode, lookup_df$short), ]
+    nsg <- as.numeric(rec$NSG[1])
+    crown_code <- rec$Crown[1]
+    if (is.na(nsg) || is.na(crown_code)) {
+      lk <- lookupcode(sp, type = sp_type, code = "NSG")
+      nsg <- as.numeric(if (is.data.frame(lk)) lk$code[1] else lk[1])
+      lk <- lookupcode(sp, type = sp_type, code = "Crown")
+      crown_code <- if (is.data.frame(lk)) lk$code[1] else lk[1]
+    }
+
+    woodbio <- woodbiomass(treevol = stemvol_val, nsg = nsg)
+    woodbio_val <- if (is.list(woodbio)) woodbio$woodbiomass else woodbio
+    crownbio <- crownbiomass(spcode = crown_code, dbh = qmd, re_d = re_dbh, re = re)
+    crownbio_val <- if (is.list(crownbio)) crownbio$biomass else crownbio
+
+    agb <- woodbio_val + crownbio_val
+    carb <- biomass2c(agb, method = method, type = sp_type, biome = biome)
+    carbon_tree <- if (is.data.frame(carb)) carb$AGC[1] else carb[1]
+
+    sp_carbon <- carbon_tree * n_sp
+    carbon_total <- carbon_total + sp_carbon
+    by_species_list[[sp]] <- data.frame(
+      species = sp, n_trees = n_sp, qmd_cm = round(qmd, 1),
+      mean_tariff = mean_tariff, carbon_t = sp_carbon,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  if (output.all) {
+    out <- data.frame(
+      stand_AGC_t = carbon_total,
+      n_trees = n_total,
+      area_ha = area_ha,
+      type = type,
+      method = method,
+      stringsAsFactors = FALSE
+    )
+    out$by_species <- list(do.call(rbind, by_species_list))
+    return(out)
+  }
+  carbon_total
+}
+
+#' @rdname fc_method_e
+#' @export
+fc_method_e_carbon <- fc_method_e
+
+
+#' Plot-stratum carbon (FC_WCC Methods B/C office work, SP 9.2)
+#'
+#' Estimates above-ground carbon for a stratum from one or more sample plots:
+#' trees per ha from plot totals, quadratic mean DBH per species, tariff from
+#' height-sample trees, then volume, biomass and carbon (FC_WCC 4.1.5).
+#'
+#' @param plot_list Named list of data.frames, one per plot. Each must contain
+#'   columns `Genus`, `Species`, `DBH` (cm), `Height` (m), `Classification`
+#'   (`"broadleaf"` or `"conifer"`). Optional: `timber_height`, `x_m`, `y_m`.
+#' @param plot_areas_ha Named numeric vector of plot areas (ha); names must match
+#'   `names(plot_list)`.
+#' @param stratum_area_ha Net stratum area (ha) for scaling tree numbers.
+#' @param type Default `"broadleaf"` or `"conifer"` for tariff/volume when the
+#'   stratum is single-type; mixed conifer/broadleaf uses per-tree classification.
+#' @param re_dbh,re_h Relative measurement errors (passed to tariff/volume functions).
+#' @param method,biome Passed to [biomass2c()] (default `Matthews2`, `temperate`).
+#' @param timber_ratio Used to impute timber height for broadleaves when
+#'   `timber_height` is NA: `Height * timber_ratio`.
+#' @param seed If not `NULL`, used only around random selection of height-sample
+#'   trees when plot coordinates are missing; global RNG state is restored after
+#'   each draw. If `NULL`, [sample.int()] is used without resetting the global seed.
+#' @return A list with `carbon_t` (t C), `n_stratum` (estimated trees in stratum),
+#'   `trees_per_ha`, and `by_species` (a `data.frame` with species-level columns).
+#' @references Jenkins et al. FC Woodland Carbon Code Carbon Assessment Protocol
+#'   (2018); WCC Survey Protocol for projects (2024).
+#' @seealso [fc_stand_carbon()], [fc_method_e()] (same help as `fc_method_e_carbon`),
+#'   [fc_agc_error()]
+#' @export
+fc_plot_stratum_carbon <- function(plot_list, plot_areas_ha, stratum_area_ha,
+                                   type = "broadleaf", re_dbh = 0.05, re_h = 0.1,
+                                   method = "Matthews2", biome = "temperate",
+                                   timber_ratio = 0.85, seed = NULL) {
+  if (!type %in% c("broadleaf", "conifer"))
+    stop("type must be 'broadleaf' or 'conifer'.")
+  if (!is.list(plot_list) || length(plot_list) == 0L)
+    return(list(carbon_t = 0, n_stratum = 0, trees_per_ha = 0, by_species =
+                  data.frame(Species = character(), N_sample = numeric(),
+                             QMD_cm = numeric(), Mean_tariff = numeric(),
+                             Carbon_t = numeric(), stringsAsFactors = FALSE)))
+  pn <- names(plot_list)
+  if (is.null(pn) || any(pn == ""))
+    stop("plot_list must be a named list (one component per plot).")
+  if (is.null(names(plot_areas_ha)))
+    stop("plot_areas_ha must be a named vector (ha), names = plot IDs.")
+  miss <- setdiff(pn, names(plot_areas_ha))
+  if (length(miss))
+    stop("plot_areas_ha missing entries for plot(s): ", paste(miss, collapse = ", "))
+  if (!is.numeric(stratum_area_ha) || length(stratum_area_ha) != 1L ||
+      !is.finite(stratum_area_ha) || stratum_area_ha <= 0)
+    stop("stratum_area_ha must be a single positive finite number (ha).")
+  req <- c("Genus", "Species", "DBH", "Height", "Classification")
+  for (nm in pn) {
+    missc <- setdiff(req, names(plot_list[[nm]]))
+    if (length(missc))
+      stop("Plot ", nm, " data.frame missing column(s): ", paste(missc, collapse = ", "))
+  }
+
+  if (sum(plot_areas_ha[pn], na.rm = TRUE) <= 0)
+    return(list(carbon_t = 0, n_stratum = 0, trees_per_ha = 0, by_species =
+                  data.frame(Species = character(), N_sample = numeric(),
+                             QMD_cm = numeric(), Mean_tariff = numeric(),
+                             Carbon_t = numeric(), stringsAsFactors = FALSE)))
+
+  total_trees <- sum(vapply(plot_list, nrow, integer(1)))
+  total_area <- sum(plot_areas_ha[pn], na.rm = TRUE)
+  trees_per_ha <- total_trees / total_area
+  n_stratum <- trees_per_ha * stratum_area_ha
+
+  all_trees <- do.call(rbind, plot_list)
+  all_trees$Plot_id <- rep(pn, vapply(plot_list, nrow, integer(1)))
+  all_trees$DBH_floor <- floor(all_trees$DBH)
+  if (!"timber_height" %in% names(all_trees))
+    all_trees$timber_height <- NA_real_
+  sp_groups <- unique(paste(all_trees$Genus, all_trees$Species))
+
+  sp_counts <- table(paste(all_trees$Genus, all_trees$Species))
+  sp_to_spcode <- character()
+  sp_to_type <- character()
+  sp_to_dominant <- character()
+  for (sp in names(sp_counts)) {
+    sp_tmp <- all_trees[paste(all_trees$Genus, all_trees$Species) == sp, ][1L, ]
+    st <- as.character(sp_tmp$Classification[1])
+    sp_to_type[sp] <- st
+    sp_to_dominant[sp] <- sp
+    lk <- suppressWarnings(lookupcode(sp, type = st, code = "short", returnv = "all"))
+    sp_to_spcode[sp] <- if (is.data.frame(lk)) lk$code[1] else lk[1]
+  }
+  for (sp in names(sp_counts)) {
+    if (sp_counts[sp] < 0.1 * total_trees && sp %in% names(sp_to_spcode)) {
+      st <- sp_to_type[sp]
+      same_type <- names(sp_counts)[sp_to_type[names(sp_counts)] == st]
+      if (length(same_type) > 1L) {
+        dominant <- same_type[which.max(sp_counts[same_type])]
+        if (dominant != sp && dominant %in% names(sp_to_spcode)) {
+          sp_to_spcode[sp] <- sp_to_spcode[dominant]
+          sp_to_dominant[sp] <- dominant
+        }
+      }
+    }
+  }
+
+  .sample_idx <- function(n, size, replace, seed_local) {
+    if (size < 1L || n < 1L) return(integer(0))
+    if (is.null(seed_local)) return(sample.int(n, size = size, replace = replace))
+    if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      os <- .GlobalEnv$.Random.seed
+      on.exit(assign(".Random.seed", os, envir = .GlobalEnv), add = TRUE)
+    } else {
+      on.exit(rm(list = ".Random.seed", envir = .GlobalEnv), add = TRUE)
+    }
+    set.seed(seed_local)
+    sample.int(n, size = size, replace = replace)
+  }
+
+  carbon_total <- 0
+  by_rows <- list()
+
+  for (sp in sp_groups) {
+    sp_trees <- all_trees[paste(all_trees$Genus, all_trees$Species) == sp, ]
+    if (nrow(sp_trees) < 1L) next
+
+    sp_type <- as.character(sp_trees$Classification[1])
+    spcode <- sp_to_spcode[sp]
+    if (is.na(spcode) || spcode == "") spcode <- lookupcode(sp, type = sp_type)$code
+
+    sp_idx <- which(paste(all_trees$Genus, all_trees$Species) == sp)
+    qmd <- sqrt(mean(all_trees$DBH_floor[sp_idx]^2, na.rm = TRUE))
+    if (is.na(qmd) || qmd <= 0) next
+
+    tariff_vals <- numeric(0)
+    has_coords <- all(c("x_m", "y_m") %in% names(sp_trees))
+    for (pid in pn) {
+      pl_trees <- sp_trees[sp_trees$Plot_id == pid, ]
+      n_samp <- min(2L, nrow(pl_trees))
+      if (n_samp > 0L) {
+        if (has_coords && all(c("x_m", "y_m") %in% names(pl_trees)) &&
+            !any(is.na(pl_trees$x_m)) && !any(is.na(pl_trees$y_m))) {
+          pl_all <- plot_list[[pid]]
+          cx <- mean(pl_all$x_m, na.rm = TRUE)
+          cy <- mean(pl_all$y_m, na.rm = TRUE)
+          d <- sqrt((pl_trees$x_m - cx)^2 + (pl_trees$y_m - cy)^2)
+          samp_idx <- order(d)[seq_len(n_samp)]
+        } else {
+          samp_idx <- .sample_idx(nrow(pl_trees), n_samp, n_samp > nrow(pl_trees), seed)
+        }
+        h_t <- pl_trees$timber_height[samp_idx]
+        h_t[is.na(h_t)] <- pl_trees$Height[samp_idx][is.na(h_t)] * timber_ratio
+        if (sp_type == "conifer") {
+          t_out <- conifer_tariff(rep(spcode, n_samp), pl_trees$Height[samp_idx],
+                                  pl_trees$DBH[samp_idx], re_h = re_h, re_dbh = re_dbh)
+        } else {
+          t_out <- broadleaf_tariff(rep(spcode, n_samp), height_timber = h_t,
+                                    dbh = pl_trees$DBH[samp_idx], re_h = re_h, re_dbh = re_dbh)
+        }
+        t_vals <- if (is.data.frame(t_out)) t_out$tariff else t_out
+        tariff_vals <- c(tariff_vals, t_vals)
+      }
+    }
+    if (length(tariff_vals) == 0L) {
+      h_t <- sp_trees$timber_height
+      h_t[is.na(h_t)] <- sp_trees$Height[is.na(h_t)] * timber_ratio
+      if (sp_type == "conifer") {
+        t_out <- conifer_tariff(rep(spcode, nrow(sp_trees)), sp_trees$Height, sp_trees$DBH,
+                                re_h = re_h, re_dbh = re_dbh)
+      } else {
+        t_out <- broadleaf_tariff(rep(spcode, nrow(sp_trees)), height_timber = h_t,
+                                  dbh = sp_trees$DBH, re_h = re_h, re_dbh = re_dbh)
+      }
+      tariff_vals <- if (is.data.frame(t_out)) t_out$tariff else t_out
+    }
+    mean_tariff <- floor(mean(tariff_vals, na.rm = TRUE))
+
+    mercvol <- merchtreevol(dbh = qmd, tariff = mean_tariff, re_dbh = re_dbh)
+    mercvol_val <- if (is.list(mercvol)) mercvol$volume else mercvol
+    stemvol <- treevol(mtreevol = mercvol_val, dbh = qmd)
+    stemvol_val <- if (is.data.frame(stemvol)) stemvol$stemvolume else stemvol
+    dom_sp <- if (sp %in% names(sp_to_dominant)) sp_to_dominant[sp] else sp
+    nsg <- as.numeric(lookupcode(dom_sp, type = sp_type, code = "NSG")$code)
+    crown_code <- lookupcode(dom_sp, type = sp_type, code = "Crown")$code
+    woodbio <- woodbiomass(treevol = stemvol_val, nsg = nsg)
+    crownbio <- crownbiomass(spcode = crown_code, dbh = qmd, re_d = re_dbh)
+    woodbio_val <- if (is.list(woodbio)) woodbio$woodbiomass else woodbio
+    crownbio_val <- if (is.data.frame(crownbio)) crownbio$biomass else if (is.list(crownbio)) crownbio$biomass else crownbio
+    agb <- woodbio_val + crownbio_val
+    carb <- biomass2c(agb, method = method, type = sp_type, biome = biome)
+    carbon_tree <- if (is.data.frame(carb)) carb$AGC[1] else carb[1]
+
+    n_sp <- nrow(sp_trees)
+    n_sp_stratum <- n_sp / total_trees * n_stratum
+    sp_carbon <- carbon_tree * n_sp_stratum
+    carbon_total <- carbon_total + sp_carbon
+
+    by_rows[[length(by_rows) + 1L]] <- data.frame(
+      Species = sp, N_sample = n_sp, QMD_cm = qmd,
+      Mean_tariff = mean_tariff, Carbon_t = sp_carbon,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  by_species <- if (length(by_rows)) do.call(rbind, by_rows) else
+    data.frame(Species = character(), N_sample = numeric(), QMD_cm = numeric(),
+               Mean_tariff = numeric(), Carbon_t = numeric(), stringsAsFactors = FALSE)
+
+  list(
+    carbon_t = carbon_total,
+    n_stratum = n_stratum,
+    trees_per_ha = trees_per_ha,
+    by_species = by_species
+  )
+}
+
+
 ############# WCC Stand-Level Helper Functions ################
 #'
 #' @title Mean tariff from sample trees (WCC)
 #' @description Calculate mean stand tariff from sample tree measurements with
 #'   proper uncertainty propagation. Useful for scaling up from sample plots.
-#' @param spcode Species code(s) for sample trees
+#' @param spcode Species code(s) for sample trees. A single code is recycled to
+#'   match \code{length(height)} (same species, multiple sample trees).
 #' @param height Tree height(s) in metres
 #' @param dbh Diameter at breast height in cm
 #' @param type Tree type: "broadleaf" or "conifer"
@@ -1312,6 +1938,23 @@ fc_stand_carbon <- function(name, dbh, height, area_ha, type = NULL,
 wcc_mean_tariff <- function(spcode, height, dbh, type = NULL,
                             height_timber = NULL, timber_ratio = 0.85,
                             re_h = NULL, re_dbh = 0.05, re = 0.025) {
+  dbh <- floor(dbh)
+  n <- length(height)
+  if (length(dbh) != n) {
+    stop("'height' and 'dbh' must have the same length.")
+  }
+  if (length(spcode) == 1L && n > 1L) {
+    spcode <- rep(spcode, n)
+  } else if (length(spcode) != n) {
+    stop("'spcode' must have length 1 or the same length as 'height' and 'dbh'.")
+  }
+  if (!is.null(type)) {
+    if (length(type) == 1L && n > 1L) {
+      type <- rep(type, n)
+    } else if (length(type) != n) {
+      stop("'type' must have length 1 or the same length as 'height' and 'dbh'.")
+    }
+  }
   tariff_out <- tariffs(spcode, height, dbh, type = type,
                         height_timber = height_timber, timber_ratio = timber_ratio,
                         re_h = re_h, re_dbh = re_dbh, re = re)

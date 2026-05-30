@@ -27,6 +27,11 @@ devtools::load_all()
 # Load required packages
 library(ggplot2)
 
+# ========= Import =================
+source("inst/paper_scripts/Import2.R")
+
+trees <- df
+
 # Set output directory for figures
 # NOTE: Make paths configurable for reproducibility
 if (!exists("output_dir")) {
@@ -52,36 +57,6 @@ theme_paper <- theme_minimal(base_size = 11) +
 # 1. LOAD WAKEHURST DATA (ALL HABITATS)
 # =============================================================================
 
-# Import the Wakehurst data
-# NOTE: Update path for reproducibility
-if (file.exists("../../data/Import.R")) {
-  source("../../data/Import.R")
-} else if (file.exists("../data/Import.R")) {
-  source("../data/Import.R")
-} else {
-  # Try absolute path (update as needed)
-  source("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Documents/Import.R")
-}
-trees <- df
-
-# Check if height_timber is available for WCC broadleaf calculations
-# WCC protocol requires timber height (height to first branch) for broadleaf species
-if (!"height_timber" %in% colnames(trees)) {
-  warning("height_timber not found in data. For WCC broadleaf protocol compliance,
-          timber height should be measured. Using estimated timber height (0.85 × total height)
-          for broadleaf species in WCC calculations.")
-  # Estimate timber height for broadleaf species (average ratio ~0.85)
-  trees$height_timber <- ifelse(trees$type == "broadleaf",
-                                trees$Height * 0.85,
-                                trees$Height)
-} else {
-  # Use provided timber height, or fall back to total height if missing
-  trees$height_timber <- ifelse(is.na(trees$height_timber) & trees$type == "broadleaf",
-                                trees$Height * 0.85,
-                                ifelse(is.na(trees$height_timber),
-                                       trees$Height,
-                                       trees$height_timber))
-}
 
 # Rename Classification to type for consistency
 if ("Classification" %in% colnames(trees)) {
@@ -104,27 +79,26 @@ wakehurst_coords <- c(-0.0867, 51.0660)
 # =============================================================================
 # 2. CALCULATE CARBON WITH ALL METHODS
 # =============================================================================
+genus <- as.character(trees$Genus)
+species <- as.character(trees$Species)
+dbh <- trees$DBH # "DBHqsm"               "DBHcyl"               "DBHqsm_100"  "DBHcyl_100"           "DBHsec"               "DBHsec_100"
+height = trees$Height
+type = trees$Classification
+height_timber = trees$timber_height
+method = "IPCC2"          # Carbon conversion method
+returnv = "AGC"           # Return Above-Ground Carbon
+re_dbh = 0.05             # 5% DBH measurement error
+re_h = 0.10               # 10% height measurement error
+re = 0.025                # 2.5% coefficient error
+region = "Europe"
 
 # Calculate carbon with all methods
 # NOTE: allometries() function will automatically use height_timber for WCC broadleaf if provided
 # The function handles the WCC protocol requirement internally
-results <- allometries(
-  genus = trees$Genus,
-  species = trees$Species,
-  dbh = trees$DBH,
-  height = trees$Height,
-  type = trees$type,
-  coords = wakehurst_coords,
-  region = "Europe",
-  biome = "temperate",
-  method = "IPCC2",
-  returnv = "AGC",
-  re_dbh = 0.05,
-  re_h = 0.10,
-  re = 0.025,
-  checkTaxo = FALSE,
-  height_timber = trees$Height*0.85
-)
+results <- allometries(genus = genus, species = species, dbh = dbh,
+                       height = height, type = type, method = method, returnv = "AGC",
+                       coords = wakehurst_coords, height_timber = height_timber,
+                       re_dbh = re_dbh, re_h = re_h, re = re, checkTaxo = FALSE)
 
 # Validate results
 if (!all(c("WCC_C_t", "biomass_C_t", "allodb_C_t", "Bunce_C_t") %in% colnames(results))) {
@@ -195,6 +169,15 @@ fig1a <- ggplot(results[!is.na(results$method_cv), ], aes(x = method_cv)) +
 print(fig1a)
 ggsave(file.path(output_dir, "fig1a_method_cv_distribution.png"), fig1a,
        width = 8, height = 5, dpi = 300)
+
+max(results$method_cv)
+sum(results$method_cv > 180)
+table(results$genus[results$method_cv > 180])
+
+outliers <- results[results$method_cv > 180,]
+table(outliers$species, outliers$dbh)
+summary(outliers$dbh)
+summary(outliers$height)
 
 # Figure 1b: Boxplot comparison of methods
 plot_data <- data.frame(
@@ -692,7 +675,9 @@ summary_table <- data.frame(
 print(summary_table, row.names = FALSE, right = FALSE)
 
 # Save summary table
-write.csv(summary_table, file.path(output_dir, "summary_table.csv"), row.names = FALSE)
+setwd("C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Wakehurst_analysis/After")
+output_dir <- "C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Wakehurst_analysis/After"
+write.csv(summary_table, "C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Wakehurst_analysis/After/summary_paper_sensisitvity_analysis.csv", row.names = FALSE)
 
 # Save additional summary statistics
 additional_stats <- list(

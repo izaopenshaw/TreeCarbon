@@ -54,6 +54,16 @@ test_that("biomass2c returns data.frame when sig_biomass provided", {
   expect_true("sig_AGC" %in% names(result))
 })
 
+test_that("biomass2c Matthews2 propagates sig_biomass (CF treated as fixed)", {
+  AGB <- 2
+  sig <- 0.1
+  result <- biomass2c(AGB, method = "Matthews2", type = "broadleaf",
+                      sig_biomass = sig)
+  expect_s3_class(result, "data.frame")
+  CF <- result$AGC / AGB
+  expect_equal(result$sig_AGC, abs(CF) * sig, tolerance = 1e-9)
+})
+
 test_that("biomass2c rich_output returns metadata", {
   result <- biomass2c(1, method = "Thomas", type = "broadleaf",
                       biome = "temperate", rich_output = TRUE)
@@ -61,7 +71,7 @@ test_that("biomass2c rich_output returns metadata", {
   expect_s3_class(result, "biomass2c_result")
   expect_true("carbon" %in% names(result))
   expect_true("conversion_method" %in% names(result))
-  expect_true("citation" %in% names(result))
+  expect_true("reference" %in% names(result))
   expect_true("assumptions" %in% names(result))
 })
 
@@ -70,7 +80,7 @@ test_that("biomass2c rich_output contains correct method info", {
                       biome = "temperate", rich_output = TRUE)
 
   expect_equal(result$conversion_method, "Thomas")
-  expect_true(grepl("Thomas", result$citation))
+  expect_true(grepl("Thomas", result$reference))
   expect_equal(result$source_type, "peer-reviewed")
 })
 

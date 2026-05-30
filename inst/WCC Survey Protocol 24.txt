@@ -1,0 +1,629 @@
+WCC Survey Protocol for projects V2.1.1 April 2024
+1
+Survey Protocol for WCC projects
+Version 2.1.1
+April 2024
+WCC Survey Protocol for projects V2.1.1 April 2024
+2
+Contents
+Introduction ...............................................................................................................................................3
+1. Stratify....................................................................................................................................................4
+2. Plot size and shape.................................................................................................................................6
+3. Plot number and location ......................................................................................................................7
+4. Survey plan check...................................................................................................................................8
+5. Survey: plot setup and photography .....................................................................................................9
+5.0 Equipment you will need: ................................................................................................................9
+5.1 Boundary and planting maps and ‘whole site’ site photographs..................................................10
+5.2 Locating plots and plot photographs.............................................................................................10
+6. Year 5 Survey: Stocking density and tree health.................................................................................12
+6.1 Stocking density .............................................................................................................................12
+6.2 Tree growth and health .................................................................................................................12
+6.4 Tree protection ..............................................................................................................................13
+7. Year 5: Overall stocking density and tree health ................................................................................14
+7.1 Results for each stratum:...............................................................................................................14
+7.2 Summary of calculations................................................................................................................15
+8. Year 15+ Survey: Measuring trees from year 15 onwards..................................................................16
+8.1 Seedlings........................................................................................................................................16
+8.2 Saplings..........................................................................................................................................17
+8.3 Trees...............................................................................................................................................17
+8.4 Tree growth and health .................................................................................................................19
+8.5 Tree protection ..............................................................................................................................19
+9 Year 15+: Overall carbon stock and tree health...................................................................................20
+9.1 Using the Monitoring Report to calculate carbon stock and compare to prediction:...................20
+9.2 Summary of calculations................................................................................................................21
+WCC Survey Protocol for projects V2.1.1 April 2024
+3
+Introduction
+This document sets out the survey protocol for the majority of Woodland Carbon Code projects. There
+may be very large, small, or hard-to-access projects where the Carbon Assessment Protocol should be
+referred to for a more appropriate methodology. This protocol summarises a subset of methods from
+the Carbon Assessment Protocol:
+For the purpose of survey, trees are divided into three categories which are treated differently:
+Tree Size Category Definition
+Seedling A living stem less than 50 centimetres tall.
+Sapling A living stem 50 centimetres or more tall and with a
+dbh less than 7 centimetres.
+Tree A living stem with diameter at breast height of 7cm
+or more.
+Year 5 Assessment: The purpose of this methodology is to confirm the stocking density and health of
+seedlings and saplings in Woodland Carbon Code projects at approximately 5 years after planting.
+Year 15+ Assessment: The purpose of the year 15+ methodology is to confirm the carbon stock of the
+tree biomass (seedling, sapling and tree) at a point in time, as well as tree health.
+Survey work can be summarised in 5 easy steps, which are explained in further detail below:
+1. Stratify: If necessary, divide your project area into sub-areas which are of similar makeup
+2. Plot size: Decide how big your plots will be, based upon planting density
+3. Plot number & location: Decide how many plots you need, based upon the area / sub-areas,
+and where they should be located
+4. Get your survey plan approved by your chosen verification body
+5. Survey: Go to the site and count/measure trees
+6. Calculate: Enter data into spreadsheet to work out planting density (year 5) or carbon stock
+(year 15+) and overall tree health
+Assessment should be carried out during the growing season where possible, in order to more
+accurately assess tree health.
+The project developer should also complete a project progress report and other documents to your
+chosen verification body once you have completed your survey work. See guidance on preparing and
+submitting documents.
+WCC Survey Protocol for projects V2.1.1 April 2024
+4
+1. Stratify
+1. Locate your WCC project map from validation. Ensure that the gross project boundary,
+planted or regenerating areas, open ground and existing woodland are clearly mapped. See
+WCC Mapping Rules.
+2. If your validation map did not include open ground, then open areas greater than 0.25ha
+should be mapped and identified as a separate sub-area. Where this is not possible and/or
+open ground is randomly placed throughout, for example in a native woodland planting
+scheme, a greater number of sample plots will be required (See 3. Plot Number and Location).
+3. The net planted area should be sub-divided into relatively uniform strata. This can be based
+upon planting year, species, growth rates or stocking density. See Figure 1.
+a. Species planted in an intimate mixture, or areas where spacing is variable should be
+considered as one stratum
+b. Conifers and broadleaves should be kept separate unless planted in an intimate
+mixture
+c. Small areas of similar planting density can be combined using the average spacing/
+planting density calculator in the Survey Planning tab of the Monitoring Report
+d. At year 5, areas planted across a maximum of three planting seasons can be
+considered as one stratum
+e. Natural regeneration should be a separate stratum
+f. Any area up to 2 hectares and up to 5% of the site can be combined with the next
+most similar planting area
+4. Next, decide whether the strata you have selected are ‘uniform’ or ‘variable.’ We do this
+because areas with greater variability, require more plots to obtain a result of similar
+precision: A stratum would be considered uniform if trees were:
+a. Planted within 3 years and were of similar height (i.e. no more than 4m height
+difference) AND
+b. Single species AND
+c. Planting positions were evenly distributed (not clumped) AND
+d. (from year 15 onwards) DBH range is ‘normal’.
+And a stratum would be considered ‘variable’ if there are
+1. Several species planted in an intimate mixture OR
+2. The spacing of the planting positions is not uniform but varies across the stratum OR
+3. From Year 15 onwards, more than 3 years / 4 metres height difference across the
+stratum or the DBH range is unusually wide.
+Native species planted in an intimate mixture would normally be considered ‘variable’. It should be
+noted that the variation within a stratum should be less than the variation between strata. Please
+refer to Section 3 – Stratification in the Carbon Assessment Protocol for further clarification.
+WCC Survey Protocol for projects V2.1.1 April 2024
+5
+Fig 1: Map of Bluebell Woods showing stratification into three strata, with Oak and Mixed
+Broadleaves combined. They are similar yield class, the same spacing, and less than 5% of the net
+woodland creation area.
+WCC Survey Protocol for projects V2.1.1 April 2024
+6
+Table 1: Stratification of Bluebell Woods:
+2. Plot size and shape
+1. Next decide how big your plots should be for each stratum (see Table 2). The aim is to have a
+plot size which includes at least
+i. At year 5: 20 live stems (seedling/sapling) or
+ii. At year 15+: 7 to 20 trees ≥7cm dbh
+2. The number of plots depends upon the spacing of each stratum. Table 2 acts as a guide to the
+likely plot size for a range of planting densities/spacing.
+3. The plot size and shape should not vary across a stratum, so when you get to site, the
+surveyor should ensure that the plot size chosen for a stratum will pick up 20 stems for the
+majority of the plots. If in doubt or you think the stocking density could be less in other areas
+of the stratum, choose a larger plot size which will be suitable across the whole stratum.
+4. Ideally circular plots should be used, as these are less likely to introduce bias, but where the
+plant rows can be clearly seen square plots can be used. Plot shape should remain the same
+within a stratum/sub-area, but can differ between strata/ sub-areas. For example, use a
+circular plot for a native woodland stratum and a square plot for a regularly spaced SS
+stratum.
+5. Plot size and shape can vary between stratum if strata have different planting densities.
+6. When measuring seedlings (at year 5 or year 15+), in situations where there is a relatively
+dense carpet of regeneration (>5000 seedlings per hectare), the above method is likely to be
+unworkable due to the high number of seedlings that would be included in each plot. In such
+situations, reduce the plot radius to 4.0 metres (0.005 hectare) or 1.8 metres (0.001 hectare)
+WCC Survey Protocol for projects V2.1.1 April 2024
+7
+such that there is likely to be a minimum of 20 seedlings per plot. The seedling plot radius
+should remain the same for the whole stratum.
+If the ground to be surveyed is on a significant slope (e.g. over 25 degrees), plot size may need to be
+increased to account for the slope. Please contact the WCC Secretariat for further advice before
+completing your survey (info@woodlandcarboncode.org.uk).
+Table 2: Alternative plot size and area
+Planting density (plants/ha) ≥3967 2000-
+3966
+1006-
+1999
+399-
+1005 200-398
+Spacing (m) ≤1.59 1.60-
+2.24
+2.25-
+3.15
+3.16-
+5.01
+5.02-
+7.07
+Plot area (ha) which gives at least 20
+locations / plot .005 .01 .02 .05 .10
+Circular Plot Radius (m) which gives at least
+20 locations / plot 4.0 5.6 8.0 12.6 17.8
+Square Plot Length (m) which gives at least
+20 locations / plot 7.1 10.0 14.1 22.4 31.6
+3. Plot number and location
+1. Next, decide how many plots should be assessed, based on:
+a. the area of the stratum
+b. the variability of the stratum (See Table 3).
+c. The extent of open ground and whether it is mapped or not.
+Table 3: Indicates the minimum number of sample plots for uniform and variable strata, based
+upon the size of each stratum and whether or not open ground is clearly mapped.
+Net area of
+stratum
+Uniform Stratum
+Variable Stratum –
+OG Mapped
+Variable stratum –
+OG is less than 20%
+and not mapped
+Variable stratum –
+OG is over 20% and
+not mapped
+<0.5ha 4 6 7 8
+0.5-2.0ha 6 8 9 10
+2.0-10.0ha 8 12 14 16
+Over 10.0ha 10 16 19 21
+WCC Survey Protocol for projects V2.1.1 April 2024
+8
+2. Decide where to place the indicated number of plots. The plots should be randomly located
+across the relevant area, not within 5m of the edge of a stand/the woodland. The locations/
+grid refs of each plot location should be recorded before going to the site. This can be done,
+for example, by placing a regular grid across the project area and selecting ‘nodes’ which
+occur within the planted area (See Fig 2), or randomly selecting points spread throughout the
+planted area (See Fig 1).
+3. Enter the details of your stratification into the ‘Planning – Stratification’ tab of the
+Monitoring Report (for Year 5 or 15+).
+Figure 2: Example of plot selection for the Topps Wood project, which was made up of two strata –
+a conifer ‘uniform’ stratum (2-10ha) with 8 plots and a broadleaved ‘variable’ stratum (10ha+) with
+16 plots. In this case, the open ground within the project was clearly mapped.
+4. Survey plan check
+The survey plan must be accepted by your chosen verification body PRIOR to undertaking the
+survey. As a minimum, the following documents should be submitted to your chosen verification body
+in order to get your survey plan check:
+1. WCC Map from validation, plus any update, if for example, you are now able to update with areas
+of open ground.
+2. Carbon Calculation from validation.
+3. At least the ‘Survey Planning’ tab from the Monitoring Report
+4. A plot map which clearly shows how the site is stratified and the location of plots within each
+stratum.
+The verification body could ask you to re-survey if:
+• You do not get your survey plan checked
+• Your survey plan is checked but it was based on incorrect information
+WCC Survey Protocol for projects V2.1.1 April 2024
+9
+• Your survey plan is not implemented according to the plan, or any practical adjustment once
+onsite (for example it would be acceptable to choose to use a larger plot size when onsite if
+stocking density is not as good as planned).
+5. Survey: plot setup and photography
+Template Monitoring Reports are available (See Template Documents). These contain:
+• Template Data Collection Sheets (which can be printed or used on a suitable device)
+• Summary sheet to calculation the stocking density (automated at year 5)
+• Summary sheets to help calculate the carbon stock (semi-automated for year 15)
+Before you head out to survey, make sure your survey plan has been approved by your chosen
+verification body.
+5.0 Equipment you will need:
+• Map of the site with plot locations for each stratum indicated
+• Sufficient blank stratum level data collection sheets (for year 5) or seedling/sapling/tree
+sheets (for year 15+), possibly printed on weather-resistant paper or loaded on a device
+suitable for outdoor use e.g. Toughbook.
+• A Weather Writer or other waterproof clipboard if using paper sheets
+• A pencil or pen with waterproof ink
+• a tape or a cane marked at 0.1m intervals to assess tree height (including 1.3m for dbh
+measurements).
+• a length tape (such as a 20 or 30 m logger’s tape) suitable for laying out sample plots and
+measuring other horizontal distances
+• rope to use to indicate plot radius
+• spray paint or tape to mark central trees or plots
+• Compass and/or GPS device (Garmin, other GPS or smartphone) to help navigate to each plot.
+• Camera/smartphone/smartwatch or GPS device which can record the location/(8-figure) Grid
+Reference of the plot. Smartphone Apps such as ‘OS Locate’ or ‘Grid Reference’ will give the
+current location as 6, 8 or 10-figure grid reference
+• A camera / smartphone camera with location-tagging capability. Most smartphone cameras
+and newer cameras have location-tagging capability and can ‘tag’ a photo with its
+latitude/longitude
+• Painted stakes/canes/pegs to mark the location of plots (Royal blue or white are effective).
+For survey from year 15 onwards, you will also need:
+• a rounded-down girth tape or tree callipers (for measuring tree diameters at breast height)
+• a hypsometer or clinometer (for measuring tree height)
+• Personal Protective Equipment: Helmet with a visor or safety glasses if likely to be surveying
+in dense conifers.
+WCC Survey Protocol for projects V2.1.1 April 2024
+10
+5.1 Boundary and planting maps and ‘whole site’ site photographs
+• BEFORE YOU GO TO SITE: If there are any changes to your project net area or the species
+planted, create a new map to confirm the actual planted area. This should show any changes
+to the boundary, compartments within the site, or change to areas allocated as open ground
+and needs to be submitted as part of your verification documentation. Refer to the latest
+mapping rules.
+• Two things will be useful to help you decide where to locate plots and to confirm the ‘actual’
+vs ‘planned’ net planted area:
+a. Any site maps produced between validation and this survey may help. If any
+boundaries or species planted differ to those given at the time of validation, project
+areas/species should be amended, and a new map should be produced.
+b. From year 15 onwards, access the latest aerial photography (or other remotely
+sensed data) where the planted area is visible and map the actual planted area, and
+update boundaries of the visible ‘net planted area’.
+There are a number of tools available to help with this task, where you will be able to access aerial
+photography including:
+• England’s Map Browser and Land Information Search
+• Scotland’s Land Information Search in Scotland’s Environment Web
+• Natural Resources Wales Interactive Mapper
+• My Forest (You can upload an existing shapefile and overlay it on aerial photography)
+• The Land App (access Bing imagery or Mapbox imagery)
+• MAGIC
+• Scotland’s Environment Web
+• Google Maps or Bing Maps (although aerial photography can be older).
+• WHEN YOU ARE ONSITE: Where it is feasible, check that the boundaries on the ground agree
+with the mapped boundaries shown at validation or the most recent verification. Any areas
+known to be left unplanted, or are now open/without trees for any reason should be
+annotated.
+• ONSITE PHOTOS: Whilst onsite take 2 or 3 photos across the whole site which are
+representative of the general site condition. Ensure to tag the location and note the direction
+in which the photo was taken.
+5.2 Locating plots and plot photographs
+1. Navigate to each plot location in turn, using GPS device/smartphone app or map & compass.
+2. If open ground is mapped, and you find that the target plot location is in or on the edge of a
+mapped ride or other open area, then move the plot up to 10m so that it sits within a planted
+area. Note the change of location on the data collection sheet in the ‘General Comments’ box.
+3. If open ground is not mapped, DO NOT MOVE PLOTS if they occur within an unplanted or low
+density planted area as this will bias results. You will need to complete more plots, with the
+expectation that some of them will fall in more open areas with few or no trees (See Table 2).
+A plot sheet should still be completed if this is the case.
+WCC Survey Protocol for projects V2.1.1 April 2024
+11
+4. Mark with a stake/peg the centre of a circular plot or SW corner of a square plot, even if it
+does not contain any trees (see 3). It is also possible to mark the closest tree to the centre
+with spray paint/tape. If you do this, you should note on the survey sheet the distance and
+direction of the plot centre from the marked tree.
+5. For each plot, stand at the stake/peg (centre of a circular plot or SW corner of a square plot)
+and take a photograph.
+a. Ensure location-tagging is enabled so the lat/long of the photo is embedded within
+the ‘details’ of the image. This is possible with smartphones and newer digital
+cameras.
+b. Record the time (to aid with photo-to-plot matching) and the direction in which
+photograph was taken. It may be feasible to take all photographs facing the same
+direction (eg all to the North). Consider also making the plot sheet visible in the very
+corner of the image so there is a record of the plot number on the photo.
+6. If you have not recorded the location of the plot via photo location-tag, record at least an 8-fig
+Grid Reference using a GPS device (Garmin or other) or suitable smartphone app.
+7. Use measuring tape/rope and spray paint to locate and mark the boundary of the plot, or use
+measured rope as a ‘spoke’ to identify radius as you work your way round the plot. A
+retractable dog-lead marked with standard radius options is an option.
+WCC Survey Protocol for projects V2.1.1 April 2024
+12
+6. Year 5 Survey: Stocking density and tree health
+BEFORE YOU GO TO SITE: Adding certain information about each stratum to the relevant ‘Stratum
+Summary Sheet’ will update all the ‘Plot Sheets’ for the information that is the same across the
+stratum (see the WCC Year 5 Monitoring Report). It will also pre-populate the likely species list that
+you will be monitoring at each plot.
+6.1 Stocking density
+1. Within each sample plot, count and record the number of both live and dead
+seedlings/saplings of each species.
+2. Note the number of live trees damaged.
+3. Specify the main reasons for damaged or dead trees in the plot. E.g. due to: Deer Browsing,
+Deer fraying, Sheep/Goat browsing, Vole, Rabbit, Weevil or other pest damage, Human or
+other damage or disease.
+6.2 Tree growth and health
+Tree growth
+Assess the overall growth of the seedlings/saplings by assessing within each plot:
+1. Number of seedlings/saplings with:
+• Poor leader growth (last year’s leader growth is less than the average to date)
+• Multiple stems
+• Poor leaf/needle size
+• Poor lead/needle retention
+2. Estimate the height of each live tree:
+• to the nearest 0.1m below 1m (e.g. 0.6m, 0.7m, 0.8m, 0.9m and 1.0m) and
+• to the nearest 0.5m above 1.0m (e.g. 1.5 and 2.0).
+If tree shelters are used and the height of shelters is known, this is a helpful guide. A cane painted in
+0.1m intervals is also a useful tool to help gauge height.
+3. Add any observations/ reasons for poor growth in the ‘General Comments’ box at the bottom of the
+plot sheet.
+Tree health
+Assess the overall health of the seedlings/saplings by assessing within each plot:
+1. Number of seedlings/saplings with:
+• Poor foliage colour or needle/leaf size
+• Poor needle or leaf retention
+2. Number of seedlings/saplings suppressed by weeds
+WCC Survey Protocol for projects V2.1.1 April 2024
+13
+3. Specify the main weeds which are a problem within the plot E.g.: Heather, Thistle, Bramble,
+Willowherb, Nettle, Juncus/Rushes, Bracken, Gorse/Broom, Rhododendron, Grass.
+4. Add any observations/ reasons for poor health or vigour in the ‘General Comments’ box at the
+bottom of the plot sheet.
+Example 1: Recording Tree Growth and Health
+6.4 Tree protection
+For each stratum as a whole, on the ‘stratum summary sheet’, note the presence or condition of:
+1. Tree Shelters/Individual tree protection –
+▪ Presence (Yes/No)
+▪ Condition
+• Good – all shelters in good condition
+• Average – some missing or damaged but majority intact
+• Poor – majority missing, not installed correctly or damaged
+• Outgrown – Shelters need removing
+2. Fencing –
+• Presence (Yes/No)
+• Condition
+• Good – Fencing in perfect condition
+• Poor – Requiring attention (Specify detail)
+3. General comments – Please add any other comments relating to the ground preparation, health of
+trees, reasons for understocking, lack of vigour, foliage colour etc.
+Example 2: Recording Tree shelter, fencing and other general comments for the stratum.
+WCC Survey Protocol for projects V2.1.1 April 2024
+14
+7. Year 5: Overall stocking density and tree health
+The WCC Year 5 Monitoring Report will automatically carry out further calculations if data is entered
+into each ‘Plot Survey Sheet’. You can enter data into the data sheets in the field if you have a suitable
+device or back in the office if you take paper sheets to site.
+• You will need one Monitoring Report per Stratum.
+• Basic Information such as Project Name, ID, stratum number and net area, number of plots
+should be entered into the Stratum Summary Sheet and will copy across to each Plot sheet.
+• The Stratum Summary Sheet automatically updates and calculates the stocking density.
+• Do not forget to add any general comments about each plot in terms of ground prep, health of
+trees, reasons for understocking or lack of vigour or foliage colour etc. There is also a space in
+the Stratum Summary Sheet for general comments which apply to the whole stratum.
+7.1 Results for each stratum:
+The Stratum Summary Sheet of the WCC Year 5 Monitoring Report gives the following results:
+• Actual planting density compared to planned is given in Cells AA2-AE5 (Top Right). The
+metrics shown give an idea of how variable the stocking density across the site as well as
+giving the overall stocking density. If the overall actual stocking density is less than 90% of the
+planned stocking density you will be asked to provide a remedial plan. Your project will be
+classed as Amber or Red depending on the severity of the shortfall.
+% plots 10% over planting density 85.0%
+% plots at planned planting density 95.0%
+% plots within 10% of planting density 100.0%
+Overall actual vs planned planting density 95.0%
+• The difference between the planned and actual species mix is given in cells B36-Q39. This is
+helpful to understand if the carbon prediction is representative of the actual mix.
+Actual Species Mix (%) 55% 18% 27% 10% 100%
+Planned Species Mix
+(%) 50% 20% 20% 10% 100%
+Planned species area
+(ha) 5.0 2.0 2.0 1.0 10.0
+Difference (% point) +5% -2% +7% 0% 0%
+• Growth and health: Summary statistics for trees damaged or dead with the reason, tree
+growth and health metrics as well as any issues with weed suppression are also summarised
+to give a general picture of the health of the site and to identify any potential issues that need
+to be addressed.
+• Tree Protection: (in terms of fencing or tree shelters) is also given to help identify any issues
+and help with ongoing management.
+• General Comments: should be entered if there are any specific issues onsite
+WCC Survey Protocol for projects V2.1.1 April 2024
+15
+7.2 Summary of calculations
+This section summarises the calculations which are made in the Stratum Summary Sheet of the WCC
+Year 5 Monitoring Report.
+7.2.1 Stocking density
+1. For each stratum, separately by species, estimate the number of seedlings/saplings of each
+species per hectare by adding together the total number of seedlings sampled and dividing by
+the total area of all the sample plots used.
+2. For each stratum, estimate the total seedling/sapling per hectare count by summing the
+seedling/sapling per hectare figure for each species.
+7.2.2 Compare predicted and actual stocking density
+For each stratum, compare the predicted stocking density (as per the Project Design Document) with
+the actual stocking density as indicated by the survey results.
+Provided there are < 10% evenly distributed losses, it will not normally be necessary to intervene as
+this is considered an acceptable minimum for beating up, but remember that the distribution of these
+losses is just as important. Losses confined to a particular area leaving a ‘gap’ should be beaten up.
+Provided the actual stocking density is at least 90% of the planned stocking density, we will assume
+that the carbon sequestration of the project at year 5 is as predicted, and there is no under- or overdelivery at this stage. If the overall actual stocking density is less than 90% of the planned stocking
+density you will be asked to provide a remedial plan. Your project will be classed as Amber or Red
+depending on the severity of the shortfall.
+7.2.3 Tree growth
+For leader growth and multiple stems
+For each stratum, calculate the number of seedlings/saplings per hectare exhibiting poor growth by
+adding together the total number of seedlings sampled exhibiting poor leader growth or multiple
+stems and dividing by the total area of all the sample plots used.
+Tree height
+For each stratum, separately by species, calculate the average height of the sampled
+seedlings/saplings.
+7.2.4 Tree health
+For each stratum, calculate the number of seedlings/saplings per hectare exhibiting each health
+indicator (foliage colour, foliage size, browsing or fraying damage, weed competition) by adding
+together the total number of seedlings/saplings sampled exhibiting that indicator and dividing by the
+total area of all the sample plots used.
+WCC Survey Protocol for projects V2.1.1 April 2024
+16
+8. Year 15+ Survey: Measuring trees from year 15 onwards
+Sample trees are allocated to either the seedlings, saplings or trees. Each category should be sampled
+separately according to the methods below, and subsequent calculations carried out as specified in
+Section 8. The plot-based results are used to derive per hectare values for each tree category which
+are then scaled up to the net size of the stratum.
+This guide describes how to monitor broadleaves and conifers according to methods B (broadleaves)
+and C (conifers) from the Carbon Assessment Protocol.
+BEFORE YOU GO TO SITE:
+There are a few things to plan before you go to site. The main consideration is how many species are
+likely to be present in the stratum and how you will ‘group’ these when you survey.
+Each ‘major’ species is assessed separately within each plot, but where a species constitutes less than
+10% of the total tree numbers, this should be treated as a “minor species” and grouped with the most
+similar alternative species present in the woodland as follows:1
+1. Try to group minor species with the largest principal species component by genus. For
+example, group pines together, group spruces together, group oaks together etc.
+2. If (1) fails, try to group minor species with the largest principal species component by the
+following genus groups:
+a. Pines, larches
+b. Spruces, coast redwood, Wellingtonia (giant sequoia), Douglas fir, firs
+c. Western red cedar, Western hemlock, cypresses
+d. Oak, ash, beech, alder, elm, hornbeam, nothofagus, chestnut
+e. Birch, cherry, poplars, maples/sycamore, hazel.
+3. If Step 2 fails, group minor species with the largest principal species component by
+phylum/type:
+a. Conifers with conifers
+b. Broadleaves with broadleaves.
+The Tab ‘Planning – StratumX _Species’ in the WCC Year 15+ Monitoring Report provides space to look
+at your species mix and decide how to group your species.
+At each plot you will need a ‘seedlings,’ a ‘saplings’ sheet plus a ‘tree’ sheet for each species/ species
+group.
+8.1 Seedlings
+At each sampling point, count and record the number of living seedlings of both conifer and
+broadleaves within a 5.6 metre radius (0.01 hectare) sample plot. Note the main conifer or broadleaf
+species in each plot. Using a ruler, estimate and record the height (in centimetres, to the nearest
+10cm) of the 3 conifer and 3 broadleaf seedlings closest to the centre of each plot. Where there are
+fewer than 3 conifer or 3 broadleaf seedlings, the heights of all should be measured.
+1 OGB 9 (Managing) Thinning and “Stand tariff from top height” in Table A7.1 in Forest Mensuration (2006).
+WCC Survey Protocol for projects V2.1.1 April 2024
+17
+Example 3: Seedling count and height:
+8.2 Saplings
+At each sampling point, count and record the number of living conifer and broadleaf saplings within a
+5.6 metre radius (0.01 hectare) sample plot. Measure and record the heights of the 3 conifer and 3
+broadleaf saplings closest to the centre of each plot (to the nearest 0.1m). Note the main
+conifer/broadleaf species in the plot. Where there are fewer than 3 conifer or 3 broadleaf saplings,
+the heights of all should be measured.
+Example 4: Sapling count and height:
+8.3 Trees
+This is the default method for assessing strata containing broadleaved or conifer trees or a mixture of
+species. DBH and height should be measured by species - where a species constitutes less than 10% of
+the total tree numbers, this should be treated as a “minor species” and grouped with the most similar
+alternative present in the woodland.
+1. Within each plot, measure and record by species/species group the dbh of every living tree where
+this is 7 centimetres or greater.
+WCC Survey Protocol for projects V2.1.1 April 2024
+18
+Example 5: Recording Diameter at Breast Height
+2. Identify the two trees of each species/species group nearest to the plot centre; these will be your
+height sample trees (if species are grouped, these should be two trees of the ‘main’ species).
+3. Measure and record dbh and the height of the two sample trees of each species.
+• For broadleaves, measure the timber height (the distance from the base of the tree to the
+lowest point on the main stem where the diameter is at least 7cm. This point may be the
+‘spring of the crown’ – the lowest point at which no main stem is distinguishable).
+• For conifers, measure the total height (the distance from the base of the tree to the
+uppermost point/tip)
+The height of young trees can be measured with graduated poles. Larger trees should be measured
+with a manual or electronic hypsometer or clinometer, following the instructions supplied with the
+instrument. Each tree should ideally be measured from opposite sites perpendicular to any lean, and
+the two measurements averaged. The distance from the tree to the observation point should be 1 to
+1.5 times the height of the tree. Accurate use of hypsometers of clinometers requires training,
+checking and practice.
+WCC Survey Protocol for projects V2.1.1 April 2024
+19
+Example 6: Recording Tree height data
+8.4 Tree growth and health
+For the plot as a whole note any concerns or issues with tree health noting the species and number of
+trees affected. This could include leader growth or multi-stemmed trees, foliage health, browsing or
+other pests/diseases, weeds or windblow.
+8.5 Tree protection
+For the stratum as a whole, note any observations about tree protection (either state of fencing or
+tree guards).
+Example 7: Recording any general information on Tree growth/health and protection
+WCC Survey Protocol for projects V2.1.1 April 2024
+20
+9 Year 15+: Overall carbon stock and tree health
+9.1 Using the Monitoring Report to calculate carbon stock and compare to
+prediction:
+The WCC Year 15+ Monitoring Report will semi-automatically carry out further calculations if data is
+entered into the relevant sheet. You can enter data direct into the data sheets in the field if you have
+a suitable device or back in the office if you take paper sheets to site.
+• You will need one Monitoring Report per Stratum.
+• The Stratum_Species sheet will help you to identify the species groups you will use to survey.
+It also has a space to note the Grid reference of each plot that you survey.
+• You need one Seedling and Sapling sheet for each stratum and one Tree Species sheet per
+Species Group in the stratum. Once you enter the relevant details into these sheets, the
+carbon content of that element will be automatically calculated.
+• The Project Total Carbon Sheet provides a space to add together all the elements of each
+stratum across your project (e.g. the seedlings, saplings and tree species across each stratum
+in the project).
+Example 8: Summarising the elements of each stratum across the project
+• The Project Total Carbon sheet also provides a space to compare your actual survey result
+with the predicted carbon sequestration at that point in time. On first use, you will need to
+copy and paste information from the validated WCC Carbon Calculator used at validation into
+the sheet to make the comparison. This allows us to adjust for any elements considered in the
+original prediction (e.g. emissions from establishment, baseline and leakage estimates and soil
+carbon losses/sequestration). It also allows us to allocate 20% of the actual sequestered
+carbon to the WCC Buffer.
+• The Project Total Carbon sheet also provides a space to state the predicted and actual Pending
+Issuance Units for the given vintage. Once completed, this information needs to be copied
+back into your Project Progress Report.
+Seedling, Sapling or Tree species in the stratum Tree species group
+Stratum 1 -
+tCO2e
+Stratum 2 -
+tCO2e
+Stratum 3 -
+tCO2e
+Stratum 4 -
+tCO2e
+Total CO2e
+Seedlings 0.0 0.0 0.0 0.0 0
+Saplings 0.0 0.0 0.0 0.0 0
+Tree species 1 [insert species name] 0.0 0.0 0.0 0.0 0
+Tree species 3 [insert species name] 0.0 0.0 0.0 0.0 0
+Tree species 4 [insert species name] 0.0 0.0 0.0 0.0 0
+Tree species 5 [insert species name] 0.0 0.0 0.0 0.0 0
+Total CO2 sequestered to date 0 0 0 0 0
+WCC Survey Protocol for projects V2.1.1 April 2024
+21
+Example 9: Planned and actual units delivered within the vintage under assessment
+Vintage Start Date: 1/4/2015 Vintage End
+Date: 1/4/2020
+Total Units in
+vintage (tCO2e)
+Units to
+Buffer
+(tCO2e)
+Units to
+Project
+(tCO2e)
+Predicted Units (PIUs) in
+Vintage being assessed 100 20 80
+Actual Units (WCUs) in
+Vintage being assessed 120 24 96
+PIUs to be cancelled
+Extra WCUs to be issued 20 4 16
+9.2 Summary of calculations
+This section summarises the calculations which are made in the WCC Year 15+ Monitoring Report. For
+more information refer to the Carbon Assessment Protocol Methods B and C.
+Seedlings
+For the conifer and broadleaved seedlings, calculate the average height of seedlings in the stratum
+and lookup the carbon content using the relevant table. Convert carbon to carbon dioxide. Sum the
+conifer and broadleaved seedlings.
+Saplings
+For conifer and broadleaved saplings, calculate the average height. This will be our estimate of height
+of the representative sapling of each species. Lookup the carbon content using the relevant table.
+Convert carbon to carbon dioxide. Sum the conifer and broadleaved saplings.
+Trees
+We need to estimate the biomass in the stem, crown and roots and then sum these components and
+convert mass to tonnes of carbon dioxide equivalent.
+1. For the stratum by species/species group (if grouped), estimate the total number of trees in the
+stratum.
+2. For the stratum by species/species group, calculate the quadratic mean dbh and mean basal area.
+These will be used in subsequent calculations.
+3. For each height sample tree of each species/species group, find the appropriate Tariff Number. The
+equation varies by species, within conifers and broadleaves.
+4. For the stratum by species/species group, calculate the mean merchantable tree volume and the
+mean total stem volume and multiply by the number of trees to get the total stem volume in the
+stratum, by species/species group.
+WCC Survey Protocol for projects V2.1.1 April 2024
+22
+5. For the stratum by species/species group, estimate the total biomass content of the tree stem,
+crown and root components; Equations are different for conifers and broadleaves, within groupings of
+species.
+6. For the stratum by species/species group, estimate the total biomass in the stratum by summing
+the stem, crown and root biomass components.
+7. Add together the total biomass of each stratum to get the total biomass of the trees and then
+convert the total biomass to total carbon dioxide equivalent.
+8. Add together the carbon dioxide equivalent content of the seedlings, saplings and each trees
+species group to arrive at a ‘total above and below ground biomass carbon dioxide’ figure. In the
+Project Total Carbon tab.
+8. Compare with your carbon prediction and take account of the emissions from soil carbon,
+emissions from establishment, clearfell to come up with an adjusted carbon stock.
+9. Compare the actual carbon stock with the value at the last verification to work out the amount
+sequestered in the current vintage. Complete the ‘Planned and actual units delivered within vintage
+under assessment’ table and copy this back into your Project Progress Report.

@@ -69,24 +69,20 @@ test_that("ctoco2e errors on negative input", {
 
 # ==== crownbiomass tests ====
 
-test_that("crownbiomass returns list with biomass", {
-  # Using a known species code
-  result <- crownbiomass("OK", dbh = 30)
+test_that("crownbiomass returns numeric without re_d", {
+  result <- crownbiomass("CBOK", dbh = 30)
 
-  expect_type(result, "list")
+  expect_type(result, "double")
+  expect_true(all(result > 0, na.rm = TRUE))
+})
+
+test_that("crownbiomass returns data.frame with biomass and sigma when re_d provided", {
+  result <- crownbiomass("CBOK", dbh = 30, re_d = 0.05)
+
+  expect_s3_class(result, "data.frame")
   expect_true("biomass" %in% names(result))
-})
-
-test_that("crownbiomass biomass is positive", {
-  result <- crownbiomass("OK", dbh = 30)
-
-  expect_true(all(result$biomass > 0, na.rm = TRUE))
-})
-
-test_that("crownbiomass returns sigma when re_d provided", {
-  result <- crownbiomass("OK", dbh = 30, re_d = 0.05)
-
   expect_true("sigma" %in% names(result))
+  expect_true(all(result$biomass > 0, na.rm = TRUE))
 })
 
 test_that("crownbiomass warns for dbh < 7", {
@@ -101,27 +97,24 @@ test_that("crownbiomass errors on mismatched lengths", {
 
 # ==== rootbiomass tests ====
 
-test_that("rootbiomass returns list with rootbiomass", {
-  result <- rootbiomass("OK", dbh = 30)
+test_that("rootbiomass returns numeric without re_dbh", {
+  result <- rootbiomass("RBRAR", dbh = 30)
 
-  expect_type(result, "list")
-  expect_true("rootbiomass" %in% names(result))
+  expect_type(result, "double")
+  expect_true(all(result > 0, na.rm = TRUE))
 })
 
-test_that("rootbiomass is positive", {
-  result <- rootbiomass("OK", dbh = 30)
+test_that("rootbiomass returns data.frame with rootbiomass and sigma when re_dbh provided", {
+  result <- rootbiomass("RBRAR", dbh = 30, re_dbh = 0.05)
 
+  expect_s3_class(result, "data.frame")
+  expect_true("rootbiomass" %in% names(result))
+  expect_true("sigma" %in% names(result))
   expect_true(all(result$rootbiomass > 0, na.rm = TRUE))
 })
 
-test_that("rootbiomass returns sigma when re_dbh provided", {
-  result <- rootbiomass("OK", dbh = 30, re_dbh = 0.05)
-
-  expect_true("sigma" %in% names(result))
-})
-
 test_that("rootbiomass errors on mismatched lengths", {
-  expect_error(rootbiomass(c("OK", "BE"), dbh = 30),
+  expect_error(rootbiomass(c("RBRAR", "RBRAR"), dbh = 30),
                "same")
 })
 

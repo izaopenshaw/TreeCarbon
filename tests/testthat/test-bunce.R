@@ -49,7 +49,7 @@ test_that("Bunce rich_output returns allometry_result object", {
   expect_s3_class(result, "allometry_result")
   expect_true("value" %in% names(result))
   expect_true("method" %in% names(result))
-  expect_true("citation" %in% names(result))
+  expect_true("reference" %in% names(result))
   expect_true("assumptions" %in% names(result))
   expect_equal(result$method, "Bunce")
 })
@@ -60,7 +60,7 @@ test_that("Bunce rich_output contains all required metadata fields", {
   # Required metadata fields
   expect_true("value" %in% names(result))
   expect_true("method" %in% names(result))
-  expect_true("citation" %in% names(result))
+  expect_true("reference" %in% names(result))
   expect_true("assumptions" %in% names(result))
   expect_true("validity_warnings" %in% names(result))
   expect_true("flags" %in% names(result))
@@ -100,8 +100,8 @@ test_that("Bunce errors on mismatched lengths", {
 # ==== Edge cases ====
 
 test_that("Bunce handles unknown species with fallback coefficients", {
-  # Unknown species should use generic broadleaf coefficients
-  result <- Bunce("UnknownSpecies123", 30)
+  # Unknown species should use generic broadleaf coefficients (lookup warns)
+  result <- suppressWarnings(Bunce("UnknownSpecies123", 30))
 
   expect_false(is.na(result$biomass))
   expect_true(result$biomass > 0)

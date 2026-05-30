@@ -15,9 +15,8 @@ df_raw <- read.csv("inst/paper_scripts/wakehurst_agb_2.csv", stringsAsFactors = 
 # Check species names
 # table(df_raw$name)
 
-# build dataframe
-df <- data.frame(
-  Genus = df_raw$genus,
+# ============== build dataframe 1 ==============
+df <- data.frame(Genus = df_raw$genus,
   Species = df_raw$species,
   family = df_raw$family,
   Habitat = df_raw$Habitat,
@@ -65,6 +64,7 @@ df <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# ============== build dataframe 2 ==============
 df <- data.frame(
   Genus = df_raw$genus,
   Species = df_raw$species,
@@ -72,7 +72,9 @@ df <- data.frame(
   Habitat = df_raw$Habitat,
   Plot = df_raw$Plot,
   Classification = df_raw$classification,
-  DBH = df_raw$dbh,
+  x_m = df_raw$x_m,
+  y_m = df_raw$y_m,
+  DBH_qsm = df_raw$DBHqsm_100,
   DBH_Manual = df_raw$dbh_manual,
   girth_manual = df_raw$girth_manual,
   Height = df_raw$TreeHeight,
@@ -85,14 +87,15 @@ df <- data.frame(
   cf = df_raw$cf,
   agc = df_raw$agc,
   agc_manual = df_raw$agc_manual,
-  tariff = df_raw$tariff,
-  stembiomass_t = df_raw$stembiomass_t,
-  rootbiomass_t = df_raw$rootbiomass_t,
   stringsAsFactors = FALSE
 )
 
+df$DBH <- df$DBH_qsm * 100
+
+#df$DBH <- df$DBH_qsm
+
 # Filter: DBH >= 10 cm (0.1 m equivalent) & remove NA
-# df <- df[!is.na(df$DBH) & df$DBH >= 10, ]
+df <- df[df$DBH >= 7, ]
 
 df$Habitat <- as.factor(as.character(df$Habitat))
 df$Species <- as.factor(df$Species)
@@ -104,7 +107,7 @@ plot_areas <- read.csv("SSSI_Plot_Areas.csv")
 plot_areas$perimeter <- 4*sqrt(plot_areas$plot_area_m.2)
 
 # Plot area
-plots <- c(5,6,8:12,16,17)
+plots <- c(5,6,8:11)
 
 habitat_areas <- data.frame(
   Habitat = c("broadleaf", "conifer", "coppice"),

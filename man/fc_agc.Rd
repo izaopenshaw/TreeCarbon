@@ -10,6 +10,7 @@ fc_agc(
   height,
   height_timber = NULL,
   timber_ratio = 0.85,
+  tariff = NULL,
   type = NULL,
   method = "Matthews2",
   biome = "temperate",
@@ -19,12 +20,14 @@ fc_agc(
 )
 }
 \arguments{
-\item{name}{species name, either binomial or common}
+\item{name}{species name, either binomial or common. A single value is recycled when
+\code{dbh} and \code{height} are vectors (same species, one row per tree).}
 
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
-for WCC protocol compliance.}
+for WCC protocol compliance. Not required when \code{tariff} is provided (e.g. for QMD + mean
+tariff stand-level use).}
 
 \item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
 for broadleaf species. If not provided, will be estimated using \code{timber_ratio}.}
@@ -33,7 +36,13 @@ for broadleaf species. If not provided, will be estimated using \code{timber_rat
 is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
 to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
 
-\item{type}{either 'broadleaf' or 'conifer'}
+\item{tariff}{optional pre-computed tariff number. When provided, skips internal tariff
+calculation from height. Use for stand-level estimates with QMD + mean tariff from height
+sample trees. Scalar or same length as \code{dbh}. When provided, \code{height} is not
+required for trees with dbh >= 7 cm.}
+
+\item{type}{either 'broadleaf' or 'conifer'. A single value is recycled when
+\code{dbh} and \code{height} are vectors.}
 
 \item{method}{method of converting biomass to carbon. Default \code{"Matthews2"}
 (recommended for WCC; Matthews 1993). Also: \code{"Thomas"}, \code{"IPCC2"}.}
@@ -67,11 +76,34 @@ including method metadata, assumptions, validity warnings, and uncertainty
 \item making limitations and assumptions "impossible to miss".
 }
 }
+\details{
+\strong{When to use \code{fc_agc}:}
+\itemize{
+\item Individual tree carbon estimates (one or more DBH/height pairs)
+\item Full tree inventory with per-tree carbon
+\item QMD + mean tariff from height sample trees (provide \code{tariff})
+}
+
+\strong{When NOT to use \code{fc_agc}:}
+\itemize{
+\item Stand-level carbon from plot/stand DBH and height samples without
+pre-computed tariff \eqn{\rightarrow} use \code{\link{fc_stand_carbon}} or
+\code{\link{fc_method_e_carbon}}
+\item You have top height and mean DBH and want Method D workflow \eqn{\rightarrow}
+use \code{\link{fc_stand_carbon}}
+}
+}
 \examples{
+# Single tree
+fc_agc("Oak", dbh = 45, height = 18, type = "broadleaf", output.all = FALSE)
+
 fc_agc('Quercus robur', dbh=74, height=24, output.all = FALSE)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc('beech', 72, 24, nsg = wd$meanWD)
+
+# QMD + mean tariff (stand-level approximation)
+fc_agc("Sitka Spruce", dbh = 28, tariff = 22, type = "conifer", output.all = FALSE)
 
 # Rich output with metadata
 result <- fc_agc('Oak', dbh=50, height=20, rich_output = TRUE)
@@ -80,6 +112,10 @@ print(result)
 \references{
 Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018).
+}
+\seealso{
+\code{\link{fc_stand_carbon}} (Methods A-D), \code{\link{fc_method_e_carbon}} (Method E),
+\code{\link{fc_agc_error}} (with uncertainty propagation).
 }
 \author{
 Justin Moat. J.Moat@kew.org, Isabel Openshaw I.Openshaw@kew.org

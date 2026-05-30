@@ -178,6 +178,7 @@ tariff_vol_area <- function(vol, dbh, sig_vol = NULL, re_dbh = 0.025, re = 0.025
   if (!is.numeric(vol) || any(vol < 0, na.rm = TRUE)) {
     stop("vol must be non-negative and numeric")
   }
+  dbh <- floor(dbh)
 
   # Set constants
   coef_a1 <- 3.174106384
@@ -259,6 +260,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
   if (!(length(spcode) == length(height) && length(height) == length(dbh))) {
     stop("Input vectors for spcode, height & dbh must have the same length.")
   }
+  dbh <- floor(dbh)
 
   # Lookup coefficients for tariff equation by spcode in tariff_coniferdf
   lookup_index <- match(spcode, tariff_coniferdf$abbreviation)
@@ -287,9 +289,8 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
   }
 
   # Calculate conifer tariff number using coefficients stored in tc
-  # FC_WCC Protocol: "Round this to the nearest whole number" (Method C, Section 4.1.4)
-  tariff_raw <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
-  tariff <- round(tariff_raw)
+  tariff <- tc$a1 + (tc$a2 * height) + (tc$a3 * dbh)
+  # tariff <- round(tariff_raw)
 
   # If re_h is specified and not null, then calculate the error
   if(!is.null(re_h)){
@@ -300,7 +301,7 @@ conifer_tariff <- function(spcode, height, dbh, re_h = NULL, re_dbh = 0.05, re =
     if (re_dbh > 1 || re_dbh > 1 || re_h > 1 || re_h > 1)
       warning("Relative errors indicate high uncertainty to measured value")
 
-    # Propagate the error using error_product formula (sigma based on raw tariff)
+    # Propagate the error using error_product formula
     sigma <- sqrt(
       (tc$a1 * re)^2 +
         error_product(tc$a2, tc$a2 * re, height, re_h * height) +
@@ -351,6 +352,7 @@ broadleaf_tariff <- function(spcode, height_timber, dbh, re_dbh = NULL, re_h = 0
   if (!(length(spcode) == length(height_timber) && length(height_timber) == length(dbh))) {
     stop("Input vectors for spcode, height_timber & dbh must have the same length.")
   }
+  dbh <- floor(dbh)
 
   # Lookup coefficients for tariff equation by spcode in tariff_broaddf
   lookup_index <- match(spcode, tariff_broaddf$abbreviation)
@@ -381,8 +383,8 @@ broadleaf_tariff <- function(spcode, height_timber, dbh, re_dbh = NULL, re_h = 0
   # Calculate tariff number using coefficients stored in tb
   # Note: Uses timber height (height to first branch) as per WCC protocol
   # FC_WCC Protocol: "Round this to the nearest whole number" (Method B, Section 4.1.4)
-  tariff_raw <- tb$a1 + (tb$a2 * height_timber) + (tb$a3 * dbh) + (tb$a4 * dbh * height_timber)
-  tariff <- round(tariff_raw)
+  tariff <- tb$a1 + (tb$a2 * height_timber) + (tb$a3 * dbh) + (tb$a4 * dbh * height_timber)
+  # tariff <- round(tariff_raw)
 
   # If re_h is specified and not null, then calculate the error
   if (!is.null(re_dbh)) {
@@ -612,6 +614,7 @@ calculate_top_height <- function(dbh, height, area_ha = NULL, re_h = NULL, n_tre
   if (!is.numeric(n_trees) || n_trees <= 0) {
     stop("n_trees must be numeric and positive")
   }
+  dbh <- floor(dbh)
 
   # Remove invalid values (NA, zero, or negative)
   valid_idx <- !is.na(dbh) & !is.na(height) & dbh > 0 & height > 0
@@ -746,6 +749,7 @@ tariffs <- function(spcode, height, dbh, type = NULL,
   if (length(spcode) != n || length(dbh) != n) {
     stop("Input vectors (spcode, height, dbh) must have the same length.")
   }
+  dbh <- floor(dbh)
   if (!is.null(height_timber)) {
     if (!is.numeric(height_timber)) stop("height_timber must be numeric (may contain NA)")
     if (length(height_timber) == 1L) height_timber <- rep(height_timber, n)
@@ -876,6 +880,7 @@ merchtreevol <- function(dbh, tariff, re_dbh = 0.05, sig_tariff = NULL, re = 0.0
   if( !is.numeric(dbh) || any(dbh < 0, na.rm = TRUE)){
     warning("dbh must be numeric and positive")
   }
+  dbh <- floor(dbh)
 
   # Constants
   k1 <- 0.315049301
@@ -1057,6 +1062,7 @@ crownbiomass <- function(spcode, dbh, re_d = NULL, re = 0.025) {
   if (any(dbh < 7, na.rm = TRUE)) {
     warning("Equation is only specified for dbh >= 7")
   }
+  dbh <- floor(dbh)
   if (!is.null(re_d) && (is.na(re_d) || !is.numeric(re_d) || re_d < 0)) {
     stop("Argument 're_d' must be a positive numeric")
   }
@@ -1138,6 +1144,7 @@ rootbiomass <- function(spcode, dbh, re_dbh = NULL, re = 0.025) {
   if (!is.numeric(re) || re < 0) {
     stop("Argument 're' must be numeric and non-negative")
   }
+  dbh <- floor(dbh)
 
   # Vectorized lookup for species codes
   match_idx <- match(spcode, root_biomassdf$Code)

@@ -1,0 +1,192 @@
+ print(sprintf("Calculated carbon for %d trees", nrow(results)))
+[1] "Calculated carbon for 2173 trees"
+
+print(cv_summary, row.names = FALSE)
+              Metric        Value
+             Mean CV        54.3%
+           Median CV        32.5%
+              Min CV         4.1%
+              Max CV       200.0%
+ Trees with CV > 30% 1194 (54.9%)
+
+print(base_case_info)
+             Item         Value
+1         Species Quercus robur
+2        DBH (cm)            50
+3      Height (m)            20
+4 Carbon (tonnes)        0.7002
+
+print(elasticity_summary)
+         input elasticity
+1          DBH  1.9802659
+2       Height  0.6777784
+3 Wood Density  0.0000000
+> 
+
+print(fig1a) is a left hand side skewed normal shape hist with the median sitting to the right hand side of the peak of the bell curve. there are many outliers sitting around 200 
+
+summary(results$method_cv)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  4.125  21.625  32.543  54.314  49.239 199.997 
+
+sum(results$method_cv > 180)
+[1] 292
+
+table(results$genus[results$method_cv > 180])
+
+ Betula Corylus    Ilex   Picea 
+      1     279       4       8 
+
+outliers <- results[results$method_cv > 180,]
+> summary(outliers$dbh)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.500   3.102   4.675   4.314   5.849   6.994 
+> summary(outliers$height)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.283   3.467   4.866   4.927   6.185   9.923 
+
+
+WCC Input Sensitivity: Spider Plot
+- dbh steepest. height flater, just below 1:1 line, WD along x axis. 
+
+
+ print(cf_results)
+  method    carbon pct_diff
+1  IPCC2 0.7001838 0.000000
+2 Thomas 0.7118535 1.666667
+> 
+
+"Carbon fraction range: 1.7%"
+
+print(height_elasticity)
+  method height_elasticity
+1    WCC         0.6984739
+> 
+print(cv_by_size)
+  dbh_class  mean_cv median_cv    n
+1      0-20 76.38500  35.92106 1093
+2     20-40 33.76952  31.14724  653
+3     40-60 34.30349  32.06611  235
+4     60-80 21.47150  17.09609  140
+5    80-100 24.20329  22.90159   34
+6      100+ 32.99022  32.31935   18
+
+
+fig3: largest box is the 0-20 by far. all other boxes stay within 20-50 between CV% whereas 0-20 goes from 30-190 (all approx. figures)
+
+
+ print(propagation_results)
+  scenario dbh_error height_error carbon_error_from_dbh carbon_error_from_height
+1  Precise         1            5              1.980266                 3.388892
+2  Typical         3           10              5.940798                 6.777784
+3     Poor         5           20              9.901329                13.555567
+  total_measurement_error method_choice_error
+1                3.925053            32.54258
+2                9.012848            32.54258
+3               16.786594            32.54258
+> 
+
+print(key_insight)
+                 Metric Value
+1 Max measurement error 16.8%
+2      Method choice CV 32.5%
+
+print(danger_summary)
+                 Metric    Value
+1 Danger zone threshold CV > 40%
+2  Trees in danger zone      795
+3      Percent of total    36.6%
+
+print(danger_chars)
++ }
+                     Metric      Value
+1    Mean DBH (danger zone)    19.1 cm
+2        Mean DBH (overall)    26.0 cm
+3 Mean Height (danger zone)      5.8 m
+4     Mean Height (overall)     11.0 m
+5  DBH range in danger zone 0 - 124 cm
+
+fig5: very red for bottom left hand corner where small H and DBH. rest looks to be below 50.
+
+
+print(cv_by_habitat)
+    Habitat method_cv.mean method_cv.median method_cv.n
+1 broadleaf       45.02972         28.55372   362.00000
+2   conifer       36.37251         29.24718   432.00000
+3   coppice       62.37178         34.92642  1379.00000
+
+print(summary_table, row.names = FALSE, right = FALSE)
+ Finding                               Value                                  
+ Method choice uncertainty (median CV) 32.5%                                  
+ Method choice uncertainty (max CV)    200.0%                                 
+ DBH elasticity                        1.98                                   
+ Height elasticity                     0.68                                   
+ Wood density elasticity               0.00                                   
+ Carbon fraction range                 1.7%                                   
+ Trees in danger zone (CV>40%)         795 (36.6%)                            
+ Measurement vs method uncertainty     Method (33%) > Typical measurement (9%)
+ Interpretation                                             
+ Substantial disagreement between methods                   
+ Some trees show extreme disagreement                       
+ 10% DBH error → ~25% carbon error                          
+ 10% height error → ~10% carbon error                       
+ Linear relationship (1:1)                                  
+ Minor source of uncertainty                                
+ Require careful method justification                       
+ Method choice often matters more than measurement precision
+> 
+
+
+print(sessionInfo())
+R version 4.5.1 (2025-06-13 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 11 x64 (build 26200)
+
+Matrix products: default
+  LAPACK version 3.12.1
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.utf8  LC_CTYPE=English_United Kingdom.utf8   
+[3] LC_MONETARY=English_United Kingdom.utf8 LC_NUMERIC=C                           
+[5] LC_TIME=English_United Kingdom.utf8    
+
+time zone: Europe/London
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] TreeCarbon_0.0.0.9002 ggplot2_4.0.1         testthat_3.3.2       
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6        xfun_0.56           devtools_2.4.6      remotes_2.5.0      
+ [5] allodb_0.0.1.9000   vctrs_0.7.1         tools_4.5.1         generics_0.1.4     
+ [9] tibble_3.3.1        proxy_0.4-29        pkgconfig_2.0.3     KernSmooth_2.23-26 
+[13] data.table_1.18.2.1 RColorBrewer_1.1-3  S7_0.2.1            desc_1.4.3         
+[17] lifecycle_1.0.5     compiler_4.5.1      farver_2.1.2        stringr_1.6.0      
+[21] textshaping_1.0.4   brio_1.1.5          terra_1.8-93        minpack.lm_1.2-4   
+[25] codetools_0.2-20    htmltools_0.5.9     usethis_3.2.1       class_7.3-23       
+[29] yaml_2.3.12         pillar_1.11.1       ellipsis_0.3.2      classInt_0.4-11    
+[33] cachem_1.1.0        sessioninfo_1.2.3   tidyselect_1.2.1    digest_0.6.39      
+[37] stringi_1.8.7       sf_1.0-24           dplyr_1.1.4         purrr_1.2.1        
+[41] labeling_0.4.3      rprojroot_2.1.1     fastmap_1.2.0       grid_4.5.1         
+[45] cli_3.6.5           magrittr_2.0.4      pkgbuild_1.4.8      e1071_1.7-17       
+[49] withr_3.0.2         scales_1.4.0        rappdirs_0.3.4      rmarkdown_2.30     
+[53] BIOMASS_2.2.4-1     otel_0.2.0          ragg_1.5.0          memoise_2.0.1      
+[57] evaluate_1.0.5      knitr_1.51          rlang_1.1.7         Rcpp_1.1.1         
+[61] glue_1.8.0          DBI_1.2.3           pkgload_1.4.1       rstudioapi_0.17.1  
+[65] jsonlite_2.0.0      R6_2.6.1            systemfonts_1.3.1   fs_1.6.6           
+[69] units_1.0-0        
+> 
+ cat(sprintf("\nAnalysis complete. Results saved to: %s\n", output_dir))
+
+Analysis complete. Results saved to: C:/Users/ipr10kg/OneDrive - The Royal Botanic Gardens, Kew/Wakehurst_analysis/After
+> cat(sprintf("Total trees analyzed: %d\n", nrow(results)))
+Total trees analyzed: 2173
+> cat(sprintf("Median method CV: %.1f%%\n", median(results$method_cv, na.rm = TRUE)))
+Median method CV: 32.5%
+> cat(sprintf("Trees in danger zone (CV>40%%): %d (%.1f%%)\n",
++             nrow(danger_trees),
++             100 * nrow(danger_trees) / sum(!is.na(results$method_cv))))
+Trees in danger zone (CV>40%): 795 (36.6%)

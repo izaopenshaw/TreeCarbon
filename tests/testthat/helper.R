@@ -22,7 +22,7 @@ expect_allometry_result <- function(obj) {
   expect_s3_class(obj, "allometry_result")
   expect_true("value" %in% names(obj))
   expect_true("method" %in% names(obj))
-  expect_true("citation" %in% names(obj))
+  expect_true("reference" %in% names(obj))
   expect_true("assumptions" %in% names(obj))
   expect_true("validity_warnings" %in% names(obj))
   expect_true("flags" %in% names(obj))
@@ -30,7 +30,7 @@ expect_allometry_result <- function(obj) {
 
 # Helper to check metadata completeness
 expect_complete_metadata <- function(result) {
-  required_fields <- c("value", "method", "citation", "assumptions",
+  required_fields <- c("value", "method", "reference", "assumptions",
                        "validity_warnings", "flags", "uncertainty",
                        "region", "source_type")
 
@@ -83,6 +83,13 @@ reference_values <- list(
 suppress_height_warning <- function(expr) {
   suppressWarnings(expr, classes = "heightWarning")
 }
+
+# Single-tree fc_agc() / fc_agc_error() may warn to use stand-level helpers; tests
+# target tree-level behaviour. Use these wrappers so devtools::test() is not
+# noisy (outer suppressWarnings(devtools::test()) does not silence warnings
+# that testthat records per expectation).
+fc_agc_test <- function(...) suppressWarnings(fc_agc(...))
+fc_agc_error_test <- function(...) suppressWarnings(fc_agc_error(...))
 
 # Print test context info for debugging
 debug_test_info <- function() {

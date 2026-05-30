@@ -1,0 +1,4 @@
+"Habitat","Method","Species","Area_ha","N_trees","Mean_tariff_raw","Mean_tariff_floor","Carbon_per_tree_t","Stand_AGC_t"
+"broadleaf","B","Corylus avellana",0.794609413,536,15.47,15,0.101302980399162,54.2983974939506
+"conifer","C","Picea abies",0.444184542654192,451,18.02,18,0.113184101198729,51.0460296406269
+"coppice","B","Corylus avellana",5.1681764938,2020,12.27,12,0.0903801008735854,182.567803764643

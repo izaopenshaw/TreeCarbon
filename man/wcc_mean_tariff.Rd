@@ -17,7 +17,8 @@ wcc_mean_tariff(
 )
 }
 \arguments{
-\item{spcode}{Species code(s) for sample trees}
+\item{spcode}{Species code(s) for sample trees. A single code is recycled to
+match \code{length(height)} (same species, multiple sample trees).}
 
 \item{height}{Tree height(s) in metres}
 

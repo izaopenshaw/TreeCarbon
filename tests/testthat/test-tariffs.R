@@ -29,9 +29,10 @@ test_that("broadleaf_tariff returns data.frame with sigma when re_dbh provided",
   expect_true("sigma" %in% names(result))
 })
 
-test_that("broadleaf_tariff errors on dbh < 7", {
-  expect_error(broadleaf_tariff(spcode = "OK", height_timber = 15, dbh = 5),
-               "dbh")
+test_that("broadleaf_tariff accepts dbh below 7 cm (no error)", {
+  # Unlike crown/root biomass helpers, broadleaf_tariff only requires non-negative dbh
+  result <- broadleaf_tariff(spcode = "OK", height_timber = 15, dbh = 5)
+  expect_true(is.numeric(result))
 })
 
 # ==== conifer_tariff (WCC Method C) ====
@@ -82,7 +83,8 @@ test_that("tariffs returns tariff_method when re_h provided", {
   result <- tariffs(spcode = c("OK", "SP"), height = c(18, 20), dbh = c(45, 30),
                     type = c("broadleaf", "conifer"), re_h = 0.1)
   expect_true("tariff_method" %in% names(result))
-  expect_equal(result$tariff_method, c("broad_ratio", "conifer"))
+  # Fixed timber-height ratio (default 0.85) without measured height_timber → broad_default
+  expect_equal(result$tariff_method, c("broad_default", "conifer"))
 })
 
 test_that("tariffs tariff_method reflects broad_timber when height_timber provided", {
@@ -121,4 +123,21 @@ test_that("treevol converts merchantable to stem volume", {
 test_that("treevol handles vectorized input", {
   result <- treevol(mtreevol = c(1, 2, 3), dbh = c(20, 24, 28))
   expect_length(result, 3)
+})
+
+# ==== wcc_mean_tariff (sample-tree mean tariff) ====
+
+test_that("wcc_mean_tariff recycles scalar spcode and type", {
+  h <- c(18, 20, 19, 22, 17)
+  d <- c(45, 48, 42, 52, 38)
+  full <- wcc_mean_tariff(
+    spcode = rep("OK", 5), height = h, dbh = d,
+    type = rep("broadleaf", 5), re_h = 0.05, re_dbh = 0.025
+  )
+  recycled <- wcc_mean_tariff(
+    spcode = "OK", height = h, dbh = d, type = "broadleaf",
+    re_h = 0.05, re_dbh = 0.025
+  )
+  expect_equal(recycled$mean_tariff, full$mean_tariff)
+  expect_equal(recycled$sigma, full$sigma)
 })

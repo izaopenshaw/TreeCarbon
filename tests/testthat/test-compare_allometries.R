@@ -40,7 +40,7 @@ test_that("compare_allometries has metadata columns", {
   comparison <- compare_allometries(results)
 
   # Should have metadata columns
-  expect_true("citation" %in% names(comparison) ||
+  expect_true("reference" %in% names(comparison) ||
               "assumptions" %in% names(comparison) ||
               "source" %in% names(comparison))
 })

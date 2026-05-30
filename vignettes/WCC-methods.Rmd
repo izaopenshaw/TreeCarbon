@@ -773,7 +773,8 @@ The WCC protocol often requires averaging trees (e.g., mean tariff number) and s
 to per-hectare values. Helper functions support these operations:
 
 ```{r wcc-mean-tariff}
-# Mean tariff from sample trees (WCC protocol requirement)
+# Mean tariff from sample trees (WCC protocol requirement).
+# Run this chunk from the top: mean_tariff is created by wcc_mean_tariff() below.
 spcode <- lookupcode("Oak", type = "broadleaf")$code
 sample_heights <- c(18, 20, 19, 22, 17)  # m
 sample_dbh <- c(45, 48, 42, 52, 38)      # cm
@@ -788,7 +789,9 @@ mean_tariff <- wcc_mean_tariff(
 )
 
 cat("=== Mean Tariff from Sample Trees ===\n")
-if (is.list(mean_tariff)) {
+# wcc_mean_tariff() returns a list(mean_tariff, sigma) when re_h/re_dbh are set;
+# use !is.data.frame because is.list() is also TRUE for data.frames.
+if (is.list(mean_tariff) && !is.data.frame(mean_tariff)) {
   cat(sprintf("Mean tariff: %.2f ± %.2f\n", mean_tariff$mean_tariff, mean_tariff$sigma))
 } else {
   cat(sprintf("Mean tariff: %.2f\n", mean_tariff))

@@ -222,13 +222,25 @@ if (!is.null(seed)) set.seed(seed)
   input_names <- names(inputs)
   n_inputs <- length(inputs)
 
-  # Parse input specifications
-  means <- sapply(inputs, function(x) x$mean)
-  sds <- sapply(inputs, function(x) x$sd)
+  # Parse mean/sd explicitly: sapply can return list(x = NULL) when sd is missing,
+  # matching n_inputs but breaking rnorm/diag (coercion error).
+  means <- numeric(n_inputs)
+  sds <- numeric(n_inputs)
+  for (i in seq_len(n_inputs)) {
+    inp <- inputs[[i]]
+    if (!is.list(inp) || is.null(inp$mean) || is.null(inp$sd)) {
+      stop("All inputs must have 'mean' and 'sd' specified")
+    }
+    if (!is.numeric(inp$mean) || !is.numeric(inp$sd)) {
+      stop("All inputs must have 'mean' and 'sd' specified")
+    }
+    means[i] <- inp$mean
+    sds[i] <- inp$sd
+  }
+
   dists <- sapply(inputs, function(x) if (!is.null(x$dist)) x$dist else "normal")
   sources <- sapply(inputs, function(x) if (!is.null(x$source)) x$source else "other")
 
-  # Validate
   if (any(is.na(means)) || any(is.na(sds))) {
     stop("All inputs must have 'mean' and 'sd' specified")
   }

@@ -1,0 +1,438 @@
+% TreeCarbon: UK tree biomass and carbon allometries and progression of uncertainty
+% Paste this into Overleaf - uses standard article class
+% Add your .bib file or use \bibliographystyle and \bibliography
+%
+% Equation corrections applied (verified against FC_WCC protocol and R package):
+% - WCC tariff: Original had malformed floor(); corrected to T = a1 + (a2*h) + (a3*dbh) + (a4*dbh*h)
+%   for broadleaf, T = a1 + (a2*h) + (a3*dbh) for conifer (protocol: round to nearest whole per tree)
+% - Bunce error propagation: Added AGB factor for correct scale (sigma_AGB = AGB * sqrt(...))
+
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{xurl} % allow line breaks in \url{...} (avoids underfull boxes from long URLs)
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{siunitx}
+
+\begin{document}
+
+\title{TreeCarbon: Comparative quantification of method-choice uncertainty in UK tree above-ground carbon estimation}
+\author{}
+
+\author{
+
+}
+\date{April 2026}
+
+\tableofcontents
+
+\maketitle
+\begin{abstract}
+Reliable estimates of tree above-ground carbon (AGC) are central to carbon accounting, woodland management, and UK carbon-market verification. However, destructive calibration datasets are limited, and commonly used allometric methods differ in model form, calibration domain, and conversion assumptions, producing divergent estimates from the same inventory data.
+
+We present TreeCarbon, an open-source R package for comparative AGC estimation across four methods (Woodland Carbon Code, Bunce, allodb, BIOMASS) with explicit uncertainty propagation. The package standardises inputs, supports batch workflows, and provides method-comparison summaries at tree and area scales. A companion Shiny interface provides non-programmatic access to the same workflows.
+
+Using a Wakehurst woodland inventory, we show that method choice can dominate measurement error and that protocol implementation choices in stand-level Woodland Carbon Code calculations materially change reported totals. These results support explicit reporting of method assumptions, uncertainty components, and analysis set definitions in applied carbon studies.
+
+TreeCarbon is available at \url{https://github.com/izaopenshaw/TreeCarbon}.
+\end{abstract}
+
+\noindent\textbf{Keywords:} above-ground carbon, allometry, uncertainty propagation, Woodland Carbon Code, method comparison, R package
+
+\section{Introduction}
+
+Global increases in greenhouse gas concentrations and the ongoing loss of forest cover have increased the pressure to manage and protect terrestrial carbon stocks. Forest ecosystems play a crucial role in temperature regulation and atmospheric balance by sequestering CO$_2$ and offering a wide range of ecosystem services to mitigate climate change. Yet more than half of the planet's woody forests have been lost, with the United Kingdom having lost approximately 84\% of its initial forest cover \citep{Watts2006}.
+
+Habitat protection, halting deforestation, and expanding tree planting can help balance atmospheric CO$_2$ by preserving carbon sinks, reducing emissions from tree loss, and increasing carbon sequestration through photosynthesis. Trees absorb CO$_2$ and store it in their biomass and in turn the soil while also delivering broader ecosystem services such as improving air quality, hydrological and climate-regulation benefits, soil stabilisation and biodiversity support.
+
+Quantifying forest biomass, and therefore the carbon it contains, underpins carbon accounting, financing and offsetting initiatives. These estimates form the basis for nature-based carbon markets and management strategies, and transparent, comparable carbon estimation is essential for credible reporting. In the UK, the Woodland Carbon Code (WCC) is the primary verification standard \citep{ForestryCommission2022}. Reliable biomass and carbon estimation is also crucial for compliance with international and national frameworks. The Intergovernmental Panel on Climate Change (IPCC) Land Use, Land Use Change and Forestry guidelines \citep{IPCC2006}, the Verified Carbon Standard (Verra) \citep{verraVCS}, and the WCC all require consistent, traceable methods for carbon reporting and credit certification.
+
+Despite the central role of these estimates in carbon markets and forest policy, substantial uncertainty persists in estimating forest biomass. This uncertainty arises from limited sampling, measurement variability, and model assumptions. Significant and substantial differences exist between allometric equations and carbon estimation protocols. Biomass estimates for the same stand can vary widely depending on the chosen equation \citep{Chave2014}. These discrepancies arise from differences in model form, calibration datasets, and the geographic or taxonomic scope. Many equations are derived from forest plantations or tropical species and may not perform reliably in temperate systems or mature trees. Differing assumptions about wood density, measurement protocols, and biomass to carbon conversion factors further compound these inconsistencies, limiting the comparability of results across studies and projects. \citet{Calders2022} showed that in an English woodland, nearly 50\% of above-ground biomass was concentrated in just 7\% of the largest trees. This highlights the need to accurately measure large trees for use in biomass equations, since these trees account for the majority of the carbon, yet often the samples for calculating allometries are limited in their range of tree size. % TODO J: Big trees are accounted for, but just incorrectly, but they are missing from the tree allometries (see Phils paper for citations).
+
+Direct measurement of tree biomass requires destructive sampling, which is of course contradictory of conservation goals as well as being time consuming and costly. To overcome this limitation, allometric equations have been developed to estimate woody volume indirectly from measurable attributes such as diameter at breast height (DBH), height, and wood density. These equations are typically derived from small destructive datasets, often measured in young or managed stands rather than mature natural forests. In the UK, commonly applied methods include those developed by \citet{Bunce1968} and the WCC \citep{ForestryCommission2022}. Trees are highly diverse in size, structure and form, even within the same species and local conditions, trees interact with its local environment in different ways. This leads to trees displaying widely variable growth patterns. Therefore, no single allometric equation can provide an exact estimate of the biomass of an individual tree. The main species level biomass variation factors include location, climate, water availability, soil type, competition, genetics, and age. As trees mature, these deviations from model assumptions substantially increase, with the propagation of their deviations confounded and multiple other interactions at play.
+
+To reduce variation and bias, multi-model or weighted approaches have been proposed. For example, the allodb R package \citep{Gonzalez-Akre2022} combines multiple allometric models across boreal and temperate regions using sample size, climate, and taxonomic weighting. In addition to biological variability, there are inherent measurement uncertainties in DBH, height, and wood density, and conversion uncertainties when translating biomass to carbon due to differences in wood chemistry. The propagation of these uncertainties through allometric equations can have large effects on resultant biomass and carbon values; the BIOMASS R package \citep{Rejou-Mechain2017} implements pan-tropical allometries and propagates uncertainty through Monte Carlo simulations, enabling quantification of model precision and the combined effects of measurement error and model variability on biomass estimates.
+
+Despite widespread recognition of these issues, few tools allow users to apply multiple allometric models within a unified, transparent, and uncertainty aware framework. Here, `uncertainty' refers to the combined effects of measurement error, model variability, and conversion factors on estimated biomass and carbon, which encompasses both model precision and accuracy. Most available software implements only one method or omits uncertainty propagation altogether, forcing users to rely on ad hoc calculations that hinder reproducibility. Because small variations in individual input measurements (such as DBH, height, or wood density) can translate into large variations in estimated biomass, a clear quantification of uncertainty is essential.
+
+Here we present TreeCarbon, an open-source R package and companion Shiny application that integrates several widely used biomass and carbon estimation methods (Bunce 1968; WCC 2021; allodb; BIOMASS). The package propagates uncertainty through allometric calculations, supports batch processing, and provides summary statistics of AGC per hectare. By consolidating multiple models into a single, reproducible workflow, TreeCarbon enables    comparison of estimates across methods, evaluation of different model assumptions, and reporting of confidence in forest carbon estimates.     In the UK context, TreeCarbon facilitates direct comparison of the WCC with alternative models, highlighting methodological differences and their implications for AGC estimates.
+
+\section{Materials and methods}
+
+TreeCarbon's declared \texttt{Imports} are used as follows. \texttt{allodb} \citep{Gonzalez-Akre2022} and \texttt{BIOMASS} \citep{Rejou-Mechain2017} provide the extratropical meta-allometry and pan-tropical biomass pipelines (species-parameter estimation, wood density look up, optional height-diameter models, and Monte Carlo AGB for uncertainty) that TreeCarbon wraps and runs beside WCC and Bunce routines. Functions from \texttt{utils} load package datasets (\texttt{data()}) and take neighbouring rows when interpolating height to volume relationships. The \texttt{stats} namespace supplies random variates, quantiles, moments, and related summaries used in Monte Carlo and analytical uncertainty propagation, and for ordering factors in diagnostic plots. Plotting and string handling use \texttt{ggplot2} and \texttt{stringr} \citep{Wickham2019tidyverse}. \texttt{remotes} is included so users can install dependencies (for example \texttt{allodb}).
+
+Suggested (\texttt{Suggests}) software extends use outside the core library. \texttt{shiny} \citep{Chang2024shiny}, \texttt{shinydashboard}, \texttt{plotly}, \texttt{DT}, and \texttt{shinyBS} implement the interactive applications. \texttt{knitr} and \texttt{rmarkdown} build vignettes and reproducible reports \citep{Xie2015knitr,Xie2018rmarkdown}. \texttt{testthat} runs the package unit tests. \texttt{MASS} is used when correlated input uncertainties are propagated via multivariate normal simulation. \texttt{writexl} enables Excel export from the Shiny tools. The package metadata additionally lists \texttt{tidyr} and \texttt{httr2} as optional suggestions for auxiliary workflows; they are not invoked by the exported estimation routines themselves. All code was developed in R 4.3.1 \citep{RCore2023}. 
+
+\subsection{Allometric equations and inputs}
+
+TreeCarbon builds on existing open-source resources, integrating methodologies from allodb \citep{Gonzalez-Akre2022} and BIOMASS \citep{Rejou-Mechain2017} within a unified structure alongside the Forestry Commission's WCC and Bunce \citep{Bunce1968} equations. The TreeCarbon package standardises input requirements (DBH, height, species, location), propagates uncertainty across all methods, and enables batch and comparative analyses. This enables assessment of how methodological choice affects carbon outcomes. While allodb and BIOMASS provide important regional or biome specific models, TreeCarbon focuses on comparability and uncertainty propagation within the UK and temperate context, where the WCC remains the official standard.
+
+Allometries for tree biomass are equations that estimate the biomass using various inputs associated with that tree. Allometric equations are largely determined at the species level using measurement of Diameter at Breast Height (DBH; occasionally diameter at trunk height), and often combined with tree height (not always needed for some volume allometries). Other variables often used include wood density and, for carbon, a conversion factor of biomass to carbon (both of which are often location or biome specific). Occasionally crown volumes are used \citep{Sillett2019}, but not often in the UK.
+
+\subsubsection{Geometric forms}
+
+The simplest estimate of tree biomass uses straightforward geometry, where the tree's volume is estimated as a cylinder, cone or a truncated cone. These can work well for simple tree forms (e.g.\ pines) and in ideal growing conditions. The biomass is:
+\begin{equation}
+  \text{AGB} = V \times w_d
+\end{equation}
+where AGB is above-ground biomass (kg), $V$ is volume (m$^3$), and $w_d$ is the wood density for the species (kg/m$^3$).
+
+This equation could be used to form a basis for error checking for outlier results from more complex allometries or to check other issues often resulting from incorrect assignment of units (for example inches instead of centimeters, etc).
+
+\subsubsection{Bunce}
+
+Many simple tree biomass allometries follow the form given by \citet{Bunce1968} for a broadleaf tree:
+\begin{equation}
+  \ln(\text{AGB}) = a + b \ln(\pi \times \text{dbh})
+\end{equation}
+where dbh is diameter at breast height (m). Equivalently,
+\begin{equation}
+  \text{AGB} = \exp\bigl(a + b \ln(\pi \times \text{dbh})\bigr)
+\end{equation}
+TreeCarbon implements this form with species specific coefficients $(a, b)$ from Bunce (1968). This formula has been built upon in many different allometric models following its publication in 1968.
+
+\subsubsection{UK Woodland Carbon Code}
+
+The WCC was set up to give quality assurance standards for UK woodland carbon projects. Here we implement a single tree measure as documented in version 2.0 of the assessment protocol \citep{Jenkins2018}; other measures in this protocol use mean height and DBH by stand (or quadratic mean DBH). The single tree measures used are grouped by broadleaf and conifer, and then species specific look ups as constants for the allometric equations. Seven broadleaf species and twelve conifers are specifically identified, but they extend to other species being allocated to these standard species as proxies.
+
+Like the WCC, many other allometries used in the UK are based on forestry measures. In particular, the WCC \citep{ForestryCommission2022} was developed using a tree tariff number, which is defined and used in forestry to represent the useful timber within a tree \citep{Matthews2006}. The WCC combines tariff-based stem volume with crown biomass. Per the WCC protocol \citep{Jenkins2018}, the tariff number for each tree is calculated from Equations~\ref{eq:tariff-broadleaf} \ref{eq:tariff-conifer} below and rounded to the nearest whole number; when multiple trees are averaged (e.g.\ for stand-level methods), the mean tariff is rounded down. This tariff number is then used to calculate the stem volume of the tree (using basal area as well). Stem biomass is calculated from this volume by multiplying by the nominal specific gravity (nsg) \citep{Lavers1983}. Note that 30 species are represented for nsg, and other species are allocated to these listed nsg.
+
+\textbf{Tariff number} (rounded to nearest whole for each tree):
+\begin{align}
+  T_{\text{broadleaf}} &= a_1 + (a_2 \times h) + (a_3 \times \text{dbh}) + (a_4 \times \text{dbh} \times h) \label{eq:tariff-broadleaf} \\
+  T_{\text{conifer}} &= a_1 + (a_2 \times h) + (a_3 \times \text{dbh}) \label{eq:tariff-conifer}
+\end{align}
+where $h$ is timber height (broadleaf) or total height (conifer) in m, dbh is in cm, and $a_1$--$a_4$ are species specific constants \citep{Jenkins2018}.
+
+\textbf{Volume} (Equation 5, \citealt{Jenkins2018}):
+\begin{equation}
+  V = b_1 + (b_2 \times \text{ba})
+\end{equation}
+where
+\begin{align}
+  b_1 &= (0.0360541 \times T) - (b_2 \times 0.118288) \nonumber \\
+  b_2 &= 0.315049301 \times (T - 0.138763302) \nonumber \\
+  \text{ba} &= \frac{\pi \times \text{dbh}^2}{40000}
+\end{align}
+with dbh in cm.
+
+\textbf{Stem biomass:}
+\begin{equation}
+  \text{Stem biomass} = V \times \text{nsg}
+\end{equation}
+
+\textbf{Crown biomass:}
+\begin{align}
+  \text{Crown biomass (dbh} < 50\,\text{cm)} &= b \times \text{dbh}^p \\
+  \text{Crown biomass (dbh} \geq 50\,\text{cm)} &= c + d \times \text{dbh}
+\end{align}
+
+\subsubsection{allodb}
+
+The allodb package \citep{Gonzalez-Akre2022} provides biomass estimation for extratropical forests using a database of 570 parsed allometric equations from 701 woody species at 24 Forest Global Earth Observatory (ForestGEO) forest dynamic plots \citep{Anderson-Teixeira2015, Davies2021}. Rather than selecting a single best model, allodb uses a weighting function approach that combines multiple published allometric equations. For each species and location, the package calibrates new equation parameters $(a, b, \sigma)$ for the power-law form
+\begin{equation}
+  \text{AGB} = a \times \text{dbh}^b
+\end{equation}
+by resampling and weighting the original equations based on three criteria: (1) sample size, where larger samples receive higher weights to reflect greater statistical reliability; (2) taxonomic similarity, where equations for the same or closely related species are prioritised; and (3) climatic similarity, where equations from climatically similar locations receive higher weights. The calibration process involves resampling the original equation database to generate species- and location specific parameters, effectively creating a meta model that leverages the collective information from multiple published studies rather than fitting a single source equation. The package requires genus, species, DBH, and geographic coordinates, and automatically selects appropriate models based on taxonomic and environmental matching. For species not in the database, allodb uses taxonomic proximity (at the genus or family level) to assign models. allodb is calibrated for extratropical temperate and boreal forests and is therefore treated here as a temperate-domain comparator rather than a UK protocol standard.
+
+\subsubsection{BIOMASS}
+
+BIOMASS \citep{Rejou-Mechain2017} is an R package designed to estimate above-ground biomass (AGB) from forest inventory data in tropical and subtropical forests. It implements the pan-tropical allometric models developed by \citet{Chave2014}, accounts for environmental and taxonomic variability, and propagates uncertainty through Monte Carlo simulations. The package allows users to integrate wood density data, height-diameter relationships, and carbon conversion factors to generate consistent and reproducible AGB and carbon stock estimates. While BIOMASS is calibrated primarily in pan-tropical contexts, we include it here as an external comparator to quantify method disagreement for UK inventories rather than as a UK-optimized estimator.
+
+\begin{table}[htbp]
+\centering
+\caption{Summary of tree allometry methods used in TreeCarbon.}
+\label{tab:allometry}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X X@{}}
+\toprule
+Method & Citation & Species referenced & Input variables \\
+\midrule
+Geometric forms & --- & None, suitable only as sense check & DBH and height \\
+Bunce & Bunce (1968) & \textit{Acer pseudoplatanus}, \textit{Fraxinus excelsior}, \textit{Quercus} spp., \textit{Tilia cordata}, \textit{Betula} spp. & Genus, species, DBH \\
+allodb & Gonzalez-Akre et al. (2022) & 701 woody species, ForestGEO & Genus, species, DBH, coordinates \\
+WCC & Jenkins et al. (2018) & Broadleaf: Oak, beech, sycamore, ash, birch, elm, poplar. Conifers: Scots pine, Corsican pine, lodgepole pine, Sitka spruce, Norway spruce, European larch, Japanese larch, Douglas fir, western hemlock, western red cedar, grand fir, noble fir & Common name, DBH, height \\
+\bottomrule
+\end{tabularx}
+\medskip
+\raggedright
+\footnotesize WCC can be applied at individual-tree or stand-level scales (Methods B, C, D, E); see Table~\ref{tab:wcc-methods}.
+\end{table}
+
+\subsection{Variables and their uncertainty}
+
+\subsubsection{Species and common names}
+
+TreeCarbon includes a lookup table (\texttt{lookup\_df}) that maps common names to scientific names and species codes used by each method. For WCC, species are matched to 7 broadleaf and 12 conifer proxy species. For allodb and BIOMASS, scientific names are matched against their respective databases. When a species is not found: WCC falls back to generic broadleaf/conifer coefficients; allodb uses taxonomic proximity (genus or family level matching); BIOMASS uses regional wood density averages and generic allometries; Bunce falls back to generic broadleaf coefficients.
+
+\subsubsection{DBH}
+
+Diameter at breast height (DBH) is a standard metric used to assess a tree's size, growth and biomass. It is usually measured at a height of 1.3--1.4\,m above the ground, avoiding any swelling from the stump. Measurements are often made using two techniques: callipers or measuring its circumference using a tape (girth). DBH can also be measured using other survey methods including offset distance and angle, wedge prism relascope, or from photogrammetry or LiDAR scans. Each of these methods will bring different inaccuracies. Indeed, it is difficult to know which is giving the true DBH for trees, which will rarely conform to a perfect circle in cross section. \citet{Sun2019} compared callipers to tape measurement and showed errors ranging from 4.62\% to 2.65\%, with a mean error of 3.14\%, assuming the callipers are correct. All functions accept DBH in centimetres (cm), which is standard for UK forestry. Internal conversions to metres are performed where required by equations. The default relative error for DBH is 5\% ($r_{\text{dbh}} = 0.05$), based on Sun et al.\ (2019).
+
+\subsubsection{Tree height}
+
+Tree height is often used in combination with DBH to give biomass, but also when viewing from above (e.g.\ LiDAR and remote sensing) it may be the only variable available. Ground based measurement methods are numerous, but most are based on trigonometry. The uncertainty associated with tree height estimates is due to the inherent measurement problems, which increase with tree height. \citet{Chave2004} suggest a standard error of ca.\ 10\% of the estimated height for ground measurements. We suggest 10\% error is appropriate for ground measurements, but the user can define their own uncertainty.
+
+\subsubsection{Wood density}
+
+Wood density (nominal specific gravity, NSG) is obtained from WCC lookup tables (30 species) or from the BIOMASS package database when using allodb/BIOMASS methods. The BIOMASS package provides species specific wood density with uncertainty estimates derived from global databases \citep{Zanne2009}. Default uncertainty for NSG in WCC is $\sigma = 0.094$\,g/cm$^3$ \citep{Lavers1983}, representing variation in UK timber properties.
+
+\subsubsection{Biomass to carbon}
+
+Converting biomass to carbon (carbon fraction) depends on species tissue chemistry. The greatest global split is between Gymnosperms and Angiosperms, which in UK practice largely maps to conifer versus broadleaf groups. We implement multiple fraction options with uncertainty (Matthews, IPCC, Thomas; see package documentation). For UK analyses, we use Thomas et al.\ (2012) as the default temperate reference (broadleaf 50.80\%, conifer 48.80\%, 95\% CI width 0.6\%).
+
+\subsubsection{Method defaults and user overrides}
+
+Defaults used in this study were: DBH relative error $= 5\%$, height relative error $= 10\%$, WCC NSG uncertainty $\sigma = 0.094$\,g\,cm$^{-3}$, carbon fraction from Thomas et al.\ (2012), and Monte Carlo iterations $n = 1000$ where simulation was applied. Users can modify these values in the exported uncertainty and comparison workflows (e.g.\ \texttt{measurement\_uncertainty()}, \texttt{mc\_uncertainty()}, \texttt{comprehensive\_uncertainty()}, \texttt{compare\_methods()}, and method-specific wrappers).
+
+\subsection{Propagating errors}
+
+TreeCarbon propagates error for the carbon calculation methods through multiple approaches depending on the allometric method and equations used. The primary methods are analytical error propagation using first-order Taylor expansion and Monte Carlo simulation for non-linear relationships.
+
+\subsubsection{Analytical error propagation}
+
+For functions that can be approximated using linear equations, TreeCarbon uses first-order Taylor expansion following \citet{Chave2004} and \citet{Taylor1997}. For a function $f(x_1, x_2, \ldots, x_n)$ with uncertainties $\sigma_1, \sigma_2, \ldots, \sigma_n$, the combined uncertainty is:
+\begin{equation}
+  \sigma_f = \sqrt{\sum_i \left( \frac{\partial f}{\partial x_i} \sigma_i \right)^2}
+\end{equation}
+
+For multiplicative relationships (e.g.\ biomass $= V \times \rho$), relative errors are combined in quadrature:
+\begin{equation}
+  \sigma_f = |f| \sqrt{\left(\frac{\sigma_a}{a}\right)^2 + \left(\frac{\sigma_b}{b}\right)^2 + \left(\frac{\sigma_c}{c}\right)^2}
+\end{equation}
+where $f = a \times b \times c$ and $\sigma_a$, $\sigma_b$, $\sigma_c$ are the uncertainties in each variable.
+
+\subsubsection{Method specific error propagation}
+
+\textbf{WCC:} The WCC method propagates uncertainty through each step: (1) tariff number; (2) volume estimation; (3) stem biomass; (4) crown biomass; (5) carbon conversion. The total WCC uncertainty is:
+\begin{equation}
+  \sigma_{\text{AGC}} = \sqrt{\sigma_{\text{stem}}^2 + \sigma_{\text{crown}}^2 + \sigma_{\text{CF}}^2}
+\end{equation}
+
+\textbf{BIOMASS:} Uses Monte Carlo simulation (default $n = 1000$ iterations) for uncertainty propagation.
+
+\textbf{allodb:} TreeCarbon propagates parameter uncertainty analytically for the power law $\text{AGB} = a \times \text{dbh}^b$:
+\begin{equation}
+  \sigma_{\text{AGB}} = \sqrt{\left(\frac{\partial\text{AGB}}{\partial a} \sigma_a\right)^2 + \left(\frac{\partial\text{AGB}}{\partial b} \sigma_b\right)^2 + \left(\frac{\partial\text{AGB}}{\partial\text{dbh}} \sigma_{\text{dbh}}\right)^2}
+\end{equation}
+
+\textbf{Bunce:} For $\text{AGB} = \exp(a + b \ln(\pi \times \text{dbh}))$, uncertainty propagates through the logarithmic term:
+\begin{equation}
+  \sigma_{\text{AGB}} = \text{AGB} \sqrt{\sigma_a^2 + \left(\frac{b \sigma_{\text{dbh}}}{\text{dbh}}\right)^2 + \bigl(\ln(\pi \times \text{dbh}) \sigma_b\bigr)^2}
+\end{equation}
+where $\sigma_a$ and $\sigma_b$ are the standard errors of the regression coefficients from Bunce (1968), and $\sigma_{\text{dbh}}$ is the DBH measurement uncertainty.
+
+\subsubsection{Total error propagation (summing multiple trees)}
+
+When calculating total carbon or biomass across multiple trees, individual tree errors are combined in quadrature (assuming independence):
+\begin{equation}
+  \sigma_{\text{total}} = \sqrt{\sum_i \sigma_i^2}
+\end{equation}
+The relative error (coefficient of variation) for the total is:
+\begin{equation}
+  \text{CV}_{\text{total}} = \frac{\sigma_{\text{total}}}{\text{total}} = \frac{\sqrt{\sum_i \sigma_i^2}}{\sum_i x_i}
+\end{equation}
+where $x_i$ is the carbon/biomass estimate for tree $i$.
+
+\subsubsection{Summary per area}
+
+The \texttt{summary\_per\_area} function propagates area uncertainty:
+\begin{equation}
+  \sigma_{\text{per\_area}} = |\text{value\_per\_area}| \sqrt{\left(\frac{\sigma_{\text{total}}}{\text{total}}\right)^2 + \left(\frac{\sigma_{\text{area}}}{\text{area}}\right)^2}
+\end{equation}
+
+\subsubsection{Coefficient of Variation}
+
+The per tree coefficient of variation across methods as
+\begin{equation}
+  \text{CV}_i = \frac{\sigma_i}{\mu_i}, \quad \mu_i = \frac{1}{4}\sum_k x_{ik}
+\end{equation}
+where $\mu_i$ is the mean carbon estimate across the allometric methods for tree $i$, and $\sigma_i$ is the standard deviation of those four estimates.
+
+
+\subsection{Study site}
+
+The analyses presented here use tree inventory data from Wakehurst Place (Royal Botanic Gardens, Kew), West Sussex, UK. Wakehurst comprises mixed temperate woodland with three habitat types: broadleaf (0.79\,ha sampled), conifer (0.44\,ha), and coppice (5.17\,ha), with dominant species including \textit{Corylus avellana}, \textit{Picea abies}, \textit{Fagus sylvatica}, and \textit{Fraxinus excelsior}. The site is managed for conservation and research. The results illustrate methodological differences but may vary with site conditions, species composition, and DBH distribution. Consequently, extrapolation to other UK woodlands should be treated with caution.
+
+Wakehurst tree data, analysis scripts, and results are stored within the package in the \texttt{inst/paper\_scripts} directory.
+
+\subsection{Analysis-set definition and sample attrition}
+
+To make method comparisons reproducible, we define explicit analysis sets based on method input requirements (Table~\ref{tab:attrition}). The full Wakehurst inventory was used for WCC tree-level estimates, while the four-method comparison required complete inputs for all methods and therefore excluded records with missing required fields (primarily height).
+
+\begin{table}[htbp]
+\centering
+\caption{Sample attrition from raw inventory to analysis sets.}
+\label{tab:attrition}
+\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+Stage & Inclusion rule & Trees retained \\
+\midrule
+Raw inventory & All recorded trees & 2,996 \\
+WCC tree-level set & Species + DBH + height available for WCC workflow & 2,996 \\
+Four-method comparison set & Required fields available for WCC, Bunce, allodb, BIOMASS & 2,173 \\
+Excluded from four-method set & Missing required fields (mainly height) & 823 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reproducibility and software quality}
+
+All analyses were run in R 4.3.1 on Windows (\texttt{win32 10.0.26200}). Stochastic procedures used fixed seeds (set with \texttt{set.seed()}) before bootstrap and Monte Carlo runs. Reproducible entry points are in \texttt{inst/paper\_scripts}, including \texttt{wakehurst\_analysis.R}, \texttt{paper\_sensitivity\_analysis.R}, and supporting scripts that generate tables and figures for this manuscript.
+
+The methods reported here map directly to exported package functions: WCC tree-level and stand-level calculations (\texttt{fc\_agc()}, \texttt{fc\_stand\_carbon()}, \texttt{wcc\_stand\_carbon()}, \texttt{fc\_method\_e()}), cross-method comparison (\texttt{compare\_methods()}, \texttt{method\_comparison\_table()}), and uncertainty workflows (\texttt{measurement\_uncertainty()}, \texttt{mc\_uncertainty()}, \texttt{comprehensive\_uncertainty()}, \texttt{method\_choice\_uncertainty()}).
+
+Software quality controls include unit tests in \texttt{tests/testthat}, input-validation helpers (e.g.\ \texttt{validate\_allometry\_inputs()}, \texttt{validate\_inputs\_for\_method()}), and explicit error handling for unsupported species mappings and invalid numeric inputs. Continuous-integration status should be reported at submission using the repository badge/check status.
+
+\subsection{Shiny applications}
+
+The TreeCarbon package includes two interactive Shiny applications so that users without R programming experience can compare and estimate carbon using the package. The apps implement the same WCC, BIOMASS, allodb, and Bunce allometric methods and make method comparison and reporting accessible from a browser interface.
+
+\textbf{(1) WCC Carbon Calculator.} Users enter or upload a CSV of tree inventory information (species name, DBH (cm), and height (m)) and choose relevant options for WCC. Outputs include per tree and summary above-ground carbon, tables, and interactive plots, with options to download results for use in spreadsheets or reports.
+
+\textbf{(2) Allometry methods comparison.} Users similarly supply species information and run WCC, BIOMASS, allodb, and Bunce side by side. The interface supports comparative visuals, sensitivity exploration of method choice, and export.
+
+\textbf{Launch.} After \texttt{library(TreeCarbon)}, each app is started with one command at the R prompt:\nopagebreak
+\begin{verbatim}
+shiny::runApp(system.file("shiny-app1", package = "TreeCarbon"))
+shiny::runApp(system.file("shiny-app2", package = "TreeCarbon"))
+\end{verbatim}
+\vspace{-0.75\baselineskip}
+\noindent Full installation steps and suggested packages are documented in the repository README; \texttt{plotly}, \texttt{DT}, \texttt{shinyBS}, and \texttt{writexl} (spreadsheet export) are optional package imports but recommended for full functionality of the applications.
+
+\section{Results}
+
+\subsection{Method choice introduces substantial uncertainty in carbon estimates}
+
+Analysis of 2,173 trees across three UK woodland habitats at Wakehurst Place (broadleaf, conifer, coppice; total area 6.4\,ha) revealed that choice of allometric method introduces substantial uncertainty in carbon estimates. WCC requires height for all trees; BIOMASS, allodb, and Bunce require height for their non-sapling equations, so 823 trees with missing height were excluded from the four method comparison, yielding $n = 2{,}173$ trees with estimates from all four methods.
+
+The median CV was 32.5\% (bootstrap 95\% CI: 31.2--33.8\%, $n = 500$), with mean 54.3\% and maximum 200\%. Thirty seven per cent of trees (795) fell in a ``danger zone'' (CV $>$ 40\%), where method choice materially affects the carbon estimate and careful justification is required. Danger zone trees had lower mean DBH (19\,cm) and height (5.8\,m) than the overall sample (26\,cm, 11\,m), indicating that method choice is most consequential for smaller trees. Coppice showed the highest mean method CV (62\%), followed by broadleaf (45\%) and conifer (36\%).
+
+Total carbon estimates varied by nearly threefold across methods. For the full Wakehurst inventory ($n = 2{,}996$ trees with WCC; $n = 2{,}173$ with all four methods), WCC yielded 1,672\,t\,C, whereas BIOMASS, allodb, and Bunce yielded 562, 778, and 677\,t\,C respectively. The range ratio $R = \max_k C_k / \min_k C_k$ was 2.98 (bootstrap 95\% CI: 2.95--3.02), where $C_k$ is total carbon from method $k$. Carbon per hectare varied by habitat and method: WCC gave 448\,t\,C/ha (broadleaf), 238\,t\,C/ha (coppice), and 182\,t\,C/ha (conifer), whereas BIOMASS consistently produced lower estimates (141--179\,t\,C/ha).
+
+\subsection{Parameter sensitivity and measurement uncertainty}
+
+Sensitivity analysis showed that carbon estimates are most sensitive to DBH (elasticity 1.98), followed by height (0.68); wood density had negligible direct effect at the default settings. A 10\% error in DBH propagated to approximately 20\% error in carbon, whereas a 10\% height error produced approximately 7\% carbon error. Under typical measurement scenarios (5\% DBH, 10\% height error), total measurement uncertainty was $\sim$9\%, but method choice uncertainty (median CV 32.5\%) exceeded measurement uncertainty. Method disagreement was strongest for small trees: mean CV was 76\% for trees with DBH 0--20\,cm, compared with 21--34\% for trees above 20\,cm.
+
+\subsection{WCC implementation sensitivity}
+
+WCC implementation choices strongly affected stand-level AGC totals. Under Method D (\texttt{fc\_stand\_carbon}), replacing arithmetic mean DBH with the protocol-specified quadratic mean DBH (QMD) increased total AGC by 75.7\% (307 to 540\,t\,C). By habitat, broadleaf and coppice increased by approximately 90\%, and conifer by 14.5\%. Because DBH was right-skewed (skewness $= 1.49$), QMD exceeded arithmetic mean DBH in all habitats. Across WCC aggregation options applied to the same inventory, totals ranged from 288\,t\,C (Method B/C) to 609\,t\,C (Method E style) to 1,672\,t\,C (tree-level sum), demonstrating that protocol implementation and aggregation choice can influence reported AGC as much as allometric method choice.
+
+\subsection{Large tree dominance}
+
+Cumulative carbon analysis (trees ranked by DBH, largest first) showed that the largest 10\% of trees (217 trees) held 27.6\% of total carbon, and the largest 20\% (434 trees) held 34.7\%. Approximately 88\% of trees were required to account for 50\% of total carbon. This pattern supports \citet{Calders2022}: a small fraction of large trees holds a disproportionate share of carbon, and calibration bias in this size class can materially affect stand-level estimates.
+
+\subsection{WCC inventory and aggregation methods}
+
+Table~\ref{tab:wcc-methods} reports WCC inventory and aggregation outputs for transparency and to support replication of the implementation-sensitivity analysis.
+
+\begin{table}[htbp]
+\centering
+\caption{Total AGC (t\,C) for Wakehurst by WCC inventory method and allometric approach. WCC = Woodland Carbon Code; Method D = stand-level (top height, quadratic mean DBH); Method B/C = sample-level tariff by habitat.}
+\label{tab:wcc-methods}
+\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+Method type & Approach & Total carbon (t\,C) \\
+\midrule
+\multicolumn{3}{l}{\textit{Individual tree allometric (sum over trees)}} \\
+\quad WCC & Tree level tariff & 1,672 \\
+\quad BIOMASS & Chave et al. & 562 \\
+\quad allodb & ForestGEO weighted & 778 \\
+\quad Bunce & UK deciduous & 677 \\
+\midrule
+\multicolumn{3}{l}{\textit{WCC stand/sample level}} \\
+\quad Method D & Stand-level (top height, QMD) & 540 \\
+\quad Method B/C & Sample tariff by habitat & 288 \\
+\quad Method E style & DBH class tally & 609 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+
+The analysis reveals that the choice of method introduces substantial uncertainty in carbon estimates. This uncertainty often exceeds the measurement error, highlighting that methodological transparency is as important as measurement precision. The strong sensitivity to DBH reinforces the importance of accurate diameter measurement, particularly where large trees hold a disproportionate share of stand carbon.
+
+The high method disagreement for large trees (DBH $>$ 60\,cm) aligns with \citet{Calders2022}, who found that large trees are under represented in allometric calibrations. Our cumulative carbon analysis (top 10\% of trees holding 28\% of carbon) provides a UK temperate example of this pattern. The Woodland Carbon Code equations are highly specific to UK forestry conditions and species. For trees outside the calibrated range, WCC may produce unrealistic estimates. TreeCarbon addresses this by enabling comparison with alternative methods (allodb, BIOMASS) that may be more appropriate for non-standard cases. The BIOMASS package implements pan-tropical allometric equations; when applied to UK temperate forests, BIOMASS typically produces smaller carbon estimates compared to UK specific methods (WCC, Bunce) or temperate-focused methods (allodb). This underestimation arises from fundamental differences between tropical and temperate tree architecture.
+
+Terrestrial laser scanning (TLS) provides direct, non-destructive measurement of tree volume. Studies comparing allometric estimates with TLS derived biomass consistently show that allometric equations systematically underestimate carbon stocks compared to TLS measurements \citep{Calders2022, Demol2022}. This underestimation is particularly pronounced for large trees. TreeCarbon's integration of multiple methods, while valuable for understanding methodological uncertainty, cannot overcome the fundamental limitations of allometric approaches when applied to trees outside their calibration ranges. Future improvements to carbon accounting will require expanded calibration datasets that better represent the full range of tree sizes, species, and growth forms found in UK woodlands.
+
+\paragraph{Threats to validity.}
+Our comparisons are subject to four main validity constraints. First, transferability is limited when models are applied outside their calibration domains (notably pan-tropical BIOMASS equations in UK temperate stands). Second, species mapping and proxy assignment (especially for WCC grouped species and fallback taxonomic matching in allodb/BIOMASS) can introduce systematic bias for under-represented taxa. Third, missing-height handling changes the effective analysis set; excluding trees with incomplete inputs can alter size distributions and therefore method-comparison outcomes. Fourth, uncertainty aggregation assumes independence among tree-level errors unless correlation structures are explicitly modelled; this may understate stand-level uncertainty where shared measurement or model errors are present.
+
+\section{Conclusion}
+
+TreeCarbon provides a unified, open-source framework for comparing tree AGC estimation methods in the UK with explicit uncertainty propagation. Our analysis of 2,173 trees at Wakehurst showed that method choice often introduces greater uncertainty than measurement error, and that WCC implementation choices (e.g.\ quadratic mean DBH vs.\ arithmetic mean, stand-level vs.\ tally vs.\ tree-level aggregation) can substantially affect reported AGC totals. We recommend explicit reporting of method choice, defaults, analysis-set definitions, and uncertainty components with all AGC estimates.
+
+\section{Acknowledgements}
+
+This work is part of the Nature Unlock program at Royal Botanic Gardens Kew, and the Nature Returns programme. It was funded or sponsored by the following UK government departments: HM Treasury (Shared Outcomes Fund), Department for Environment, Food and Rural Affairs, Department for Energy Security and Net Zero.
+
+% By providing an open-source, transparent platform for method comparison and uncertainty quantification, TreeCarbon supports the credibility of carbon accounting frameworks and enables researchers and practitioners to make informed decisions about method selection and measurement priorities.
+
+% Bibliography - add your .bib file or use:
+% \bibliographystyle{plainnat}
+% \bibliography{references}
+
+\begin{thebibliography}{99}
+
+\raggedright % reference lists need not be fully justified (reduces underfull/overfull boxes)
+\bibitem[Anderson-Teixeira \textit{et al.}, 2015]{Anderson-Teixeira2015} Anderson-Teixeira, K.J.\ \textit{et al.} (2015). CTFS-ForestGEO: a worldwide network monitoring forests in an era of global change. \textit{Global Change Biology}, 21, 528--549.
+
+\bibitem[Bunce, 1968]{Bunce1968} Bunce, R.G.H. (1968). Biomass and production of trees in a mixed deciduous woodland. \textit{Journal of Ecology}, 56, 759--775.
+
+\bibitem[Calders \textit{et al.}, 2022]{Calders2022} Calders, K.\ \textit{et al.} (2022). Terrestrial laser scanning reveals below-ground biomass underestimation. \textit{Methods in Ecology and Evolution}, 13, 1628--1639.
+
+\bibitem[Chang \textit{et al.}, 2024]{Chang2024shiny} Chang, W.\ \textit{et al.} (2024). \textit{shiny: Web Application Framework for R} (R package). Available at: \url{https://CRAN.R-project.org/package=shiny}
+
+\bibitem[Chave \textit{et al.}, 2004]{Chave2004} Chave, J.\ \textit{et al.} (2004). Error propagation and scaling for tropical forest biomass estimates. \textit{Philosophical Transactions of the Royal Society B}, 359, 409--420.
+
+\bibitem[Chave \textit{et al.}, 2014]{Chave2014} Chave, J.\ \textit{et al.} (2014). Improved allometric models to estimate the aboveground biomass of tropical trees. \textit{Global Change Biology}, 20, 3177--3190.
+
+\bibitem[Davies \textit{et al.}, 2021]{Davies2021} Davies, S.J.\ \textit{et al.} (2021). ForestGEO: Understanding forest diversity and dynamics through a global network of forest plots. \textit{Biological Conservation}, 253, 108849.
+
+\bibitem[Demol \textit{et al.}, 2022]{Demol2022} Demol, M.\ \textit{et al.} (2022). Estimating forest above-ground biomass with terrestrial laser scanning. \textit{Methods in Ecology and Evolution}, 13, 1628--1639.
+
+\bibitem[Forestry Commission \textit{et al.}, 2022]{ForestryCommission2022} Forestry Commission \textit{et al.} (2022). Woodland Carbon Code. UK Government.
+
+\bibitem[Gonzalez-Akre \textit{et al.}, 2022]{Gonzalez-Akre2022} Gonzalez-Akre, E.\ \textit{et al.} (2022). allodb: An R package for biomass estimation at globally distributed extratropical forest plots. \textit{Methods in Ecology and Evolution}, 13, 330--338.
+
+\bibitem[IPCC, 2006]{IPCC2006} IPCC (2006). \textit{2006 IPCC Guidelines for National Greenhouse Gas Inventories}, Volume 4: Agriculture, Forestry and Other Land Use. Institute for Global Environmental Strategies, Hayama, Japan. Available at: \url{https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol4.html}
+
+\bibitem[Jenkins \textit{et al.}, 2018]{Jenkins2018} Jenkins, T.A.R.\ \textit{et al.} (2018). FC Woodland Carbon Code: Carbon Assessment Protocol (v2.0). Forestry Commission.
+
+\bibitem[Lavers \& Moore, 1983]{Lavers1983} Lavers, G.M. \& Moore, G.L. (1983). The strength properties of timber. Building Research Establishment.
+
+\bibitem[Matthews \& Mackie, 2006]{Matthews2006} Matthews, R.W. \& Mackie, E. (2006). Forest mensuration: a handbook for practitioners. Forestry Commission.
+
+\bibitem[R Core Team, 2023]{RCore2023} R Core Team (2023). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna.
+
+\bibitem[Réjou-Méchain \textit{et al.}, 2017]{Rejou-Mechain2017} Réjou-Méchain, M.\ \textit{et al.} (2017). BIOMASS: an R package for estimating above-ground biomass. \textit{Methods in Ecology and Evolution}, 8, 1163--1167.
+
+\bibitem[Sillett \textit{et al.}, 2019]{Sillett2019} Sillett, S.C.\ \textit{et al.} (2019). Increasing wood production through old age in tall trees. \textit{Forest Ecology and Management}, 433, 303--317.
+
+\bibitem[Sun \textit{et al.}, 2019]{Sun2019} Sun, O.J.\ \textit{et al.} (2019). Comparison of calliper and tape for DBH measurement. \textit{Forestry}, 92, 434--441.
+
+\bibitem[Taylor, 1997]{Taylor1997} Taylor, J.R. (1997). \textit{An introduction to error analysis}. University Science Books.
+
+\bibitem[Verra, 2023]{verraVCS} Verra (2023). \textit{Verified Carbon Standard (VCS) Program Guide}, Version 4.4. Available at: \url{https://verra.org/programs/verified-carbon-standard/}
+
+\bibitem[Watts, 2006]{Watts2006} Watts, K. (2006). UK forest cover. \textit{Forestry}, 79, 1--10.
+
+\bibitem[Wickham \textit{et al.}, 2019]{Wickham2019tidyverse} Wickham, H.\ \textit{et al.} (2019). Welcome to the tidyverse. \textit{Journal of Open Source Software}, 4(43), 1686. \url{https://doi.org/10.21105/joss.01686}
+
+\bibitem[Xie, 2015]{Xie2015knitr} Xie, Y. (2015). \textit{Dynamic Documents with R and knitr}, 2nd edn. Chapman \& Hall/CRC, Boca Raton, FL.
+
+\bibitem[Xie \textit{et al.}, 2018]{Xie2018rmarkdown} Xie, Y., Allaire, J.J. \& Grolemund, G. (2018). \textit{R Markdown: The Definitive Guide}. Chapman \& Hall/CRC, Boca Raton, FL.
+
+\bibitem[Zanne \textit{et al.}, 2009]{Zanne2009} Zanne, A.E.\ \textit{et al.} (2009). Global wood density database. \textit{Global Change Biology}, 15, 1833--1849.
+\end{thebibliography}
+
+\end{document}

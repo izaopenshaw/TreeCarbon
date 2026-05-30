@@ -10,6 +10,8 @@ fc_agc_error(
   height,
   height_timber = NULL,
   timber_ratio = 0.85,
+  tariff = NULL,
+  sig_tariff = NULL,
   type = NULL,
   method = "Matthews2",
   biome = "temperate",
@@ -23,17 +25,33 @@ fc_agc_error(
 )
 }
 \arguments{
-\item{name}{species name, either binomial or common}
+\item{name}{species name, either binomial or common. A single value is recycled when
+\code{dbh} and \code{height} are vectors (same species, one row per tree).}
 
 \item{dbh}{diameter at breast height in centimetres}
 
 \item{height}{tree height in metres (total height). For broadleaves, provide \code{height_timber}
-for WCC protocol compliance.}
+for WCC protocol compliance. Not required when \code{tariff} is provided (e.g. for QMD + mean
+tariff stand-level use).}
 
 \item{height_timber}{timber height in metres (height to first branch). Required for WCC protocol
 for broadleaf species. If not provided, total height will be used with a warning.}
 
-\item{type}{either 'broadleaf' or 'conifer'}
+\item{timber_ratio}{ratio for estimating timber height from total height when \code{height_timber}
+is not provided. Can be either a numeric value (0-1, default = 0.85) or the string "estimate"
+to use species-specific ratios via \code{estimate_timber_height()}. Only used for broadleaf species.}
+
+\item{tariff}{optional pre-computed tariff number. When provided, skips internal tariff
+calculation from height. Use for stand-level estimates with QMD + mean tariff from height
+sample trees. Scalar or same length as \code{dbh}. When provided, \code{height} is not
+required for trees with dbh >= 7 cm.}
+
+\item{sig_tariff}{optional sigma for \code{tariff} when \code{tariff} is provided. Used for
+uncertainty propagation. Scalar or same length as \code{tariff}. If \code{tariff} provided
+without \code{sig_tariff}, tariff uncertainty is assumed zero.}
+
+\item{type}{either 'broadleaf' or 'conifer'. A single value is recycled when
+\code{dbh} and \code{height} are vectors.}
 
 \item{method}{method of converting biomass to carbon. Default \code{"Matthews2"}
 (recommended for WCC; Matthews 1993). Use \code{"IPCC2"} or \code{"Thomas"}
@@ -72,13 +90,37 @@ propagated uncertainty using Woodland Carbon Code methodology.
 When \code{rich_output = TRUE}, returns a comprehensive result object
 including method metadata, assumptions, validity warnings, and uncertainty
 }
+\details{
+\strong{When to use \code{fc_agc_error}:}
+\itemize{
+\item Individual tree carbon estimates with uncertainty (one or more DBH/height pairs)
+\item Full tree inventory with per-tree carbon and propagated uncertainty
+\item QMD + mean tariff from height sample trees (provide \code{tariff})
+}
+
+\strong{When NOT to use \code{fc_agc_error}:}
+\itemize{
+\item Stand-level carbon from plot/stand DBH and height samples without
+pre-computed tariff \eqn{\rightarrow} use \code{\link{fc_stand_carbon}} or
+\code{\link{fc_method_e_carbon}}
+\item You have top height and mean DBH and want Method D workflow \eqn{\rightarrow}
+use \code{\link{fc_stand_carbon}}
+}
+}
 \examples{
+# Single tree
+fc_agc_error("Oak", dbh = 45, height = 18, type = "broadleaf", output.all = FALSE)
+
 fc_agc_error(name='Quercus robur', dbh=74, height=24, output.all = FALSE)
 fc_agc_error('Oak', dbh=74, height=24, method="IPCC2",
 biome="temperate", output.all = FALSE, re_dbh=1, re_h=1)
 # Input wood density and sd from BIOMASS package
 wd <- BIOMASS::getWoodDensity('Quercus', 'robur', region='Europe')
 fc_agc_error('Oak', 72, 24, nsg = wd$meanWD, sig_nsg = wd$sdWD)
+
+# QMD + mean tariff with uncertainty
+fc_agc_error("Sitka Spruce", dbh = 28, tariff = 22, sig_tariff = 1.5,
+  type = "conifer", output.all = FALSE)
 
 # Rich output with metadata
 result <- fc_agc_error('Oak', 50, 20, rich_output = TRUE)
@@ -89,7 +131,9 @@ Jenkins, Thomas AR, et al. "FC Woodland Carbon Code:
 Carbon Assessment Protocol (v2. 0)." (2018).
 }
 \seealso{
-\code{\link{wcc_per_hectare}}, \code{\link{wcc_stratify}}, \code{\link{error_product}};
+\code{\link{fc_agc}}, \code{\link{fc_stand_carbon}} (Methods A-D),
+\code{\link{fc_method_e_carbon}} (Method E), \code{\link{wcc_per_hectare}},
+\code{\link{wcc_stratify}}, \code{\link{error_product}};
 vignette("uncertainty-and-comparison", package = "TreeCarbon") for error propagation rules.
 }
 \author{

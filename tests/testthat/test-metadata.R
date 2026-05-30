@@ -6,7 +6,7 @@ test_that("get_method_metadata returns list for single method", {
 
   expect_type(result, "list")
   expect_true("full_name" %in% names(result))
-  expect_true("citation" %in% names(result))
+  expect_true("reference" %in% names(result))
   expect_true("assumptions" %in% names(result))
   expect_true("dbh_range" %in% names(result))
 })
@@ -28,7 +28,7 @@ test_that("get_method_metadata contains required fields for each method", {
     result <- get_method_metadata(m)
 
     expect_true("full_name" %in% names(result), info = paste("Missing full_name for", m))
-    expect_true("citation" %in% names(result), info = paste("Missing citation for", m))
+    expect_true("reference" %in% names(result), info = paste("Missing reference for", m))
     expect_true("assumptions" %in% names(result), info = paste("Missing assumptions for", m))
     expect_true("region" %in% names(result), info = paste("Missing region for", m))
     expect_true("source_type" %in% names(result), info = paste("Missing source_type for", m))
@@ -138,7 +138,7 @@ test_that("method_comparison_table has required columns", {
 
   expect_true("method" %in% names(result))
   expect_true("full_name" %in% names(result))
-  expect_true("citation_short" %in% names(result))
+  expect_true("reference_short" %in% names(result))
   expect_true("height_required" %in% names(result))
 })
 

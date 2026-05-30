@@ -782,6 +782,11 @@ BIOMASS <- function(dbh, height = NULL, genus, species, coords, region = "World"
   flags <- if (validation$flags[1] != "None") validation$flags else character()
   warnings_list <- if (validation$validity_warnings[1] != "None") validation$validity_warnings else character()
 
+  # data.frame cannot bind NULL height with length-n rows; NA triggers height estimation below
+  if (is.null(height)) {
+    height <- rep(NA_real_, length(dbh))
+  }
+
   #### Build output dataframe ####
   df <- data.frame(dbh = dbh, height = height, genus = as.character(genus),
                    species = as.character(species), stringsAsFactors = FALSE)
